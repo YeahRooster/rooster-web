@@ -1,0 +1,43 @@
+.footer {
+    background-color: var(--rooster-blue);
+    color: var(--white);
+    padding: 3rem 1rem 1rem;
+    margin-top: auto;
+}
+
+.content {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    max-width: 1200px;
+    margin: 0 auto;
+    gap: 2rem;
+}
+
+.section {
+    flex: 1;
+    min-width: 250px;
+}
+
+.heading {
+    font-family: 'Brush Script MT', cursive;
+    /* Fallback for script font */
+    font-size: 2.5rem;
+    color: var(--rooster-yellow);
+    margin-bottom: 1rem;
+}
+
+.subheading {
+    color: var(--rooster-yellow);
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+}
+
+.copyright {
+    text-align: center;
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 0.9rem;
+    color: var(--gray-300);
+}

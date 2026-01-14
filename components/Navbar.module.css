@@ -1,0 +1,146 @@
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background-color: var(--rooster-blue);
+    color: var(--white);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.logoContainer {
+    display: flex;
+    align-items: center;
+}
+
+.logoLink {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    text-decoration: none;
+}
+
+.logo {
+    height: 50px;
+    width: auto;
+    object-fit: contain;
+}
+
+.brandText {
+    color: var(--rooster-yellow);
+    font-size: 1.5rem;
+    font-weight: 700;
+    /* font-family: 'HandwrittenFont', sans-serif;  If user wants a specific handwritten font, we might need to load it. For now, defaulting or using a cursive fallback might work if desired, but user just said "yellow letters" and the image looks handwritten-ish. Let's stick to standard bold first or maybe a cursive fallback.*/
+    font-family: 'Brush Script MT', cursive;
+    /* Trying to match the "handwritten" vibe from the image if possible, or just bold. Let's stick to a clean bold or the main font unless specified.*/
+    /* The user wrote "Rooster..." in the image with a marker, but the text "Rooster, espacio de arte." might be better as clean text. 
+       Let's use a standard nice font for now, maybe the main font but bold.*/
+    font-family: var(--font-main);
+}
+
+.navLinks {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+}
+
+.navLink {
+    font-weight: 500;
+    font-size: 1rem;
+    transition: color 0.2s;
+}
+
+.navLink:hover {
+    color: var(--rooster-yellow);
+}
+
+.loginBtn {
+    background-color: var(--rooster-yellow) !important;
+    color: var(--rooster-blue) !important;
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    font-weight: 800 !important;
+    /* Más grueso como pediste */
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
+    border: 2px solid var(--rooster-yellow);
+}
+
+.loginBtn:hover {
+    background-color: transparent !important;
+    color: var(--rooster-yellow) !important;
+    transform: scale(1.05);
+}
+
+.mobileMenuBtn {
+    display: none;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.userProfile {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-left: 1rem;
+    border-left: 1px solid #374151;
+}
+
+.userInfo {
+    display: flex;
+    flex-direction: column;
+    text-align: right;
+}
+
+.userName {
+    color: var(--white);
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.userName:hover {
+    color: var(--rooster-yellow);
+}
+
+.userEmail {
+    color: #9ca3af;
+    font-size: 0.75rem;
+}
+
+.logoutBtn {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+.logoutBtn:hover {
+    color: #ef4444;
+}
+
+@media (max-width: 900px) {
+    .brandText {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .navLinks {
+        display: none;
+    }
+}

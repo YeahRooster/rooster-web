@@ -1,0 +1,30 @@
+.container {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 2000;
+}
+
+.button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    background-color: #25D366;
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s ease;
+    color: white;
+    text-decoration: none;
+}
+
+.button:hover {
+    transform: scale(1.1);
+}
+
+.icon {
+    width: 35px;
+    height: 35px;
+    fill: currentColor;
+}

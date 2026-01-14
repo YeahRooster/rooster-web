@@ -1,0 +1,43 @@
+.resourceItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    background: #1F2937;
+    border-bottom: 1px solid #374151;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    transition: transform 0.2s;
+}
+
+.resourceItem:hover {
+    transform: translateX(10px);
+    background: #2D3748;
+}
+
+.didacticNote {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: rgba(255, 213, 0, 0.1);
+    color: var(--rooster-yellow);
+    border-radius: 4px;
+    text-align: center;
+    border: 1px solid var(--rooster-yellow);
+}
+
+.restrictedCard {
+    max-width: 600px;
+    margin: 4rem auto;
+    padding: 3rem;
+    background: #1F2937;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    border: 1px solid #374151;
+    text-align: center;
+}
+
+.lockIcon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    display: block;
+}

@@ -1,0 +1,256 @@
+.dashboard {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+.profileCard,
+.paymentsCard {
+    background: #1F2937;
+    border: 1px solid #374151;
+    border-radius: 12px;
+    padding: 2rem;
+    color: white;
+}
+
+.cardTitle {
+    color: var(--rooster-yellow);
+    font-size: 1.25rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #374151;
+    padding-bottom: 0.5rem;
+}
+
+.profileCard p {
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+}
+
+.noData {
+    color: #9ca3af;
+    font-style: italic;
+}
+
+.tableWrapper {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th {
+    text-align: left;
+    padding: 1rem;
+    border-bottom: 2px solid #374151;
+    color: var(--rooster-yellow);
+}
+
+.table td {
+    padding: 1rem;
+    border-bottom: 1px solid #374151;
+}
+
+.tagPaid {
+    background: #059669;
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.tagPending {
+    background: #dc2626;
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+@media (max-width: 900px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+    }
+}
+
+.discountAlert {
+    background: linear-gradient(to right, #facc15, #eab308);
+    color: #0d1b2a;
+    padding: 1.25rem 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+    box-shadow: 0 4px 12px rgba(234, 179, 8, 0.3);
+    animation: slideIn 0.5s ease-out;
+}
+
+.alertIcon {
+    font-size: 1.5rem;
+}
+
+.alertContent {
+    flex: 1;
+}
+
+.alertContent strong {
+    display: block;
+    font-size: 1.1rem;
+    margin-bottom: 0.2rem;
+}
+
+.alertContent p {
+    font-size: 0.95rem;
+    margin: 0;
+    opacity: 0.9;
+}
+
+.closeAlert {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: #0d1b2a;
+    padding: 0.5rem;
+    opacity: 0.6;
+}
+
+.closeAlert:hover {
+    opacity: 1;
+}
+
+.restrictedCard {
+    background: #1F2937;
+    padding: 3rem;
+    border-radius: 16px;
+    text-align: center;
+    border: 1px solid #374151;
+    color: white;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.teacherGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.subtitle {
+    color: var(--gray-300);
+    font-size: 1.2rem;
+    margin-top: -1rem;
+    margin-bottom: 2rem;
+}
+
+.uploadBox {
+    background: rgba(255, 213, 0, 0.05);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px dashed var(--rooster-yellow);
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.uploadBtn {
+    display: inline-block;
+    background: var(--rooster-yellow);
+    color: #0d1b2a;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 1rem;
+    transition: transform 0.2s;
+}
+
+.uploadBtn:hover {
+    transform: scale(1.05);
+}
+
+.resourceList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.resourceItem {
+    padding: 0.75rem 1rem;
+    background: #0d1b2a;
+    border-radius: 8px;
+    border: 1px solid #374151;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card {
+    background: #1F2937;
+    border: 1px solid #374151;
+    border-radius: 12px;
+    padding: 2rem;
+    color: white;
+}
+
+@media (max-width: 900px) {
+    .teacherGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.progressContainer {
+    width: 100%;
+    background: #374151;
+    border-radius: 99px;
+    height: 8px;
+    margin-top: 1rem;
+    overflow: hidden;
+}
+
+.progressBar {
+    height: 100%;
+    background: var(--rooster-yellow);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.progressText {
+    font-size: 0.85rem;
+    color: var(--rooster-yellow);
+    margin-top: 0.5rem;
+    display: block;
+}
+
+.changePassBtn {
+    background: transparent;
+    border: 1px solid var(--rooster-yellow);
+    color: var(--rooster-yellow);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-top: 1rem;
+    transition: all 0.2s;
+}
+
+.changePassBtn:hover {
+    background: var(--rooster-yellow);
+    color: #0d1b2a;
+}

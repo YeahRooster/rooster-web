@@ -1,0 +1,101 @@
+.card {
+    background: #1F2937;
+    /* Gris muy oscuro (Charcoal) */
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid #374151;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.imageContainer {
+    width: 100%;
+    height: 240px;
+    /* Un poco más alto para pósters verticales */
+    background-color: var(--rooster-blue);
+    /* Fondo oscuro para que resalte la imagen */
+    position: relative;
+}
+
+.image {
+    object-fit: contain;
+    /* Para que la imagen se vea completa sin recortarse */
+    padding: 0.5rem;
+}
+
+.content {
+    padding: 1.5rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.title {
+    color: var(--rooster-yellow);
+    /* Título en amarillo para resaltar */
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+
+.info {
+    margin-bottom: 1rem;
+    color: #E5E7EB;
+    /* Gris muy claro para lectura */
+    font-size: 0.95rem;
+}
+
+.schedule {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    color: #9CA3AF;
+    /* Gris intermedio para metadata */
+    font-weight: 500;
+}
+
+.seats {
+    margin-top: auto;
+    padding-top: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #374151;
+}
+
+.cupoTag {
+    background-color: #E0F2FE;
+    color: #0369A1;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.cupoFull {
+    background-color: #FEE2E2;
+    color: #991B1B;
+}
+
+.enrollBtn {
+    background: var(--rooster-blue);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+
+.enrollBtn:hover {
+    background: var(--rooster-blue-light);
+}

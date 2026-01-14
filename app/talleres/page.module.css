@@ -1,0 +1,37 @@
+.container {
+    background-color: transparent;
+    /* Fondo transparente para ver fondo global */
+    min-height: 100vh;
+}
+
+.title {
+    font-size: 3rem;
+    color: var(--rooster-blue);
+    margin-bottom: 1rem;
+}
+
+.description {
+    max-width: 600px;
+    margin: 0 auto;
+    color: #666;
+}
+
+.workshopGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    margin-top: 3rem;
+    width: 100%;
+}
+
+@media (max-width: 1024px) {
+    .workshopGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .workshopGrid {
+        grid-template-columns: 1fr;
+    }
+}
