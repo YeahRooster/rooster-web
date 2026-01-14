@@ -33,11 +33,6 @@
     color: var(--rooster-yellow);
     font-size: 1.5rem;
     font-weight: 700;
-    /* font-family: 'HandwrittenFont', sans-serif;  If user wants a specific handwritten font, we might need to load it. For now, defaulting or using a cursive fallback might work if desired, but user just said "yellow letters" and the image looks handwritten-ish. Let's stick to standard bold first or maybe a cursive fallback.*/
-    font-family: 'Brush Script MT', cursive;
-    /* Trying to match the "handwritten" vibe from the image if possible, or just bold. Let's stick to a clean bold or the main font unless specified.*/
-    /* The user wrote "Rooster..." in the image with a marker, but the text "Rooster, espacio de arte." might be better as clean text. 
-       Let's use a standard nice font for now, maybe the main font but bold.*/
     font-family: var(--font-main);
 }
 
@@ -63,7 +58,6 @@
     padding: 0.6rem 1.2rem;
     border-radius: 6px;
     font-weight: 800 !important;
-    /* Más grueso como pediste */
     font-size: 1rem;
     transition: all 0.2s ease;
     text-decoration: none;
@@ -135,12 +129,47 @@
 
 @media (max-width: 900px) {
     .brandText {
-        display: none;
+        font-size: 1.2rem;
     }
 }
 
 @media (max-width: 768px) {
+    .mobileMenuBtn {
+        display: block;
+    }
+
     .navLinks {
-        display: none;
+        position: fixed;
+        right: -100%;
+        top: 70px;
+        flex-direction: column;
+        background-color: var(--rooster-blue);
+        width: 100%;
+        height: calc(100vh - 70px);
+        text-align: center;
+        transition: 0.3s ease;
+        gap: 2rem;
+        padding: 2rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        list-style: none;
+        z-index: 999;
+    }
+
+    .navActive {
+        right: 0;
+    }
+
+    .userProfile {
+        flex-direction: column;
+        border-left: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 2rem;
+        text-align: center;
+        margin-top: 1rem;
+    }
+
+    .userInfo {
+        text-align: center;
+        margin-bottom: 1rem;
     }
 }
