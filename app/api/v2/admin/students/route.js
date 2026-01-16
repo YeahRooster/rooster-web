@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/config/supabase';
+import { supabaseAdmin } from '@/config/supabaseAdmin';
 
 export async function GET(request) {
     try {
@@ -26,7 +27,7 @@ export async function GET(request) {
 export async function PUT(request) {
     try {
         const { dni, activo } = await request.json();
-        const { error } = await supabase
+        const { error } = await supabaseAdmin
             .from('alumnos')
             .update({ activo })
             .eq('dni', dni);

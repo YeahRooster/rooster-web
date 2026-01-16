@@ -32,10 +32,14 @@ export default function LoginPage() {
                 return;
             }
 
-            // Si llegamos acá es porque el login v2 falló por credenciales o error
-            // Si es un error de credentials (401), no hace falta reintentar en Sheets usualmente, 
-            // pero por las dudas si el usuario es nuevo y todavía no se migró...
+            // SI LA CUENTA ESTÁ BLOQUEADA (403), no reintentamos fallback
+            if (resV2.status === 403) {
+                setError(resultV2.message);
+                return;
+            }
 
+            // Si llegamos acá es porque el login v2 falló por credenciales incorrectas o error de servidor
+            // Si es un error de credentials (401), intentamos en Sheets por si aún no fue migrado
             console.log("Login v2 falló, intentando Fallback a Google Sheets (v1)...");
             const resV1 = await fetch(`/api/payments?dni=${dni.trim()}&pass=${password.trim()}`);
             const resultV1 = await resV1.json();
@@ -44,7 +48,7 @@ export default function LoginPage() {
                 login(resultV1);
                 redirectUser(resultV1.role);
             } else {
-                setError(resultV1.message || resultV2.message || 'DNI o contraseña incorrectos.');
+                setError(resultV2.message || resultV1.message || 'DNI o contraseña incorrectos.');
             }
         } catch (err) {
             console.error("Login Error:", err);

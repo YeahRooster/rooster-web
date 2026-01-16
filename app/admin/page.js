@@ -20,7 +20,7 @@ export default function AdminDashboard() {
 
     const loadStats = async () => {
         try {
-            const res = await fetch('/api/v2/admin/stats');
+            const res = await fetch('/api/v2/admin/stats', { cache: 'no-store' });
             const data = await res.json();
             setStats(data);
         } catch (err) { console.error(err); }
@@ -29,7 +29,7 @@ export default function AdminDashboard() {
 
     const loadStudents = async (status = '') => {
         try {
-            const res = await fetch(`/api/v2/admin/students${status ? `?status=${status}` : ''}`);
+            const res = await fetch(`/api/v2/admin/students${status ? `?status=${status}` : ''}`, { cache: 'no-store' });
             const result = await res.json();
             if (result.status === 'success') {
                 setStudents(result.data);
@@ -37,7 +37,10 @@ export default function AdminDashboard() {
         } catch (err) { console.error(err); }
     };
 
+    const [processingDni, setProcessingDni] = useState(null);
+
     const toggleStudentStatus = async (dni, currentStatus) => {
+        setProcessingDni(dni);
         try {
             const res = await fetch('/api/v2/admin/students', {
                 method: 'PUT',
@@ -45,10 +48,11 @@ export default function AdminDashboard() {
             });
             const result = await res.json();
             if (result.status === 'success') {
-                loadStudents();
-                loadStats();
+                await loadStudents(filter === 'all' ? '' : filter);
+                await loadStats();
             }
         } catch (err) { alert("Error al cambiar estado"); }
+        finally { setProcessingDni(null); }
     };
 
     if (authLoading || loading) return <div className="section-padding container text-center">Cargando Panel de Control...</div>;
@@ -68,7 +72,7 @@ export default function AdminDashboard() {
             </div>
 
             {view === 'stats' ? (
-                <div className={statsGrid}>
+                <div className={styles.statsGrid}>
                     <div className={styles.statCard}>
                         <h3>Neto Mensual (Estimado)</h3>
                         <p className={styles.bigNumber}>${stats?.netoMensual || 0}</p>
@@ -119,8 +123,9 @@ export default function AdminDashboard() {
                                             <button
                                                 onClick={() => toggleStudentStatus(s.dni, s.activo)}
                                                 className={s.activo ? styles.btnDeactivate : styles.btnActivate}
+                                                disabled={processingDni === s.dni}
                                             >
-                                                {s.activo ? 'Dar de Baja' : 'Dar de Alta'}
+                                                {processingDni === s.dni ? 'Cambiando...' : (s.activo ? 'Dar de Baja' : 'Dar de Alta')}
                                             </button>
                                         </td>
                                     </tr>
