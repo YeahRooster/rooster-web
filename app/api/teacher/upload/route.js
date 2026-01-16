@@ -1,39 +1,44 @@
 import { NextResponse } from 'next/server';
-import { GOOGLE_SCRIPT_URL } from '@/config/google_script';
+import { supabase } from '@/config/supabase';
+import { v2 as cloudinary } from 'cloudinary';
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 export async function POST(request) {
     try {
         const body = await request.json();
+        const { filename, data, taller, teacher } = body;
 
-        // El problema del 50% y el error JSON suele ser que Google redirecciona (302)
-        // en los POST. Next.js fetch a veces no sigue bien esa redirección.
-        const response = await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            body: JSON.stringify(body),
-            redirect: 'follow', // Forzamos seguir la redirección de Google
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
+        console.log(`☁️ Subiendo archivo a Cloudinary para el taller: ${taller}`);
+
+        // Subir a Cloudinary (data es base64)
+        const uploadRes = await cloudinary.uploader.upload(`data:application/pdf;base64,${data}`, {
+            folder: `rooster/recursos/${taller.replace(/\s+/g, '_')}`,
+            public_id: filename.split('.')[0],
+            resource_type: "auto"
         });
 
-        const text = await response.text();
-        console.log("--- UPLOAD DEBUG ---");
-        console.log("Raw Response from Google:", text.substring(0, 100));
+        // Registrar en Supabase
+        const { error: dbErr } = await supabase.from('recursos').insert({
+            taller: taller,
+            nombre_archivo: filename,
+            url_archivo: uploadRes.secure_url,
+            fecha_subida: new Date()
+        });
 
-        try {
-            const result = JSON.parse(text);
-            return NextResponse.json(result);
-        } catch (e) {
-            // Si Google responde con HTML (error de permisos o login), lo capturamos
-            return NextResponse.json({
-                status: 'error',
-                message: "Google devolvió una respuesta no válida. Verifica que el script esté publicado para 'Cualquiera' (Anyone)."
-            });
-        }
+        if (dbErr) throw dbErr;
+
+        return NextResponse.json({
+            status: 'success',
+            url: uploadRes.secure_url
+        });
 
     } catch (error) {
-        console.error("Upload Route Error:", error);
+        console.error("Cloudinary Upload Error:", error);
         return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
     }
 }

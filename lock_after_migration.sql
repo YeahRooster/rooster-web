@@ -1,0 +1,9 @@
+-- SCRIPT DE BLOQUEO POST-MIGRACIÓN
+-- Corré esto en el SQL Editor después de que terminemos la migración para volver a proteger tus datos
+
+ALTER TABLE talleres ENABLE ROW LEVEL SECURITY;
+ALTER TABLE alumnos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profesores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inscripciones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pagos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recursos ENABLE ROW LEVEL SECURITY;

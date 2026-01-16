@@ -10,16 +10,24 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         if (user && user.role === 'admin') {
-            fetch('/api/admin/stats')
-                .then(res => res.json())
-                .then(data => {
+            const loadStats = async () => {
+                try {
+                    // INTENTO V2: SUPABASE
+                    const res = await fetch('/api/v2/admin/stats');
+                    if (!res.ok) throw new Error("Falla V2");
+                    const data = await res.json();
                     setStats(data);
+                } catch (err) {
+                    console.warn("Falla en stats V2, usando V1...");
+                    fetch('/api/admin/stats')
+                        .then(res => res.json())
+                        .then(data => setStats(data))
+                        .catch(e => console.error("Error total en stats:", e));
+                } finally {
                     setLoading(false);
-                })
-                .catch(err => {
-                    console.error(err);
-                    setLoading(false);
-                });
+                }
+            };
+            loadStats();
         }
     }, [user]);
 

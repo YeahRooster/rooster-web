@@ -16,30 +16,49 @@ export default function LoginPage() {
         setError('');
 
         try {
-            const res = await fetch(`/api/payments?dni=${dni.trim()}&pass=${password.trim()}`);
-            const result = await res.json();
+            // INTENTO 1: SUPABASE (V2) - Ultra rápido
+            console.log("Intentando Login v2 (Supabase)...");
+            const resV2 = await fetch('/api/v2/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dni: dni.trim(), password: password.trim() })
+            });
 
-            if (res.ok && result.status === 'success') {
-                login({
-                    nombre: result.nombre,
-                    email: result.email,
-                    dni: result.dni,
-                    role: result.role,
-                    taller: result.taller,
-                    pagos: result.pagos || []
-                });
-                if (result.role === 'admin') {
-                    window.location.href = '/admin';
-                } else {
-                    window.location.href = '/mi-cuenta';
-                }
+            const resultV2 = await resV2.json();
+
+            if (resV2.ok && resultV2.status === 'success') {
+                login(resultV2);
+                redirectUser(resultV2.role);
+                return;
+            }
+
+            // Si llegamos acá es porque el login v2 falló por credenciales o error
+            // Si es un error de credentials (401), no hace falta reintentar en Sheets usualmente, 
+            // pero por las dudas si el usuario es nuevo y todavía no se migró...
+
+            console.log("Login v2 falló, intentando Fallback a Google Sheets (v1)...");
+            const resV1 = await fetch(`/api/payments?dni=${dni.trim()}&pass=${password.trim()}`);
+            const resultV1 = await resV1.json();
+
+            if (resV1.ok && resultV1.status === 'success') {
+                login(resultV1);
+                redirectUser(resultV1.role);
             } else {
-                setError(result.message || 'DNI o contraseña incorrectos.');
+                setError(resultV1.message || resultV2.message || 'DNI o contraseña incorrectos.');
             }
         } catch (err) {
+            console.error("Login Error:", err);
             setError('Error de conexión con el servidor.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const redirectUser = (role) => {
+        if (role === 'admin') {
+            window.location.href = '/admin';
+        } else {
+            window.location.href = '/mi-cuenta';
         }
     };
 

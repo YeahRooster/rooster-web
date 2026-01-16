@@ -13,24 +13,37 @@ export default function TalleresPage() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        fetch('/api/workshops')
-            .then(res => res.json())
-            .then(data => {
-                if (data.error) {
-                    console.error("DEBUG - URL llamada:", data.debug_url);
-                    console.error("DEBUG - Error recibido:", data.error);
-                    setError(data.error);
-                    setWorkshops([]);
-                } else {
-                    setWorkshops(Array.isArray(data) ? data : []);
-                }
+        const loadWorkshops = async () => {
+            try {
+                // INTENTO 1: V2 (SUPABASE) - Carga en milisegundos
+                console.log("Cargando talleres v2 (Supabase)...");
+                const res = await fetch(`/api/v2/workshops?t=${Date.now()}`);
+                if (!res.ok) throw new Error('Error en V2');
+                const data = await res.json();
+
+                setWorkshops(Array.isArray(data) ? data : []);
                 setLoading(false);
-            })
-            .catch(err => {
-                console.error("Error loading workshops:", err);
-                setWorkshops([]);
-                setLoading(false);
-            });
+            } catch (err) {
+                console.warn("Falla en V2, intentando V1 (Google Sheets) como respaldo...");
+                // FALLBACK: V1 (GOOGLE SHEETS)
+                fetch('/api/workshops')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) {
+                            setError(data.error);
+                            setWorkshops([]);
+                        } else {
+                            setWorkshops(Array.isArray(data) ? data : []);
+                        }
+                    })
+                    .catch(e => {
+                        console.error("Error total de carga:", e);
+                        setError("Error crítico de conexión");
+                    })
+                    .finally(() => setLoading(false));
+            }
+        };
+        loadWorkshops();
     }, []);
 
     // Agrupar talleres por título

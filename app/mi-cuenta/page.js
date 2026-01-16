@@ -30,11 +30,18 @@ export default function MiCuentaPage() {
         if (!user?.taller) return;
         setLoadingTeacher(true);
         try {
-            const res = await fetch(`/api/teacher/data?taller=${encodeURIComponent(user.taller)}`);
-            const data = await res.json();
-            if (data.status === 'success') {
-                setTeacherData({ students: data.students || [], resources: data.resources || [] });
-            }
+            // INTENTO V2 (Ultra rápido: Alumnos + Recursos de Supabase)
+            const resV2 = await fetch(`/api/v2/teacher/data?taller=${encodeURIComponent(user.taller)}`);
+            const dataV2 = await resV2.json();
+
+            // Sincronizar Recursos también desde nuestra API v2
+            const resRes = await fetch(`/api/resources?taller=${encodeURIComponent(user.taller)}`);
+            const dataRes = await resRes.json();
+
+            setTeacherData({
+                students: dataV2.status === 'success' ? dataV2.students : [],
+                resources: dataRes.status === 'success' ? dataRes.resources : []
+            });
         } catch (err) {
             console.error("Error cargando datos de profe:", err);
         } finally {
