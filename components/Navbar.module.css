@@ -95,9 +95,65 @@
 
 .bellBtn {
     font-size: 1.3rem;
-    text-decoration: none;
+    background: none;
+    border: none;
+    cursor: pointer;
     display: flex;
     align-items: center;
+    padding: 0;
+    color: white;
+}
+
+.notificationDropdown {
+    position: absolute;
+    top: 40px;
+    right: 0;
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    width: 250px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    z-index: 1001;
+    padding: 1rem;
+}
+
+.notificationDropdown h3 {
+    font-size: 0.9rem;
+    color: var(--rooster-yellow);
+    margin-bottom: 0.8rem;
+    border-bottom: 1px solid #374151;
+    padding-bottom: 0.5rem;
+}
+
+.notificationList {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.notificationItem {
+    padding: 0.5rem;
+    border-bottom: 1px solid #374151;
+    font-size: 0.85rem;
+}
+
+.notificationItem p {
+    margin: 0;
+    color: white;
+}
+
+.notificationItem span {
+    font-size: 0.7rem;
+    color: #6b7280;
+}
+
+.unreadLine {
+    background: rgba(255, 230, 0, 0.05);
+}
+
+.emptyNotif {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    text-align: center;
 }
 
 .badge {

@@ -10,6 +10,7 @@ export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [showNotifications, setShowNotifications] = useState(false);
 
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
     const closeMenu = () => setIsMenuOpen(false);
@@ -31,6 +32,13 @@ export default function Navbar() {
                 setUnreadCount(result.data.filter(n => !n.leida).length);
             }
         } catch (e) { console.error("Error notifications:", e); }
+    };
+
+    const toggleNotifications = async () => {
+        if (!showNotifications && unreadCount > 0) {
+            markAsRead();
+        }
+        setShowNotifications(!showNotifications);
     };
 
     const markAsRead = async () => {
@@ -76,11 +84,29 @@ export default function Navbar() {
                 {user ? (
                     <div className={styles.userProfile}>
                         {/* Notificaciones */}
-                        <div className={styles.notificationWrapper} onClick={markAsRead}>
-                            <Link href="/mi-cuenta" className={styles.bellBtn}>
+                        <div className={styles.notificationWrapper}>
+                            <button className={styles.bellBtn} onClick={toggleNotifications}>
                                 🔔
                                 {unreadCount > 0 && <span className={styles.badge}>{unreadCount}</span>}
-                            </Link>
+                            </button>
+
+                            {showNotifications && (
+                                <div className={styles.notificationDropdown}>
+                                    <h3>Notificaciones</h3>
+                                    <div className={styles.notificationList}>
+                                        {notifications.length === 0 ? (
+                                            <p className={styles.emptyNotif}>No tienes notificaciones aún.</p>
+                                        ) : (
+                                            notifications.map((n) => (
+                                                <div key={n.id} className={`${styles.notificationItem} ${!n.leida ? styles.unreadLine : ''}`}>
+                                                    <p>❤️ <strong>{n.actor_nombre}</strong> le dio me gusta a tu obra.</p>
+                                                    <span>{new Date(n.fecha).toLocaleDateString()}</span>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className={styles.userInfo}>
