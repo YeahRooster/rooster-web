@@ -44,6 +44,14 @@ export async function POST(request) {
             .single();
 
         if (student) {
+            // VALIDACIÓN: Solo permitir login si el alumno está activo
+            if (student.activo === false) {
+                return NextResponse.json({
+                    status: 'error',
+                    message: 'Tu cuenta está pendiente de aprobación por la administración de Rooster.'
+                }, { status: 403 });
+            }
+
             // Transformar inscripciones a array simple de nombres
             const talleresInscriptos = student.inscripciones?.map(i => i.taller_nombre) || [];
 

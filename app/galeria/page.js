@@ -151,6 +151,9 @@ export default function GaleriaPage() {
                 <div className={styles.modalOverlay}>
                     <div className={styles.uploadModal}>
                         <h2>Subir Nueva Obra 📸</h2>
+                        <div className={styles.moderationNotice}>
+                            ⚠️ <strong>Aviso Importante:</strong> Para mantener nuestra comunidad segura, no se permite contenido explícito, ofensivo o inapropiado. Cualquier obra que infrinja estas normas será eliminada inmediatamente.
+                        </div>
                         <form onSubmit={handleUpload}>
                             <div className={styles.inputGroup}>
                                 <label>Título de la obra</label>

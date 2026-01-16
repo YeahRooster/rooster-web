@@ -16,13 +16,13 @@ export async function POST(request) {
         // 2. Si se guardó bien en Sheets, lo espejamos en Supabase para que el Login v2 funcione al instante
         if (result.status === 'success') {
             try {
-                // Upsert en Alumnos
                 await supabase.from('alumnos').upsert({
                     dni: String(body.dni).trim(),
                     nombre: body.nombre,
                     email: body.email,
                     password: String(body.dni).trim(), // Default password
-                    fecha_ingreso: new Date()
+                    fecha_ingreso: new Date(),
+                    activo: false // Requiere aprobación manual del admin
                 });
 
                 // Insert en Inscripciones
