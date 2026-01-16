@@ -1,0 +1,137 @@
+.galleryGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+    padding: 2rem 0;
+}
+
+.postCard {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.postCard:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.imageContainer {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4/5;
+    cursor: pointer;
+}
+
+.postInfo {
+    padding: 1rem;
+}
+
+.postTitle {
+    color: var(--rooster-yellow);
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.postAuthor {
+    color: #9ca3af;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.interactionBar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.likeButton {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.likeButton.liked {
+    color: #ef4444;
+}
+
+.uploadButton {
+    background: var(--rooster-yellow);
+    color: var(--rooster-blue);
+    padding: 0.8rem 1.5rem;
+    border-radius: 50px;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 auto 3rem;
+    transition: transform 0.2s ease;
+}
+
+.uploadButton:hover {
+    transform: scale(1.05);
+}
+
+/* Modal de Subida */
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.uploadModal {
+    background: #1f2937;
+    padding: 2rem;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 500px;
+    color: white;
+}
+
+.inputGroup {
+    margin-bottom: 1.5rem;
+}
+
+.inputGroup label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--rooster-yellow);
+}
+
+.inputGroup input,
+.inputGroup textarea {
+    width: 100%;
+    background: #374151;
+    border: 1px solid #4b5563;
+    padding: 0.8rem;
+    border-radius: 8px;
+    color: white;
+}
+
+.submitBtn {
+    width: 100%;
+    padding: 1rem;
+    background: var(--rooster-yellow);
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+}

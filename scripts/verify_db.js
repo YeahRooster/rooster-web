@@ -22,6 +22,9 @@ async function verify() {
     // 2. Alumnos
     const { data: alumnos, error: eA } = await supabase.from('alumnos').select('*');
     console.log(`👤 Alumnos en DB: ${alumnos?.length || 0}`);
+    if (alumnos) {
+        alumnos.forEach(a => console.log(`- [${a.dni}] ${a.nombre}`));
+    }
 
     // 3. Pagos (Verificar duplicados)
     const { data: pagos, error: eP } = await supabase.from('pagos').select('*').limit(20);

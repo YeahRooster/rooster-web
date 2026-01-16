@@ -83,15 +83,45 @@
 .userProfile {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 1.5rem;
     padding-left: 1rem;
     border-left: 1px solid #374151;
+}
+
+.notificationWrapper {
+    position: relative;
+    cursor: pointer;
+}
+
+.bellBtn {
+    font-size: 1.3rem;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+}
+
+.badge {
+    position: absolute;
+    top: -5px;
+    right: -8px;
+    background: #ef4444;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: bold;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
 }
 
 .userInfo {
     display: flex;
     flex-direction: column;
     text-align: right;
+    margin-right: 0.5rem;
 }
 
 .userName {
@@ -131,6 +161,27 @@
     .brandText {
         font-size: 1.2rem;
     }
+}
+
+.userInfo {
+    display: flex;
+    flex-direction: column;
+    text-align: right;
+    margin-right: 0.8rem;
+}
+
+.userName {
+    color: var(--white);
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.userEmail {
+    color: #9ca3af;
+    font-size: 0.75rem;
+    white-space: nowrap;
 }
 
 @media (max-width: 768px) {

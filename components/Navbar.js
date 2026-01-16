@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
@@ -8,9 +8,40 @@ import styles from './Navbar.module.css';
 export default function Navbar() {
     const { user, logout } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
 
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
     const closeMenu = () => setIsMenuOpen(false);
+
+    useEffect(() => {
+        if (user) {
+            loadNotifications();
+            const interval = setInterval(loadNotifications, 30000); // Poll cada 30s
+            return () => clearInterval(interval);
+        }
+    }, [user]);
+
+    const loadNotifications = async () => {
+        try {
+            const res = await fetch(`/api/social/notifications?dni=${user.dni}`);
+            const result = await res.json();
+            if (result.status === 'success') {
+                setNotifications(result.data);
+                setUnreadCount(result.data.filter(n => !n.leida).length);
+            }
+        } catch (e) { console.error("Error notifications:", e); }
+    };
+
+    const markAsRead = async () => {
+        try {
+            await fetch('/api/social/notifications', {
+                method: 'PUT',
+                body: JSON.stringify({ dni: user.dni })
+            });
+            setUnreadCount(0);
+        } catch (e) { console.error(e); }
+    };
 
     return (
         <nav className={styles.navbar}>
@@ -44,6 +75,14 @@ export default function Navbar() {
 
                 {user ? (
                     <div className={styles.userProfile}>
+                        {/* Notificaciones */}
+                        <div className={styles.notificationWrapper} onClick={markAsRead}>
+                            <Link href="/mi-cuenta" className={styles.bellBtn}>
+                                🔔
+                                {unreadCount > 0 && <span className={styles.badge}>{unreadCount}</span>}
+                            </Link>
+                        </div>
+
                         <div className={styles.userInfo}>
                             <Link href="/mi-cuenta" className={styles.userName} onClick={closeMenu}>{user.nombre}</Link>
                             <span className={styles.userEmail}>{user.email}</span>
