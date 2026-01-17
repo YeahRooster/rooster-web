@@ -10,6 +10,7 @@ export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [pendingStudentsCount, setPendingStudentsCount] = useState(0);
     const [showNotifications, setShowNotifications] = useState(false);
 
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
@@ -30,6 +31,15 @@ export default function Navbar() {
             if (result.status === 'success') {
                 setNotifications(result.data);
                 setUnreadCount(result.data.filter(n => !n.leida).length);
+            }
+
+            // Si es admin, cargar también solicitudes pendientes de alumnos
+            if (user.role === 'admin') {
+                const resP = await fetch('/api/v2/admin/students/pending-count');
+                const resultP = await resP.json();
+                if (resultP.status === 'success') {
+                    setPendingStudentsCount(resultP.count);
+                }
             }
         } catch (e) { console.error("Error notifications:", e); }
     };
@@ -78,7 +88,12 @@ export default function Navbar() {
                 <li><Link href="/recursos" className={styles.navLink} onClick={closeMenu}>Recursos</Link></li>
                 <li><Link href="/contacto" className={styles.navLink} onClick={closeMenu}>Contacto</Link></li>
                 {user?.role === 'admin' && (
-                    <li><Link href="/admin" className={styles.navLink} onClick={closeMenu} style={{ color: 'var(--rooster-yellow)', fontWeight: 'bold' }}>Dashboard</Link></li>
+                    <li style={{ position: 'relative' }}>
+                        <Link href="/admin" className={styles.navLink} onClick={closeMenu} style={{ color: 'var(--rooster-yellow)', fontWeight: 'bold' }}>
+                            Dashboard
+                            {pendingStudentsCount > 0 && <span className={styles.badgeAdmin}>{pendingStudentsCount}</span>}
+                        </Link>
+                    </li>
                 )}
 
                 {user ? (

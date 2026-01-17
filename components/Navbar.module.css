@@ -173,6 +173,25 @@
     padding: 2px;
 }
 
+.badgeAdmin {
+    position: absolute;
+    top: -10px;
+    right: -15px;
+    background: #ef4444;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 800;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    border: 2px solid var(--rooster-blue);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
 .userInfo {
     display: flex;
     flex-direction: column;

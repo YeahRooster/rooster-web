@@ -10,7 +10,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PU
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // URL del Script de Google (v20.1 con dumpAll y file IDs)
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbypPL5Bfg_-XsOlXprxArej_qDwLRcDYsYktGJiIgxcCq23rhw56dxn0ElkdaYwLkYi/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzIygSzWDhILfypJMRnHTkThFzHEx1Ex0ZjJKJq9PvnCXfmg9N40LbDKhCd1v3BzDc6/exec';
 
 async function migrate() {
     console.log("🚀 Iniciando migración de datos (MODO LIMPIEZA TOTAL)...");
@@ -20,6 +20,7 @@ async function migrate() {
         console.log("📥 Extrayendo datos de Google Sheets...");
         const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=dumpAll`);
         const data = await response.json();
+        console.log(`✅ Datos recibidos de Sheets: ${Object.keys(data.data).join(', ')}`);
 
         if (data.status !== 'success') {
             throw new Error("Error obteniendo datos: " + data.message);
@@ -38,6 +39,8 @@ async function migrate() {
 
         // 2. Insertar Talleres (TODOS los turnos)
         console.log(`📊 Migrando ${talleres.length} turnos de talleres...`);
+        talleres.forEach(t => console.log(`   - Taller: ${t[1]} | Día: ${t[2]} | Horario: ${t[3]}`));
+
         const { data: insertedTalleres, error: errT } = await supabase.from('talleres').insert(talleres.map(t => ({
             titulo: t[1],
             dia: t[2],
@@ -65,13 +68,15 @@ async function migrate() {
             nombre: a[1],
             email: a[2],
             password: String(a[3]),
-            fecha_ingreso: a[4] ? new Date(a[4]) : new Date()
+            fecha_ingreso: a[4] ? new Date(a[4]) : new Date(),
+            activo: String(a[5]).toUpperCase() === 'ACTIVO' // Lee de la columna WEB_STATUS
         })));
         if (errA) console.error("Error en alumnos:", errA);
 
         // 4. Insertar Profesores
-        console.log(`👨‍🏫 Migrando ${profesores.length} profesores...`);
-        const { error: errP } = await supabase.from('profesores').insert(profesores.map(p => ({
+        const profesoresList = profesores || [];
+        console.log(`👨‍🏫 Migrando ${profesoresList.length} profesores...`);
+        const { error: errP } = await supabase.from('profesores').insert(profesoresList.map(p => ({
             dni: String(p[0]).trim(),
             nombre: p[1],
             password: String(p[3]),
