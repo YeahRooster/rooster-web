@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/config/supabase';
+import { supabaseAdmin } from '@/config/supabaseAdmin';
 import { v2 as cloudinary } from 'cloudinary';
 
 cloudinary.config({
@@ -8,15 +9,20 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-export async function GET() {
+export async function GET(request) {
     try {
+        const { searchParams } = new URL(request.url);
+        const status = searchParams.get('status') || 'active'; // 'active' por defecto
+
         // Obtener posts con cuenta de likes (vía join lateral o conteo simple)
+        // Agregamos filtro por estado
         const { data, error } = await supabase
             .from('social_posts')
             .select(`
                 *,
                 social_likes (usuario_dni)
             `)
+            .eq('status', status)
             .order('fecha_creacion', { ascending: false });
 
         if (error) throw error;
@@ -57,7 +63,8 @@ export async function POST(request) {
             imagen_url: uploadRes.secure_url,
             titulo: titulo || 'Sin título',
             descripcion: descripcion || '',
-            taller_id: taller_id || null
+            taller_id: taller_id || null,
+            status: 'active' // Por defecto activo
         }).select().single();
 
         if (dbErr) throw dbErr;
@@ -66,6 +73,57 @@ export async function POST(request) {
 
     } catch (error) {
         console.error("Social Post Error:", error);
+        return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
+    }
+}
+
+// NUEVO: PUT para cambiar estado (Papelera/Restaurar)
+export async function PUT(request) {
+    try {
+        const { id, status, admin_dni } = await request.json();
+
+        // Validación de seguridad simple (solo Admin 999 puede moderar)
+        if (admin_dni !== '999') {
+            return NextResponse.json({ status: 'error', message: 'No autorizado' }, { status: 403 });
+        }
+
+        // Usamos supabaseAdmin para saltar RLS
+        const { data, error } = await supabaseAdmin
+            .from('social_posts')
+            .update({ status })
+            .eq('id', id)
+            .select();
+
+        if (error) throw error;
+
+        return NextResponse.json({ status: 'success', data });
+    } catch (error) {
+        return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
+    }
+}
+
+// NUEVO: DELETE para eliminación permanente
+export async function DELETE(request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+        const admin_dni = searchParams.get('admin_dni');
+
+        if (admin_dni !== '999') {
+            return NextResponse.json({ status: 'error', message: 'No autorizado' }, { status: 403 });
+        }
+
+        // Aquí podríamos borrar también de Cloudinary si tuviéramos el public_id, 
+        // pero por ahora borramos de la DB.
+        const { error } = await supabaseAdmin
+            .from('social_posts')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        return NextResponse.json({ status: 'success', message: 'Eliminado permanentemente' });
+    } catch (error) {
         return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
     }
 }

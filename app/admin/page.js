@@ -8,15 +8,26 @@ export default function AdminDashboard() {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [students, setStudents] = useState([]);
-    const [view, setView] = useState('stats'); // 'stats' o 'students'
+    const [allResources, setAllResources] = useState([]); // Nuevo estado para recursos globales
+    const [view, setView] = useState('stats'); // 'stats', 'students', 'resources'
     const [filter, setFilter] = useState('all'); // 'all', 'active', 'pending'
 
     useEffect(() => {
         if (user && user.role === 'admin') {
             loadStats();
             loadStudents();
+            loadAllResources(); // Cargar recursos al inicio también
         }
     }, [user]);
+
+    const loadAllResources = async () => {
+        try {
+            // Sin param 'taller', devuelve todos
+            const res = await fetch('/api/resources');
+            const data = await res.json();
+            if (data.status === 'success') setAllResources(data.resources);
+        } catch (e) { console.error(e); }
+    };
 
     const loadStats = async () => {
         try {
@@ -69,29 +80,31 @@ export default function AdminDashboard() {
             <div className={styles.tabs}>
                 <button className={`${styles.tab} ${view === 'stats' ? styles.tabActive : ''}`} onClick={() => setView('stats')}>📈 Estadísticas</button>
                 <button className={`${styles.tab} ${view === 'students' ? styles.tabActive : ''}`} onClick={() => setView('students')}>👤 Gestión de Alumnos</button>
+                <button className={`${styles.tab} ${view === 'resources' ? styles.tabActive : ''}`} onClick={() => setView('resources')}>📚 Materiales</button>
+                <button className={`${styles.tab}`} onClick={() => window.location.href = '/cronograma'}>📅 Ver Cronograma</button>
             </div>
 
-            {view === 'stats' ? (
+            {view === 'stats' && (
                 <div className={styles.statsGrid}>
                     <div className={styles.statCard}>
                         <h3>Neto Mensual (Estimado)</h3>
                         <p className={styles.bigNumber}>${stats?.netoMensual || 0}</p>
                         <span>Basado en cuotas pagadas y comisiones</span>
                     </div>
-
                     <div className={styles.statCard}>
                         <h3>Alumnos Totales</h3>
                         <p className={styles.bigNumber}>{stats?.totalAlumnos || 0}</p>
                         <span>En todos los talleres</span>
                     </div>
-
                     <div className={styles.statCard}>
                         <h3>Profesores</h3>
                         <p className={styles.bigNumber}>{stats?.totalProfesores || 0}</p>
                         <span>Docentes activos</span>
                     </div>
                 </div>
-            ) : (
+            )}
+
+            {view === 'students' && (
                 <div className={styles.studentsSection}>
                     <div className={styles.filterBar}>
                         <button onClick={() => { setFilter('all'); loadStudents(); }} className={filter === 'all' ? styles.btnFilterActive : ''}>Todos</button>
@@ -130,6 +143,56 @@ export default function AdminDashboard() {
                                         </td>
                                     </tr>
                                 ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {view === 'resources' && (
+                <div className={styles.studentsSection}> {/* Reusamos estilos de sección */}
+                    <div className={styles.tableWrapper}>
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th>Archivo</th>
+                                    <th>Taller</th>
+                                    <th>Profesor</th>
+                                    <th>Subido</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {(() => {
+                                    // Fetch resources on render if needed, or better, use effect. 
+                                    // For simplicity here, we assume a loadResources function populates a state 'allResources'
+                                    // But since I can't inject state easily in replace_file, I'll allow this block to use 'allResources' if I define it above,
+                                    // OR I will refactor to put logic inside this block? No, react hooks rules.
+                                    // I MUST inject the state variable 'allResources' in the top of component first.
+                                    return allResources.length === 0 ? (
+                                        <tr><td colSpan="5" className="text-center">No hay recursos compartidos.</td></tr>
+                                    ) : (
+                                        allResources.map(r => (
+                                            <tr key={r.id}>
+                                                <td><a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa' }}>📄 {r.nombre}</a></td>
+                                                <td>{r.taller}</td>
+                                                <td>{r.profesor}</td>
+                                                <td>{r.fecha}</td>
+                                                <td>
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (confirm('¿Borrar archivo de profesor?')) {
+                                                                await fetch(`/api/resources?id=${r.id}`, { method: 'DELETE' });
+                                                                loadAllResources(); // Reload
+                                                            }
+                                                        }}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                                                    >🗑️</button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    );
+                                })()}
                             </tbody>
                         </table>
                     </div>

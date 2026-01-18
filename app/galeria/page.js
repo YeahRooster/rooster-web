@@ -11,6 +11,12 @@ export default function GaleriaPage() {
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [uploading, setUploading] = useState(false);
 
+    // MODERACIÓN
+    const [viewMode, setViewMode] = useState('active'); // 'active' | 'trash'
+
+    // LIGHTBOX
+    const [selectedImage, setSelectedImage] = useState(null);
+
     // Estado para nueva publicación
     const [newPost, setNewPost] = useState({
         titulo: '',
@@ -20,11 +26,13 @@ export default function GaleriaPage() {
 
     useEffect(() => {
         loadPosts();
-    }, []);
+    }, [viewMode]); // Recargar cuando cambia el modo de vista
 
     const loadPosts = async () => {
+        setLoading(true);
         try {
-            const res = await fetch('/api/social/posts');
+            // Consultamos API filtrando por estado
+            const res = await fetch(`/api/social/posts?status=${viewMode}`);
             const result = await res.json();
             if (result.status === 'success') {
                 setPosts(result.data);
@@ -41,6 +49,7 @@ export default function GaleriaPage() {
             alert("¡Ingresá con tu cuenta para poder dar me gusta! 🎨❤️");
             return;
         }
+        if (viewMode === 'trash') return; // No dar likes en la basura
 
         try {
             const res = await fetch('/api/social/like', {
@@ -54,10 +63,41 @@ export default function GaleriaPage() {
             });
             const result = await res.json();
             if (result.status === 'success') {
-                loadPosts(); // Recargar para actualizar contador
+                loadPosts();
             }
         } catch (error) {
             console.error("Error en Like:", error);
+        }
+    };
+
+    // --- ACCIONES DE MODERACIÓN ---
+    const changePostStatus = async (id, newStatus) => {
+        if (!confirm(newStatus === 'trash' ? "¿Mover a papelera?" : "¿Restaurar obra?")) return;
+        try {
+            const res = await fetch('/api/social/posts', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id,
+                    status: newStatus,
+                    admin_dni: user.dni // Seguridad básica
+                })
+            });
+            if (res.ok) loadPosts();
+        } catch (error) {
+            alert("Error al cambiar estado");
+        }
+    };
+
+    const deletePermanently = async (id) => {
+        if (!confirm("⚠️ ¿ESTÁS SEGURO? Esto eliminará la obra PARA SIEMPRE e irreversiblemente.")) return;
+        try {
+            const res = await fetch(`/api/social/posts?id=${id}&admin_dni=${user.dni}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) loadPosts();
+        } catch (error) {
+            alert("Error al eliminar");
         }
     };
 
@@ -99,27 +139,61 @@ export default function GaleriaPage() {
         }
     };
 
-    if (loading) return <div className="section-padding container text-center">Cargando Galería de Rooster... 🎨</div>;
+    if (loading && posts.length === 0) return <div className="section-padding container text-center">Cargando Galería de Rooster... 🎨</div>;
+
+    const isAdmin = user?.role === 'admin';
 
     return (
         <div className="section-padding container">
             <h1 className="section-title text-center text-yellow" style={{ marginBottom: '1rem', fontSize: '3rem' }}>
-                Galería de la Comunidad
+                {viewMode === 'active' ? 'Galería de la Comunidad' : '🗑️ Papelera de Reciclaje'}
             </h1>
-            <p className="text-center" style={{ marginBottom: '3rem', maxWidth: '700px', margin: '0 auto 2rem' }}>
-                Un espacio para compartir nuestras obras y celebrar el talento de Rooster.
-            </p>
 
-            {user && (user.role === 'student' || user.role === 'teacher' || user.role === 'admin') && (
+            {isAdmin && (
+                <div className="text-center" style={{ marginBottom: '2rem' }}>
+                    <button
+                        onClick={() => setViewMode(viewMode === 'active' ? 'trash' : 'active')}
+                        style={{
+                            background: viewMode === 'active' ? '#ef4444' : '#10b981',
+                            color: 'white',
+                            border: 'none',
+                            padding: '10px 20px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontWeight: 'bold'
+                        }}
+                    >
+                        {viewMode === 'active' ? '👮‍♂️ Ver Papelera y Moderar' : '🔙 Volver a Galería Pública'}
+                    </button>
+                </div>
+            )}
+
+            {viewMode === 'active' && (
+                <p className="text-center" style={{ marginBottom: '3rem', maxWidth: '700px', margin: '0 auto 2rem' }}>
+                    Un espacio para compartir nuestras obras y celebrar el talento de Rooster.
+                </p>
+            )}
+
+            {viewMode === 'active' && user && (user.role === 'student' || user.role === 'teacher' || user.role === 'admin') && (
                 <button className={styles.uploadButton} onClick={() => setShowUploadModal(true)}>
                     <span>📸</span> Subir mi Obra
                 </button>
             )}
 
             <div className={styles.galleryGrid}>
+                {posts.length === 0 && (
+                    <div style={{ textAlign: 'center', width: '100%', gridColumn: '1 / -1', padding: '50px' }}>
+                        <h3>{viewMode === 'active' ? 'Aún no hay obras. ¡Sé el primero!' : 'La papelera está vacía 🧹'}</h3>
+                    </div>
+                )}
+
                 {posts.map((post) => (
-                    <div key={post.id} className={styles.postCard}>
-                        <div className={styles.imageContainer}>
+                    <div key={post.id} className={styles.postCard} style={{ opacity: viewMode === 'trash' ? 0.8 : 1, border: viewMode === 'trash' ? '2px solid red' : 'none' }}>
+                        <div
+                            className={styles.imageContainer}
+                            onClick={() => setSelectedImage(post.imagen_url)}
+                            title="Click para ampliar"
+                        >
                             <Image
                                 src={post.imagen_url}
                                 alt={post.titulo}
@@ -131,20 +205,57 @@ export default function GaleriaPage() {
                             <h3 className={styles.postTitle}>{post.titulo}</h3>
                             <p className={styles.postAuthor}>Por {post.alumno_nombre}</p>
                             <div className={styles.interactionBar}>
-                                <button
-                                    className={`${styles.likeButton} ${post.social_likes?.some(l => l.usuario_dni === user?.dni) ? styles.liked : ''}`}
-                                    onClick={() => handleLike(post.id, post.alumno_dni)}
-                                >
-                                    ❤️ {post.likesCount}
-                                </button>
-                                <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                                    {new Date(post.fecha_creacion).toLocaleDateString()}
-                                </span>
+                                {viewMode === 'active' ? (
+                                    <>
+                                        <button
+                                            className={`${styles.likeButton} ${post.social_likes?.some(l => l.usuario_dni === user?.dni) ? styles.liked : ''}`}
+                                            onClick={(e) => { e.stopPropagation(); handleLike(post.id, post.alumno_dni); }}
+                                        >
+                                            ❤️ {post.likesCount}
+                                        </button>
+
+                                        {isAdmin && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); changePostStatus(post.id, 'trash'); }}
+                                                style={{ marginLeft: 'auto', background: 'none', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', padding: '2px 8px' }}
+                                                title="Mover a Papelera"
+                                            >
+                                                🗑️ Borrar
+                                            </button>
+                                        )}
+                                    </>
+                                ) : (
+                                    /* CONTROLES DE PAPELERA */
+                                    <div style={{ display: 'flex', gap: '10px', width: '100%', justifyContent: 'center' }}>
+                                        <button
+                                            onClick={() => changePostStatus(post.id, 'active')}
+                                            style={{ background: '#10b981', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
+                                        >
+                                            ♻️ Restaurar
+                                        </button>
+                                        <button
+                                            onClick={() => deletePermanently(post.id)}
+                                            style={{ background: '#ef4444', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
+                                        >
+                                            ❌ Eliminar
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
                 ))}
             </div>
+
+            {/* LIGHTBOX MODAL */}
+            {selectedImage && (
+                <div className={styles.lightboxOverlay} onClick={() => setSelectedImage(null)}>
+                    <button className={styles.closeLightbox} onClick={() => setSelectedImage(null)}>&times;</button>
+                    <div className={styles.lightboxContent} onClick={(e) => e.stopPropagation()}>
+                        <img src={selectedImage} className={styles.lightboxImage} alt="Zoom" />
+                    </div>
+                </div>
+            )}
 
             {/* Modal de Subida */}
             {showUploadModal && (

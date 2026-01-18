@@ -1,13 +1,12 @@
 /**
- * ROOSTER - Google Apps Script v23 (DEBUG VERSION)
- * Objetivo: Identificar por qué falla la apertura del Excel.
+ * ROOSTER - Google Apps Script v25 (FINAL FIXED)
+ * Objetivo: Sincronización completa incluyendo PROFESORES.
  */
 
 const SCHOOL_EMAIL = "roosterespacio@gmail.com";
 const SPREADSHEET_ID = "19fquDdwpUH8jH521e6Kh8ZX1tkdgarlQ_AFHywY38FU";
 
 function getSS() {
-    // Intentamos abrir por ID explícito. Si falla, lanzará error que capturamos abajo.
     return SpreadsheetApp.openById(SPREADSHEET_ID);
 }
 
@@ -65,6 +64,7 @@ function doGet(e) {
         const data = {
             talleres: ss.getSheetByName('TALLERES').getDataRange().getValues().slice(1),
             alumnos: ss.getSheetByName('ALUMNOS').getDataRange().getValues().slice(1),
+            profesores: ss.getSheetByName('PROFESORES').getDataRange().getValues().slice(1), // <--- ESTABA FALTANDO ESTA LÍNEA
             inscripciones: ss.getSheetByName('INSCRIPCIONES').getDataRange().getValues().slice(1),
             pagos: ss.getSheetByName('PAGOS').getDataRange().getValues().slice(1)
         };

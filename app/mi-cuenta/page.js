@@ -72,7 +72,8 @@ export default function MiCuentaPage() {
                         filetype: file.type,
                         data: base64,
                         taller: user.taller,
-                        teacher: user.nombre
+                        teacher: user.nombre,
+                        teacher_dni: user.dni // Agregamos DNI para vincular en BD
                     })
                 });
                 const result = await res.json();
@@ -119,7 +120,15 @@ export default function MiCuentaPage() {
 
                 <div className={styles.teacherGrid}>
                     <div className={styles.card}>
-                        <h2 className={styles.cardTitle}>Mis Alumnos</h2>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <h2 className={styles.cardTitle} style={{ margin: 0 }}>Mis Alumnos</h2>
+                            <button
+                                onClick={() => window.location.href = '/cronograma'}
+                                style={{ background: '#f59e0b', color: '#0d1b2a', border: 'none', padding: '5px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                            >
+                                📅 Ver Cronograma
+                            </button>
+                        </div>
                         {loadingTeacher ? <p>Cargando lista...</p> : (
                             <div className={styles.tableWrapper}>
                                 <table className={styles.table}>
@@ -162,10 +171,26 @@ export default function MiCuentaPage() {
                             )}
                         </div>
                         <div className={styles.resourceList}>
+                            {teacherData.resources.length === 0 ? <p style={{ color: '#aaa', fontStyle: 'italic' }}>No hay recursos compartidos.</p> : null}
                             {teacherData.resources.map((r, i) => (
-                                <div key={i} className={styles.resourceItem}>
-                                    <span>📄 {r.nombre}</span>
-                                    <small>{r.fecha}</small>
+                                <div key={i} className={styles.resourceItem} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <span>📄 <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: 'white', textDecoration: 'none' }}>{r.nombre}</a></span>
+                                        <br />
+                                        <small style={{ color: '#aaa' }}>{r.fecha}</small>
+                                    </div>
+                                    <button
+                                        onClick={async () => {
+                                            if (confirm('¿Borrar este archivo?')) {
+                                                const res = await fetch(`/api/resources?id=${r.id}`, { method: 'DELETE' });
+                                                if (res.ok) loadTeacherData();
+                                            }
+                                        }}
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}
+                                        title="Eliminar recurso"
+                                    >
+                                        🗑️
+                                    </button>
                                 </div>
                             ))}
                         </div>
