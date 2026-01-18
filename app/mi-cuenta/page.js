@@ -11,8 +11,13 @@ export default function MiCuentaPage() {
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadStatus, setUploadStatus] = useState('');
 
+    // Estados para pagos
+    const [suggestedPayment, setSuggestedPayment] = useState(null);
+    const [loadingPayment, setLoadingPayment] = useState(false);
+
     useEffect(() => {
         if (user && user.role === 'student') {
+            loadSuggestedPayment();
             // Mostrar alerta del 1 al 15 de cada mes (para que se vea hoy día 14)
             const hoy = new Date();
             if (hoy.getDate() <= 15) {
@@ -25,6 +30,22 @@ export default function MiCuentaPage() {
             loadTeacherData();
         }
     }, [user]);
+
+    const loadSuggestedPayment = async () => {
+        if (!user?.dni) return;
+        setLoadingPayment(true);
+        try {
+            const res = await fetch(`/api/v2/payments/suggest-amount?alumno_dni=${user.dni}&metodo_pago=TRANSFERENCIA`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                setSuggestedPayment(data);
+            }
+        } catch (error) {
+            console.error('Error cargando sugerencia de pago:', error);
+        } finally {
+            setLoadingPayment(false);
+        }
+    };
 
     const loadTeacherData = async () => {
         if (!user?.taller) return;
@@ -270,6 +291,53 @@ export default function MiCuentaPage() {
                                 </tbody>
                             </table>
                         </div>
+                    )}
+                </div>
+
+                {/* NUEVO: Tarjeta de Pago Automatizada */}
+                <div className={styles.profileCard} style={{ border: '1px solid #ffd700' }}>
+                    <h2 className={styles.cardTitle}>💳 Pagar Cuota del Mes</h2>
+                    {loadingPayment ? <p>Calculando monto actual...</p> : (
+                        suggestedPayment ? (
+                            <div>
+                                <p style={{ fontSize: '1.2rem', marginBottom: '10px' }}>
+                                    {suggestedPayment.taller} - Cuota {suggestedPayment.cuota_numero}
+                                </p>
+
+                                <div style={{ background: '#1f2937', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
+                                    <p style={{ color: '#9ca3af', margin: 0 }}>Monto a pagar hoy:</p>
+                                    <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#4ade80', margin: '5px 0' }}>
+                                        ${suggestedPayment.monto_sugerido}
+                                    </p>
+                                    <small style={{ color: '#ffd700' }}>
+                                        ℹ️ {suggestedPayment.nota}
+                                    </small>
+                                </div>
+
+                                <div style={{ borderTop: '1px solid #374151', paddingTop: '15px' }}>
+                                    <p style={{ marginBottom: '5px' }}><strong>Datos para Transferencia:</strong></p>
+                                    <p style={{ fontFamily: 'monospace', background: '#000', padding: '5px', borderRadius: '4px' }}>
+                                        Alias: <span style={{ color: '#ffd700', fontSize: '1.2em' }}>escuelarooster</span>
+                                    </p>
+                                    <p style={{ fontSize: '0.9em', color: '#9ca3af' }}>
+                                        Titular: Emiliano Gallo
+                                    </p>
+                                </div>
+
+                                <button
+                                    className="btn btn-primary"
+                                    style={{ width: '100%', marginTop: '15px' }}
+                                    onClick={() => {
+                                        const msg = `Hola! Ya realicé el pago de la Cuota ${suggestedPayment.cuota_numero} ($${suggestedPayment.monto_sugerido}) para ${user.nombre}. Adjunto comprobante!`;
+                                        window.open(`https://wa.me/5493416417649?text=${encodeURIComponent(msg)}`, '_blank');
+                                    }}
+                                >
+                                    📲 Informar Pago (WhatsApp)
+                                </button>
+                            </div>
+                        ) : (
+                            <p>No tienes pagos pendientes o no estás inscripto en un ciclo activo.</p>
+                        )
                     )}
                 </div>
             </div>

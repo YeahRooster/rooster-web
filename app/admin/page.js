@@ -8,17 +8,70 @@ export default function AdminDashboard() {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [students, setStudents] = useState([]);
-    const [allResources, setAllResources] = useState([]); // Nuevo estado para recursos globales
-    const [view, setView] = useState('stats'); // 'stats', 'students', 'resources'
-    const [filter, setFilter] = useState('all'); // 'all', 'active', 'pending'
+    const [allResources, setAllResources] = useState([]);
+    const [talleres, setTalleres] = useState([]); // Para editor de precios
+    const [paymentsHistory, setPaymentsHistory] = useState([]);
+    const [view, setView] = useState('stats'); // 'stats', 'students', 'resources', 'payments'
+    const [filter, setFilter] = useState('all');
 
     useEffect(() => {
         if (user && user.role === 'admin') {
             loadStats();
             loadStudents();
-            loadAllResources(); // Cargar recursos al inicio también
+            loadAllResources();
+            loadTalleres();
         }
     }, [user]);
+
+    const loadTalleres = async () => {
+        try {
+            const res = await fetch('/api/v2/talleres/prices');
+            const data = await res.json();
+            if (data.status === 'success') {
+                // Agrupar talleres por nombre base (sin turno/horario)
+                const talleresUnicos = {};
+                data.talleres.forEach(t => {
+                    // Extraer nombre base del taller (sin "- Lunes 10hs", etc)
+                    const nombreBase = t.titulo.split('-')[0].trim();
+                    if (!talleresUnicos[nombreBase]) {
+                        talleresUnicos[nombreBase] = {
+                            ...t,
+                            titulo: nombreBase,
+                            ids: [t.id] // Array de IDs para actualizar todos los turnos
+                        };
+                    } else {
+                        // Si ya existe, agregar el ID al array
+                        talleresUnicos[nombreBase].ids.push(t.id);
+                    }
+                });
+                setTalleres(Object.values(talleresUnicos));
+            }
+        } catch (e) { console.error(e); }
+    };
+
+    const loadPaymentsHistory = async () => {
+        try {
+            const res = await fetch('/api/v2/payments/history');
+            const data = await res.json();
+            if (data.status === 'success') setPaymentsHistory(data.alumnos);
+        } catch (e) { console.error(e); }
+    };
+
+    const savePrice = async (tallerIds, precio_base, precio_desc_dia10, precio_desc_efectivo) => {
+        try {
+            // Actualizar TODOS los turnos del taller (si tiene múltiples horarios)
+            const promises = tallerIds.map(id =>
+                fetch('/api/v2/talleres/prices', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ taller_id: id, precio_base, precio_desc_dia10, precio_desc_efectivo })
+                })
+            );
+            await Promise.all(promises);
+            alert(`✅ Precios actualizados para todos los turnos`);
+            loadTalleres();
+        } catch (e) { alert('Error al guardar precios'); }
+    };
 
     const loadAllResources = async () => {
         try {
@@ -36,6 +89,55 @@ export default function AdminDashboard() {
             setStats(data);
         } catch (err) { console.error(err); }
         setLoading(false);
+    };
+
+    const generateCoupon = async (alumno, mesIdx, montoBase) => {
+        const concepto = `Cuota ${mesIdx + 1}/${new Date().getFullYear()} - ${alumno.taller}`;
+        const monto = parseFloat(prompt(`Generar datos de pago para ${alumno.alumno_nombre}\nConcepto: ${concepto}\n\nConfirmar monto a cobrar:`, montoBase || 0));
+
+        if (!monto || isNaN(monto)) return;
+
+        try {
+            const res = await fetch('/api/v2/payments/coupons/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    alumno_dni: alumno.alumno_dni,
+                    monto_a_cobrar: monto,
+                    concepto
+                })
+            });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                if (data.type === 'TRANSFERENCIA') {
+                    // Copiar mensaje al portapapeles
+                    navigator.clipboard.writeText(data.link).then(() => {
+                        alert(`✅ Datos de transferencia copiados al portapapeles!\n\nAlias: ${data.datos_bancos.alias}\nMonto: $${monto}\n\nPodés pegar el mensaje en WhatsApp.`);
+                    });
+                } else {
+                    // PayPal u otro link
+                    prompt(`✅ Link de ${data.type} generado!\nCopiá este link:`, data.link);
+                }
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (e) { alert('Error generando cupón'); }
+    };
+
+    const sendRenewalAlerts = async () => {
+        if (!confirm('¿Enviar alertas de renovación a alumnos próximos a vencer (Mes 11)?')) return;
+        try {
+            const res = await fetch('/api/v2/notifications/renewal-alerts', { method: 'POST' });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert(`✅ Se procesaron ${data.procesados} alertas.\n\nAlumnos notificados:\n${data.detalles.map(d => `- ${d.alumno} (Vence: ${d.vence})`).join('\n')}`);
+                // Recargar para ver estados actualizados
+                loadPaymentsHistory();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (e) { alert('Error enviando alertas'); }
     };
 
     const loadStudents = async (status = '') => {
@@ -81,6 +183,7 @@ export default function AdminDashboard() {
                 <button className={`${styles.tab} ${view === 'stats' ? styles.tabActive : ''}`} onClick={() => setView('stats')}>📈 Estadísticas</button>
                 <button className={`${styles.tab} ${view === 'students' ? styles.tabActive : ''}`} onClick={() => setView('students')}>👤 Gestión de Alumnos</button>
                 <button className={`${styles.tab} ${view === 'resources' ? styles.tabActive : ''}`} onClick={() => setView('resources')}>📚 Materiales</button>
+                <button className={`${styles.tab} ${view === 'payments' ? styles.tabActive : ''}`} onClick={() => { setView('payments'); loadPaymentsHistory(); loadTalleres(); }}>💳 Pagos</button>
                 <button className={`${styles.tab}`} onClick={() => window.location.href = '/cronograma'}>📅 Ver Cronograma</button>
             </div>
 
@@ -195,6 +298,149 @@ export default function AdminDashboard() {
                                 })()}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {view === 'payments' && (
+                <div className={styles.studentsSection}>
+                    {/* Editor de Precios */}
+                    <div style={{ marginBottom: '2rem' }}>
+                        <h2>⚙️ Configuración de Precios</h2>
+                        <p style={{ color: '#888', marginBottom: '1rem' }}>Actualizar cada 2-3 meses según inflación</p>
+                        <div className={styles.tableWrapper}>
+                            <table className={styles.table}>
+                                <thead>
+                                    <tr>
+                                        <th>Taller</th>
+                                        <th>Precio Base</th>
+                                        <th>Desc. hasta día 10</th>
+                                        <th>Desc. Efectivo</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {talleres.map(t => (
+                                        <tr key={t.ids[0]}>
+                                            <td>{t.titulo}</td>
+                                            <td>
+                                                <input
+                                                    type="number"
+                                                    defaultValue={t.precio_base}
+                                                    id={`precio_base_${t.ids[0]}`}
+                                                    style={{ width: '120px', padding: '5px' }}
+                                                />
+                                            </td>
+                                            <td>
+                                                <input
+                                                    type="number"
+                                                    defaultValue={t.precio_desc_dia10}
+                                                    id={`precio_dia10_${t.ids[0]}`}
+                                                    style={{ width: '120px', padding: '5px' }}
+                                                />
+                                            </td>
+                                            <td>
+                                                <input
+                                                    type="number"
+                                                    defaultValue={t.precio_desc_efectivo}
+                                                    id={`precio_efectivo_${t.ids[0]}`}
+                                                    style={{ width: '120px', padding: '5px' }}
+                                                />
+                                            </td>
+                                            <td>
+                                                <button
+                                                    onClick={() => {
+                                                        const base = document.getElementById(`precio_base_${t.ids[0]}`).value;
+                                                        const dia10 = document.getElementById(`precio_dia10_${t.ids[0]}`).value;
+                                                        const efectivo = document.getElementById(`precio_efectivo_${t.ids[0]}`).value;
+                                                        savePrice(t.ids, parseFloat(base), parseFloat(dia10), parseFloat(efectivo));
+                                                    }}
+                                                    className="btn btn-primary"
+                                                    style={{ padding: '5px 15px' }}
+                                                >
+                                                    💾 Guardar
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Vista Horizontal de Pagos */}
+                    <div>
+                        <h2>📊 Historial de Pagos (Vista Horizontal)</h2>
+                        <p style={{ color: '#888', marginBottom: '1rem' }}>Cada celda = cuota del ciclo anual del alumno</p>
+                        <div className={styles.tableWrapper} style={{ overflowX: 'auto' }}>
+                            <table className={styles.table} style={{ minWidth: '1200px' }}>
+                                <thead>
+                                    <tr>
+                                        <th>Alumno</th>
+                                        <th>Taller</th>
+                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
+                                            <th key={n} style={{ textAlign: 'center' }}>C{n}</th>
+                                        ))}
+                                        <th>Inscr.</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {paymentsHistory.length === 0 && (
+                                        <tr><td colSpan="15">Cargando historial...</td></tr>
+                                    )}
+                                    {paymentsHistory.map((alumno, idx) => (
+                                        <tr key={idx}>
+                                            <td>{alumno.alumno_nombre}</td>
+                                            <td>{alumno.taller}</td>
+                                            {alumno.pagos.map((pago, pidx) => (
+                                                <td key={pidx} style={{
+                                                    textAlign: 'center',
+                                                    background: pago.pagado ? '#1c8a3c' : '#2a2a2a', // Fondo oscuro si no pagó
+                                                    border: pago.pagado ? 'none' : '1px solid #444',
+                                                    color: 'white',
+                                                    fontSize: '0.9em',
+                                                    cursor: !pago.pagado ? 'pointer' : 'default',
+                                                    position: 'relative'
+                                                }}
+                                                    title={!pago.pagado ? "Clic para generar cupón de pago" : "Pagado"}
+                                                    onClick={() => !pago.pagado && generateCoupon(alumno, pidx, pago.monto)}
+                                                >
+                                                    {pago.pagado ? (
+                                                        <>
+                                                            ✅<br />
+                                                            <small>${Math.round(pago.monto)}</small>
+                                                        </>
+                                                    ) : (
+                                                        <span style={{ opacity: 0.5 }}>
+                                                            🔗<br />
+                                                            <small>Generar</small>
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            ))}
+                                            <td style={{
+                                                background: alumno.estado_inscripcion === 'VIGENTE' ? '#1c8a3c' : '#8a1c1c',
+                                                color: 'white'
+                                            }}>
+                                                {alumno.estado_inscripcion === 'POR_VENCER' && '⚠️ '}
+                                                {alumno.fecha_vencimiento_ciclo || '-'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Botón de Acciones Masivas */}
+                        <div style={{ marginTop: '2rem' }}>
+                            <button
+                                onClick={sendRenewalAlerts}
+                                className="btn btn-outline"
+                                style={{ border: '1px solid #eab308', color: '#eab308' }}
+                            >
+                                🔔 Enviar Alertas de Renovación (Mes 11)
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

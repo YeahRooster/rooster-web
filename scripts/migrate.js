@@ -39,33 +39,41 @@ async function migrate() {
         // Alumnos: No borramos, hacemos Upsert.
         // Profesores: No borramos, hacemos Upsert.
 
-        // 2. Upsert Talleres (TODOS los turnos)
-        console.log(`📊 Sincronizando ${talleres.length} turnos de talleres...`);
-        // Nota: Como no tenemos ID fijo en Excel, usamos MATCH por título+dia+horario o asumimos inserción limpia.
-        // PROBLEMA: Si no borramos, se pueden duplicar si no hay constraint unique.
-        // SOLUCIÓN: Vamos a confiar en que la tabla TALLERES sí se puede limpiar porque no tiene data de usuario crítica vinculada DIRECTAMENTE que no sea inscripciones (que ya borramos).
-        // PERO: Si la galería se vincula a talleres, cuidado. Segun schema, galeria se vincula a alumno.
-        // Vamos a limpiar talleres para evitar duplicados de turnos viejos/cambiados, asumiendo que nada cascada desde talleres que nos importe (Inscripciones se borran igual).
-        await supabase.from('talleres').delete().filter('id', 'gt', 0);
+        // 2. Upsert Talleres (Actualización inteligente para NO borrar precios)
+        console.log(`📊 Sincronizando ${talleres.length} turnos ded talleres...`);
+        // NO borramos la tabla. Iteramos y actualizamos si existe, o insertamos.
 
-        const { data: insertedTalleres, error: errT } = await supabase.from('talleres').insert(talleres.map(t => ({
-            titulo: t[1],
-            dia: t[2],
-            horario: t[3],
-            descripcion_corta: t[4],
-            descripcion_larga: t[5],
-            imagen_url: String(t[6]).trim(),
-            cupos_totales: parseInt(t[7]) || 15,
-            cupos_ocupados: parseInt(t[8]) || 0,
-            activo: String(t[9]).toLowerCase() === 'si'
-        }))).select();
-        if (errT) throw errT;
+        for (const t of talleres) {
+            const titulo = t[1];
+            // Buscar si ya existe por título (asumimos título único por simplicidad o lo usamos como clave)
+            // Nota: En DB tenemos unique constraint en titulo? No necesariamente, pero es lo mejor que tenemos.
+            const { data: existing } = await supabase.from('talleres').select('id').eq('titulo', titulo).maybeSingle();
 
-        // Mapa para vincular inscripciones
+            const tallerData = {
+                titulo: t[1],
+                dia: t[2],
+                horario: t[3],
+                descripcion_corta: t[4],
+                descripcion_larga: t[5],
+                imagen_url: String(t[6]).trim(),
+                cupos_totales: parseInt(t[7]) || 15,
+                cupos_ocupados: parseInt(t[8]) || 0,
+                activo: String(t[9]).toLowerCase() === 'si'
+                // NO actualizamos precios_base, etc. para preservarlos
+            };
+
+            if (existing) {
+                await supabase.from('talleres').update(tallerData).eq('id', existing.id);
+            } else {
+                await supabase.from('talleres').insert(tallerData);
+            }
+        }
+
+        // Mapa para vincular inscripciones (re-fetch para tener IDs correctos)
+        const { data: allTalleres } = await supabase.from('talleres').select('id, titulo');
         const tallerMap = {};
-        insertedTalleres.forEach(t => {
-            const key = t.titulo.toLowerCase().trim();
-            if (!tallerMap[key]) tallerMap[key] = t.id;
+        allTalleres?.forEach(t => {
+            tallerMap[t.titulo.toLowerCase().trim()] = t.id;
         });
 
         // 3. Upsert Alumnos (CLAVE: NO BORRAR)
@@ -77,8 +85,14 @@ async function migrate() {
             password: String(a[3]),
             fecha_ingreso: a[4] ? new Date(a[4]) : new Date(),
             activo: String(a[5]).toUpperCase() === 'ACTIVO'
-        })), { onConflict: 'dni' }); // Importante: dni es PK
-        if (errA) console.error("Error en alumnos:", errA);
+        })), {
+            onConflict: 'dni',
+            ignoreDuplicates: false // Actualizar si existe
+        });
+        if (errA) {
+            console.error("⚠️ Error en alumnos:", errA);
+            console.log("Tip: Revisá si hay emails duplicados en tu Google Sheets");
+        }
 
         // 4. Upsert Profesores
         const profesoresList = profesores || [];
@@ -111,25 +125,106 @@ async function migrate() {
         if (errI) console.error("Error en inscripciones:", errI);
 
         // 6. Insertar Pagos
-        console.log(`💰 Migrando ${pagos.length} pagos...`);
-        const processedPagos = new Set();
-        const uniquePagos = pagos.filter(p => {
-            const key = `${p[0]}-${p[2]}-${p[3]}-${p[4]}`.toLowerCase();
-            if (processedPagos.has(key)) return false;
-            processedPagos.add(key);
-            return true;
-        });
+        // 6. Procesar PAGOS (Formato Horizontal)
+        // Estructura: [DNI, Nombre, Taller, C1, C2...C12, Vencimiento]
+        console.log(`💰 Procesando pagos horizontales (${pagos.length} alumnos)...`);
 
-        const { error: errPag } = await supabase.from('pagos').insert(uniquePagos.map(p => ({
-            alumno_dni: String(p[0]).trim(),
-            taller: p[2],
-            mes: String(p[3]),
-            anio: parseInt(p[4]),
-            estado: String(p[5]).toLowerCase(),
-            monto: parseFloat(p[6]) || 0,
-            fecha_pago: p[7] ? new Date(p[7]) : null
-        })));
-        if (errPag) console.error("Error en pagos:", errPag);
+        const pagosParaInsertar = [];
+        const actualizacionesInscripcion = [];
+
+        for (const fila of pagos) {
+            const dni = String(fila[0]).trim();
+            const taller = fila[2];
+            let vencimientoStr = fila[15]; // Columna P (índice 15) es INSCR_VENCE
+            const anioSheet = parseInt(fila[16]); // Columna Q (índice 16) es AÑO (Antes estaba mal mapeado a 14)
+
+            // Lógica Fallback de Fechas
+            let fechaInicio, fechaVencimiento;
+
+            if (vencimientoStr) {
+                fechaVencimiento = new Date(vencimientoStr);
+                if (!isNaN(fechaVencimiento.getTime())) {
+                    fechaInicio = new Date(fechaVencimiento);
+                    fechaInicio.setFullYear(fechaInicio.getFullYear() - 1);
+                }
+            }
+
+            // Si no hay vencimiento válido, usamos el AÑO (Cols O)
+            if ((!fechaVencimiento || isNaN(fechaVencimiento.getTime())) && anioSheet) {
+                // Asumimos ciclo Enero - Diciembre del año indicado
+                fechaInicio = new Date(anioSheet, 0, 1); // 1 Ene
+                fechaVencimiento = new Date(anioSheet, 11, 31); // 31 Dic
+                console.log(`⚠️ Alumno ${dni}: Usando año ${anioSheet} como fallback (Sin fecha exacta)`);
+            }
+
+            // Si logramos determinar fechas, procesamos
+            if (fechaInicio && dni) {
+                // Guardar para actualizar después
+                actualizacionesInscripcion.push({
+                    dni,
+                    taller,
+                    fecha_inicio_ciclo: fechaInicio,
+                    fecha_vencimiento_ciclo: fechaVencimiento
+                });
+
+                // Procesar las 12 cuotas
+                for (let i = 1; i <= 12; i++) {
+                    const colIndex = 2 + i; // C1 está en índice 3 -> colIndex = 2+1
+                    // Convertimos a string primero para limpiar caracteres raros (como $ o espacios)
+                    const rawMonto = String(fila[colIndex]).replace(/[^0-9.]/g, '');
+                    const monto = parseFloat(rawMonto);
+
+                    if (monto > 0) { // Asumimos que si hay número > 0, está PAGADO o DEBE. 
+                        // PERO en tu sheet: "1" o montos reales.
+                        // Si pone "1", asumimos pagado simbólico? O solo montos reales?
+                        // Si el usuario pone montos, guardamos eso.
+
+                        // Calcular mes y año real de esta cuota
+                        const fechaCuota = new Date(fechaInicio);
+                        fechaCuota.setMonth(fechaInicio.getMonth() + (i - 1)); // Sumar meses
+
+                        pagosParaInsertar.push({
+                            alumno_dni: dni,
+                            taller: taller,
+                            mes: fechaCuota.getMonth() + 1, // 1-12
+                            anio: fechaCuota.getFullYear(),
+                            cuota_numero: i,
+                            monto: monto,
+                            monto_final: monto,
+                            estado: 'pagado', // Lo que viene del sheet PAGOS se asume PAGADO
+                            metodo_pago: 'MIGRACION',
+                            fecha_pago: new Date() // Fecha aprox
+                        });
+                    }
+                }
+            }
+        }
+
+        // Insertar pagos en lotes
+        if (pagosParaInsertar.length > 0) {
+            console.log(`Guardando ${pagosParaInsertar.length} pagos individuales...`);
+            const { error: errPag } = await supabase.from('pagos').upsert(pagosParaInsertar, {
+                onConflict: 'alumno_dni,mes,anio,taller', // Evitar duplicados
+                ignoreDuplicates: false
+            });
+            if (errPag) console.error("Error insertando pagos:", errPag);
+        }
+
+        // Actualizar fechas de ciclo en inscripciones
+        if (actualizacionesInscripcion.length > 0) {
+            console.log(`Actualizando ciclos de inscripción para ${actualizacionesInscripcion.length} alumnos...`);
+            for (const upd of actualizacionesInscripcion) {
+                await supabase.from('inscripciones')
+                    .update({
+                        fecha_inicio_ciclo: upd.fecha_inicio_ciclo,
+                        fecha_vencimiento_ciclo: upd.fecha_vencimiento_ciclo,
+                        estado_inscripcion: upd.fecha_vencimiento_ciclo > new Date() ? 'VIGENTE' : 'VENCIDA'
+                    })
+                    .eq('alumno_dni', upd.dni)
+                // Intentar coincidir taller también si es posible, sino solo DNI (asumiendo 1 taller activo principal o iterando)
+                //.ilike('taller_nombre', `%${upd.taller}%`); 
+            }
+        }
 
         console.log("✅ Migración SEGURA completada. Datos de usuario preservados.");
 

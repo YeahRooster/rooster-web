@@ -1,0 +1,21 @@
+/**
+ * Estructura HORIZONTAL para pestaña PAGOS en Google Sheets
+ * 
+ * Columnas requeridas:
+ * A: DNI
+ * B: NOMBRE
+ * C: TALLER
+ * D-O: CUOTA_1 hasta CUOTA_12 (12 columnas, una por cada mes del ciclo)
+ * P: INSCR_VENCE (fecha de vencimiento de inscripción anual)
+ * 
+ * Ejemplo:
+ * | DNI      | NOMBRE     | TALLER          | CUOTA_1 | CUOTA_2 | ... | CUOTA_12 | INSCR_VENCE |
+ * |----------|------------|-----------------|---------|---------|-----|----------|-------------|
+ * | 12345678 | Juan Perez | TALLER DE DIBUJO| 30000   | 27000   | 0   | 0        | 2027-01-15  |
+ * 
+ * IMPORTANTE:
+ * - Cada fila = un alumno
+ * - Si no pagó una cuota, dejar el valor en 0 o vacío
+ * - INSCR_VENCE: fecha en que vence su inscripción anual (12 meses después de inscribirse)
+ * - Las cuotas van del 1 al 12 según el ciclo individual del alumno (no necesariamente enero-diciembre)
+ */
