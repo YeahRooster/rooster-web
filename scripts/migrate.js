@@ -77,12 +77,19 @@ async function migrate() {
         });
 
         // 3. Upsert Alumnos (CLAVE: NO BORRAR)
+        // PROTECCIÓN DE CONTRASEÑAS:
+        // Buscamos alumnos existentes para NO pisar su password si ya existe en DB.
+        const { data: existingAlumnos } = await supabase.from('alumnos').select('dni, password');
+        const passwordMapAlumnos = {};
+        existingAlumnos?.forEach(a => passwordMapAlumnos[a.dni] = a.password);
+
         console.log(`👤 Sincronizando ${alumnos.length} alumnos (UPSERT)...`);
         const { error: errA } = await supabase.from('alumnos').upsert(alumnos.map(a => ({
             dni: String(a[0]).trim(),
             nombre: a[1],
             email: a[2],
-            password: String(a[3]),
+            // Si ya tiene password en DB, la mantenemos. Si no, usamos la del sheet.
+            password: passwordMapAlumnos[String(a[0]).trim()] || String(a[3]),
             fecha_ingreso: a[4] ? new Date(a[4]) : new Date(),
             activo: String(a[5]).toUpperCase() === 'ACTIVO'
         })), {
@@ -96,11 +103,17 @@ async function migrate() {
 
         // 4. Upsert Profesores
         const profesoresList = profesores || [];
+        // Mismo mecanismo para profesores
+        const { data: existingProfes } = await supabase.from('profesores').select('dni, password');
+        const passwordMapProfes = {};
+        existingProfes?.forEach(p => passwordMapProfes[p.dni] = p.password);
+
         console.log(`👨‍🏫 Sincronizando ${profesoresList.length} profesores (UPSERT)...`);
         const { error: errP } = await supabase.from('profesores').upsert(profesoresList.map(p => ({
             dni: String(p[0]).trim(),
             nombre: p[1],
-            password: String(p[3]),
+            // Si ya tiene password en DB, la mantenemos.
+            password: passwordMapProfes[String(p[0]).trim()] || String(p[3]),
             taller_asignado: p[4]
         })), { onConflict: 'dni' });
         if (errP) console.error("Error en profesores:", errP);

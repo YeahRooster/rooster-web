@@ -152,6 +152,18 @@ export default function AdminDashboard() {
 
     const [processingDni, setProcessingDni] = useState(null);
 
+    const showPassword = async (dni) => {
+        try {
+            const res = await fetch(`/api/v2/admin/student-details?dni=${dni}`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                prompt(`🔑 Contraseña actual de ${data.data.nombre}:`, data.data.password);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (e) { alert('Error obteniendo contraseña'); }
+    };
+
     const toggleStudentStatus = async (dni, currentStatus) => {
         setProcessingDni(dni);
         try {
@@ -236,13 +248,24 @@ export default function AdminDashboard() {
                                             </span>
                                         </td>
                                         <td>
-                                            <button
-                                                onClick={() => toggleStudentStatus(s.dni, s.activo)}
-                                                className={s.activo ? styles.btnDeactivate : styles.btnActivate}
-                                                disabled={processingDni === s.dni}
-                                            >
-                                                {processingDni === s.dni ? 'Cambiando...' : (s.activo ? 'Dar de Baja' : 'Dar de Alta')}
-                                            </button>
+                                            <div style={{ display: 'flex', gap: '5px' }}>
+                                                <button
+                                                    onClick={() => toggleStudentStatus(s.dni, s.activo)}
+                                                    className={s.activo ? styles.btnDeactivate : styles.btnActivate}
+                                                    disabled={processingDni === s.dni}
+                                                    title={s.activo ? "Dar de Baja" : "Dar de Alta"}
+                                                >
+                                                    {processingDni === s.dni ? '...' : (s.activo ? '🛑' : '✅')}
+                                                </button>
+                                                <button
+                                                    onClick={() => showPassword(s.dni)}
+                                                    className={styles.actionBtn}
+                                                    title="Ver Contraseña"
+                                                    style={{ background: '#3b82f6', border: 'none', cursor: 'pointer', padding: '5px 10px', borderRadius: '4px', fontSize: '1.2rem' }}
+                                                >
+                                                    👁️
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
