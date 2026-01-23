@@ -70,16 +70,17 @@ export default function Home() {
             <div className={styles.logoItem}>
               <Image src="/images/logos/logo-lirolay.png" alt="Lirolay Librería" width={180} height={100} style={{ objectFit: 'contain' }} />
             </div>
-            <div className={styles.logoItem}>
-              <Image src="/images/logos/logo-letrae.jpg" alt="Librería Técnica Letra E" width={180} height={100} style={{ objectFit: 'contain' }} />
-            </div>
+            <a href="https://www.librerialetrae.com.ar/" target="_blank" rel="noopener noreferrer" className={styles.logoItem}>
+              <Image src="/images/logos/logo-letrae-new.jpg" alt="Librería Técnica Letra E" width={200} height={80} style={{ objectFit: 'contain' }} />
+            </a>
             <a href="https://libreriarexy.vercel.app/" target="_blank" rel="noopener noreferrer" className={`${styles.logoItem} ${styles.rexyLink}`}>
               <Image
                 src="/images/logos/logo-rexy.jpg"
                 alt="Librería Rexy"
-                width={250}
-                height={150}
+                width={180}
+                height={90}
                 className={styles.rexyImg}
+                style={{ objectFit: 'contain' }}
               />
             </a>
           </div>

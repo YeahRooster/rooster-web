@@ -102,6 +102,11 @@ export default function TalleresPage() {
                 <EnrollmentModal
                     workshop={enrollWorkshop}
                     onClose={() => setEnrollWorkshop(null)}
+                    onSuccess={() => {
+                        setEnrollWorkshop(null);
+                        alert('¡Inscripción enviada con éxito! Nos pondremos en contacto pronto.');
+                        window.location.reload(); // Recargar para ver cupos actualizados
+                    }}
                 />
             )}
         </div>

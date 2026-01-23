@@ -45,14 +45,21 @@ async function migrate() {
 
         for (const t of talleres) {
             const titulo = t[1];
-            // Buscar si ya existe por título (asumimos título único por simplicidad o lo usamos como clave)
-            // Nota: En DB tenemos unique constraint en titulo? No necesariamente, pero es lo mejor que tenemos.
-            const { data: existing } = await supabase.from('talleres').select('id').eq('titulo', titulo).maybeSingle();
+            const dia = t[2];
+            const horario = t[3];
+
+            // Buscar si ya existe por combinación única: Título + Día + Horario
+            const { data: existing } = await supabase.from('talleres')
+                .select('id')
+                .eq('titulo', titulo)
+                .eq('dia', dia)
+                .eq('horario', horario)
+                .maybeSingle();
 
             const tallerData = {
-                titulo: t[1],
-                dia: t[2],
-                horario: t[3],
+                titulo,
+                dia,
+                horario,
                 descripcion_corta: t[4],
                 descripcion_larga: t[5],
                 imagen_url: String(t[6]).trim(),

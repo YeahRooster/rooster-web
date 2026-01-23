@@ -19,20 +19,36 @@ export default function EnrollmentModal({ workshop, onClose, onSuccess }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
+    const workshopObj = Array.isArray(workshop) ? workshop[0] : workshop;
+    const selectedShifts = Array.isArray(workshop) ? workshop : [workshop];
+    const isDoubleLoad = selectedShifts.length >= 2 && workshopObj.title?.toUpperCase().includes('DIBUJO');
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
 
+        const finalTitle = isDoubleLoad
+            ? 'TALLER DE DIBUJO (DOBLE CARGA)'
+            : workshopObj.title;
+
+        const horariosStr = selectedShifts.map(s => `${s.day} ${s.time}`).join(' + ');
+
         try {
             const res = await fetch('/api/enroll', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...formData, workshopTitle: workshop.title }),
+                body: JSON.stringify({
+                    ...formData,
+                    workshopTitle: finalTitle,
+                    selectedSchedules: horariosStr,
+                    originalTaller: workshopObj.title
+                }),
             });
 
             if (res.ok) {
-                onSuccess();
+                if (onSuccess) onSuccess();
+                else onClose();
             } else {
                 setError('Hubo un error al enviar la inscripción. Inténtalo de nuevo.');
             }
@@ -47,7 +63,8 @@ export default function EnrollmentModal({ workshop, onClose, onSuccess }) {
         <div className={styles.overlay}>
             <div className={styles.modal}>
                 <button className={styles.closeBtn} onClick={onClose}>&times;</button>
-                <h2 className={styles.title}>Inscribirse a {workshop.title}</h2>
+                <h2 className={styles.title}>Inscribirse a {workshopObj.title}</h2>
+                {isDoubleLoad && <p style={{ color: 'var(--rooster-yellow)', textAlign: 'center', marginBottom: '10px' }}>✨ Modalidad Doble Carga detectada</p>}
 
                 <form onSubmit={handleSubmit} className={styles.form}>
                     <div className={styles.scrollArea}>
