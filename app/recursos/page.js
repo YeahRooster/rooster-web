@@ -107,23 +107,40 @@ export default function RecursosPage() {
                         <small style={{ color: '#666' }}>El profesor te avisará cuando haya nuevos recursos disponibles.</small>
                     </div>
                 ) : (
-                    recursosDrive.map((item, i) => (
-                        <div key={i} className={styles.resourceItem}>
-                            <div>
-                                <h3 style={{ color: 'var(--rooster-yellow)', fontSize: '1.1rem', marginBottom: '0.25rem' }}>{item.nombre}</h3>
-                                <span style={{ fontSize: '0.8rem', color: '#ccc' }}>Fecha: {item.fecha}</span>
+                    recursosDrive.map((item, i) => {
+                        const isLink = item.url?.startsWith('http');
+
+                        return (
+                            <div key={i} className={styles.resourceItem} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '10px' }}>
+                                <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <div>
+                                        <h3 style={{ color: 'var(--rooster-yellow)', fontSize: '1.1rem', marginBottom: '0.25rem' }}>
+                                            {isLink ? '🔗' : '📝'} {item.nombre}
+                                        </h3>
+                                        <span style={{ fontSize: '0.8rem', color: '#ccc' }}>Fecha: {item.fecha}</span>
+                                    </div>
+                                    {isLink ? (
+                                        <a
+                                            href={item.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="btn btn-outline"
+                                            style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', textDecoration: 'none' }}
+                                        >
+                                            Ver Material
+                                        </a>
+                                    ) : (
+                                        <span style={{ background: 'rgba(255,255,255,0.1)', padding: '5px 10px', borderRadius: '4px', fontSize: '0.8rem' }}>Nota del Profe</span>
+                                    )}
+                                </div>
+                                {!isLink && (
+                                    <div style={{ background: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '8px', width: '100%', whiteSpace: 'pre-wrap', borderLeft: '4px solid var(--rooster-yellow)' }}>
+                                        {item.url}
+                                    </div>
+                                )}
                             </div>
-                            <a
-                                href={item.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="btn btn-outline"
-                                style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', textDecoration: 'none' }}
-                            >
-                                Descargar / Ver
-                            </a>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
 
                 <div className={styles.didacticNote}>

@@ -11,6 +11,11 @@ export default function MiCuentaPage() {
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadStatus, setUploadStatus] = useState('');
 
+    // Estados para recursos tipo Nota/Enlace
+    const [resourceMode, setResourceMode] = useState('file'); // 'file' o 'note'
+    const [noteTitle, setNoteTitle] = useState('');
+    const [noteContent, setNoteContent] = useState('');
+
     // Estados para pagos
     const [suggestedPayment, setSuggestedPayment] = useState(null);
     const [loadingPayment, setLoadingPayment] = useState(false);
@@ -113,6 +118,41 @@ export default function MiCuentaPage() {
         reader.readAsDataURL(file);
     };
 
+    const handleNoteUpload = async () => {
+        if (!noteTitle || !noteContent) return;
+        setLoadingTeacher(true);
+        try {
+            const res = await fetch('/api/teacher/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'shareNote',
+                    filename: noteTitle,
+                    data: noteContent, // Texto o Link
+                    taller: user.taller,
+                    teacher: user.nombre,
+                    filetype: noteContent.startsWith('http') ? 'link' : 'note',
+                    teacher_dni: user.dni
+                })
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                setNoteTitle('');
+                setNoteContent('');
+                setResourceMode('file');
+                loadTeacherData();
+                alert('Nota/Link compartido con éxito!');
+            } else {
+                alert('Error: ' + result.message);
+            }
+        } catch (err) {
+            console.error("Error al compartir nota:", err);
+            alert('Error al conectar con el servidor');
+        } finally {
+            setLoadingTeacher(false);
+        }
+    };
+
     const handleChangePassword = () => {
         const newPass = prompt("Ingresa tu nueva contraseña:");
         if (newPass) {
@@ -177,43 +217,93 @@ export default function MiCuentaPage() {
 
                     <div className={styles.card}>
                         <h2 className={styles.cardTitle}>Material Compartido</h2>
-                        <div className={styles.uploadBox}>
-                            <p>Sube material para tus alumnos:</p>
-                            <input type="file" id="fileUpload" hidden onChange={handleFileUpload} disabled={uploadProgress > 0} />
-                            {uploadProgress === 0 ? (
-                                <label htmlFor="fileUpload" className={styles.uploadBtn}>➕ Seleccionar Archivo</label>
+                        <div className={styles.uploadBox} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
+                                <button
+                                    onClick={() => setResourceMode('file')}
+                                    style={{ background: resourceMode === 'file' ? 'var(--rooster-yellow)' : 'none', color: resourceMode === 'file' ? '#000' : '#fff', border: '1px solid var(--rooster-yellow)', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
+                                >📁 Archivo</button>
+                                <button
+                                    onClick={() => setResourceMode('note')}
+                                    style={{ background: resourceMode === 'note' ? 'var(--rooster-yellow)' : 'none', color: resourceMode === 'note' ? '#000' : '#fff', border: '1px solid var(--rooster-yellow)', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
+                                >📝 Nota / Link</button>
+                            </div>
+
+                            {resourceMode === 'file' ? (
+                                <>
+                                    <p>Sube material para tus alumnos:</p>
+                                    <input type="file" id="fileUpload" hidden onChange={handleFileUpload} disabled={uploadProgress > 0} />
+                                    {uploadProgress === 0 ? (
+                                        <label htmlFor="fileUpload" className={styles.uploadBtn}>➕ Seleccionar Archivo</label>
+                                    ) : (
+                                        <div style={{ marginTop: '1rem' }}>
+                                            <div className={styles.progressContainer}>
+                                                <div className={styles.progressBar} style={{ width: `${uploadProgress}%` }}></div>
+                                            </div>
+                                            <span className={styles.progressText}>{uploadStatus}</span>
+                                        </div>
+                                    )}
+                                </>
                             ) : (
-                                <div style={{ marginTop: '1rem' }}>
-                                    <div className={styles.progressContainer}>
-                                        <div className={styles.progressBar} style={{ width: `${uploadProgress}%` }}></div>
-                                    </div>
-                                    <span className={styles.progressText}>{uploadStatus}</span>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Título de la nota o enlace"
+                                        value={noteTitle}
+                                        onChange={(e) => setNoteTitle(e.target.value)}
+                                        style={{ padding: '8px', borderRadius: '4px', background: '#000', border: '1px solid #333', color: '#fff' }}
+                                    />
+                                    <textarea
+                                        placeholder="Escribe un mensaje o pega un link aquí..."
+                                        value={noteContent}
+                                        onChange={(e) => setNoteContent(e.target.value)}
+                                        rows="3"
+                                        style={{ padding: '8px', borderRadius: '4px', background: '#000', border: '1px solid #333', color: '#fff', resize: 'vertical' }}
+                                    />
+                                    <button
+                                        onClick={handleNoteUpload}
+                                        disabled={loadingTeacher || !noteTitle || !noteContent}
+                                        className={styles.uploadBtn}
+                                        style={{ width: '100%' }}
+                                    >
+                                        🚀 Compartir Nota / Link
+                                    </button>
                                 </div>
                             )}
                         </div>
                         <div className={styles.resourceList}>
                             {teacherData.resources.length === 0 ? <p style={{ color: '#aaa', fontStyle: 'italic' }}>No hay recursos compartidos.</p> : null}
-                            {teacherData.resources.map((r, i) => (
-                                <div key={i} className={styles.resourceItem} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div>
-                                        <span>📄 <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: 'white', textDecoration: 'none' }}>{r.nombre}</a></span>
-                                        <br />
-                                        <small style={{ color: '#aaa' }}>{r.fecha}</small>
+                            {teacherData.resources.map((r, i) => {
+                                const isLink = r.url?.startsWith('http');
+                                return (
+                                    <div key={i} className={styles.resourceItem} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div style={{ flex: 1, overflow: 'hidden' }}>
+                                            <span style={{ fontWeight: 'bold' }}>{isLink ? '📄' : '📝'} </span>
+                                            {isLink ? (
+                                                <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: 'white', textDecoration: 'none' }}>{r.nombre}</a>
+                                            ) : (
+                                                <span style={{ color: 'var(--rooster-yellow)' }}>{r.nombre}</span>
+                                            )}
+                                            <br />
+                                            <small style={{ color: '#aaa', fontSize: '0.75rem' }}>
+                                                {r.fecha} {!isLink && ` - "${r.url.substring(0, 30)}${r.url.length > 30 ? '...' : ''}"`}
+                                            </small>
+                                        </div>
+                                        <button
+                                            onClick={async () => {
+                                                if (confirm(`¿Borrar ${isLink ? 'este archivo' : 'esta nota'}?`)) {
+                                                    const res = await fetch(`/api/resources?id=${r.id}`, { method: 'DELETE' });
+                                                    if (res.ok) loadTeacherData();
+                                                }
+                                            }}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', padding: '5px' }}
+                                            title="Eliminar"
+                                        >
+                                            🗑️
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={async () => {
-                                            if (confirm('¿Borrar este archivo?')) {
-                                                const res = await fetch(`/api/resources?id=${r.id}`, { method: 'DELETE' });
-                                                if (res.ok) loadTeacherData();
-                                            }
-                                        }}
-                                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}
-                                        title="Eliminar recurso"
-                                    >
-                                        🗑️
-                                    </button>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
