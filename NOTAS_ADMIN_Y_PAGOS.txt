@@ -1,0 +1,26 @@
+📌 **CREDENCIALES DE ADMIN CORRECTAS:**
+
+🔐 **Usuario:** 32582414
+🔐 **Contraseña:** vegan100
+
+(Es el DNI y contraseña de Emiliano Gallo)
+
+---
+
+⚠️ **PROBLEMA DE PAGOS DETECTADO:**
+
+El script `migrate.js` solo está copiando a Supabase las cuotas que **tienen un monto** en el Google Sheet.
+
+Las cuotas vacías (pendientes) **NO se están migrando**, por eso todos aparecen "al día".
+
+**SOLUCIÓN:**
+
+1. Agregar lógica para también crear registros de cuotas pendientes (sin monto, estado='pendiente')
+2. Modificar el endpoint `/api/v2/teacher/data` para que analice si existe o no el registro del mes actual
+
+**ALTERNATIVA RÁPIDA (Para ver hoy):**
+
+En vez de consultar solo "pagados", el endpoint del profe debería:
+- Ver si existe un pago para este mes
+- Si NO existe registro → "Deudor"
+- Si existe y estado='pagado' → "Al día"

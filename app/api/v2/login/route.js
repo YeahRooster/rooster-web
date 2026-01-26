@@ -7,13 +7,13 @@ export async function POST(request) {
         const cleanDni = String(dni || "").trim();
         const cleanPass = String(password || "").trim();
 
-        // 1. Intentar Admin
-        if (cleanDni === "999" && cleanPass === "adminRooster") {
+        // 1. Intentar Admin (Múltiples credenciales)
+        if ((cleanDni === "999" || cleanDni === "admin") && cleanPass === "adminRooster") {
             return NextResponse.json({
                 status: 'success',
                 role: 'admin',
                 nombre: 'Administrador',
-                dni: '999'
+                dni: cleanDni
             });
         }
 

@@ -33,11 +33,14 @@ async function migrate() {
         // YA NO BORRAMOS TABLAS MAESTRAS PARA NO PERDER DATOS DE USUARIO (Galería, Likes, etc.)
         // Solo limpiamos tablas transaccionales que se regeneran 100% del Excel
 
-        await supabase.from('pagos').delete().filter('id', 'gt', 0);
-        await supabase.from('inscripciones').delete().filter('id', 'gt', 0);
-        // Talleres: No borramos, hacemos Upsert.
-        // Alumnos: No borramos, hacemos Upsert.
-        // Profesores: No borramos, hacemos Upsert.
+        await supabase.from('recursos').delete().neq('id', 0); // Limpiar recursos para regenerar
+        const { error: delPagErr } = await supabase.from('pagos').delete().neq('id', 0);
+        const { error: delInsErr } = await supabase.from('inscripciones').delete().neq('id', 0);
+
+        if (delPagErr) console.warn("⚠️ Advertencia al borrar pagos:", delPagErr.message);
+        if (delInsErr) console.warn("⚠️ Advertencia al borrar inscripciones:", delInsErr.message);
+
+        console.log("🧹 Tablas transaccionales limpias.");
 
         // 2. Upsert Talleres (Actualización inteligente para NO borrar precios)
         console.log(`📊 Sincronizando ${talleres.length} turnos ded talleres...`);
@@ -187,33 +190,48 @@ async function migrate() {
                     fecha_vencimiento_ciclo: fechaVencimiento
                 });
 
+                // Determinamos qué cuota corresponde al mes actual (simplificado)
+                const hoy = new Date();
+                const mesActualCal = hoy.getMonth() + 1;
+                const anioActualCal = hoy.getFullYear();
+                const estadoGral = String(fila[17] || "").toLowerCase(); // Columna R
+
                 // Procesar las 12 cuotas
                 for (let i = 1; i <= 12; i++) {
-                    const colIndex = 2 + i; // C1 está en índice 3 -> colIndex = 2+1
-                    // Convertimos a string primero para limpiar caracteres raros (como $ o espacios)
-                    const rawMonto = String(fila[colIndex]).replace(/[^0-9.]/g, '');
+                    const colIndex = 2 + i; // C1 está en índice 3
+                    const rawMonto = String(fila[colIndex] || "").replace(/[^0-9.]/g, '');
                     const monto = parseFloat(rawMonto);
 
-                    if (monto > 0) { // Asumimos que si hay número > 0, está PAGADO o DEBE. 
-                        // PERO en tu sheet: "1" o montos reales.
-                        // Si pone "1", asumimos pagado simbólico? O solo montos reales?
-                        // Si el usuario pone montos, guardamos eso.
-
-                        // Calcular mes y año real de esta cuota
+                    if (monto > 0 || i === 1) { // Aseguramos al menos la C1 o si tiene monto
                         const fechaCuota = new Date(fechaInicio);
-                        fechaCuota.setMonth(fechaInicio.getMonth() + (i - 1)); // Sumar meses
+                        fechaCuota.setMonth(fechaInicio.getMonth() + (i - 1));
+
+                        const mesCuota = fechaCuota.getMonth() + 1;
+                        const anioCuota = fechaCuota.getFullYear();
+
+                        // Lógica de ESTADO: 
+                        // Si la columna R dice "deudor" y este registro coincide con el mes/año actual, lo marcamos como pendiente.
+                        let estadoFinal = 'pagado';
+                        if (monto === 0 || isNaN(monto)) {
+                            estadoFinal = 'pendiente';
+                        }
+
+                        // Si el estado general del Excel dice Deudor, forzamos deudor en la cuota actual
+                        if (mesCuota === mesActualCal && anioCuota === anioActualCal && estadoGral.includes('deud')) {
+                            estadoFinal = 'pendiente';
+                        }
 
                         pagosParaInsertar.push({
                             alumno_dni: dni,
                             taller: taller,
-                            mes: fechaCuota.getMonth() + 1, // 1-12
-                            anio: fechaCuota.getFullYear(),
+                            mes: mesCuota,
+                            anio: anioCuota,
                             cuota_numero: i,
-                            monto: monto,
-                            monto_final: monto,
-                            estado: 'pagado', // Lo que viene del sheet PAGOS se asume PAGADO
+                            monto: monto || 0,
+                            monto_final: monto || 0,
+                            estado: estadoFinal,
                             metodo_pago: 'MIGRACION',
-                            fecha_pago: new Date() // Fecha aprox
+                            fecha_pago: new Date()
                         });
                     }
                 }
