@@ -10,6 +10,7 @@ export default function MiCuentaPage() {
     const [loadingTeacher, setLoadingTeacher] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadStatus, setUploadStatus] = useState('');
+    const [isDragging, setIsDragging] = useState(false);
 
     // Estados para recursos tipo Nota/Enlace
     const [resourceMode, setResourceMode] = useState('file'); // 'file' o 'note'
@@ -75,9 +76,14 @@ export default function MiCuentaPage() {
         }
     };
 
-    const handleFileUpload = async (e) => {
-        const file = e.target.files[0];
+    const processFile = async (file) => {
         if (!file) return;
+
+        // Validar tamaño máximo (ej: 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            alert('El archivo es muy pesado (máx 10MB)');
+            return;
+        }
 
         setUploadProgress(10);
         setUploadStatus('Leyendo archivo...');
@@ -99,7 +105,7 @@ export default function MiCuentaPage() {
                         data: base64,
                         taller: user.taller,
                         teacher: user.nombre,
-                        teacher_dni: user.dni // Agregamos DNI para vincular en BD
+                        teacher_dni: user.dni
                     })
                 });
                 const result = await res.json();
@@ -116,6 +122,28 @@ export default function MiCuentaPage() {
             }
         };
         reader.readAsDataURL(file);
+    };
+
+    const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        processFile(file);
+    };
+
+    // Manejadores para Drag & Drop
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = () => {
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const file = e.dataTransfer.files[0];
+        processFile(file);
     };
 
     const handleNoteUpload = async () => {
@@ -217,7 +245,13 @@ export default function MiCuentaPage() {
 
                     <div className={styles.card}>
                         <h2 className={styles.cardTitle}>Material Compartido</h2>
-                        <div className={styles.uploadBox} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div
+                            className={`${styles.uploadBox} ${isDragging ? styles.dragging : ''}`}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
+                        >
                             <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
                                 <button
                                     onClick={() => setResourceMode('file')}

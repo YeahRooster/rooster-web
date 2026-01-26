@@ -167,6 +167,13 @@
     border: 1px dashed var(--rooster-yellow);
     text-align: center;
     margin-bottom: 2rem;
+    transition: all 0.2s ease;
+}
+
+.dragging {
+    background: rgba(255, 213, 0, 0.2);
+    border-style: solid;
+    transform: scale(1.02);
 }
 
 .uploadBtn {
