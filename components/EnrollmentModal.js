@@ -14,7 +14,9 @@ export default function EnrollmentModal({ workshop, onClose, onSuccess }) {
         noPhone: false,
         parentPhone: '',
         isMinor: false,
-        tutorName: ''
+        tutorName: '',
+        experiencia: '',
+        conocio: ''
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -182,6 +184,26 @@ export default function EnrollmentModal({ workshop, onClose, onSuccess }) {
                                 placeholder="Opcional si es mayor"
                                 value={formData.parentPhone}
                                 onChange={e => setFormData({ ...formData, parentPhone: e.target.value })}
+                            />
+                        </div>
+
+                        <div className={styles.field}>
+                            <label>¿Tenés experiencia previa? (Opcional)</label>
+                            <input
+                                type="text"
+                                placeholder="Ej: Hice cursos de dibujo antes..."
+                                value={formData.experiencia}
+                                onChange={e => setFormData({ ...formData, experiencia: e.target.value })}
+                            />
+                        </div>
+
+                        <div className={styles.field}>
+                            <label>¿Cómo nos conociste? (Opcional)</label>
+                            <input
+                                type="text"
+                                placeholder="Ej: Instagram, recomendación..."
+                                value={formData.conocio}
+                                onChange={e => setFormData({ ...formData, conocio: e.target.value })}
                             />
                         </div>
                     </div>

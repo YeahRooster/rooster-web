@@ -33,29 +33,57 @@ function processAction(params, ss) {
         return { status: 'error', message: 'DNI no encontrado' };
     }
 
-    // Inscripcion
+    // --- PROCESO DE INSCRIPCIÓN ---
     const sheetAlum = ss.getSheetByName('ALUMNOS');
     const sheetInsc = ss.getSheetByName('INSCRIPCIONES');
-
     const dniInsc = String(params.dni || "").trim();
     const alumData = sheetAlum.getDataRange().getValues();
     let found = false;
 
+    // 1. Verificar si el alumno ya existe para actualizar su status
     for (let i = 1; i < alumData.length; i++) {
         if (String(alumData[i][0]).trim() === dniInsc) {
-            sheetAlum.getRange(i + 1, 6).setValue('PENDIENTE');
-            found = true; break;
+            sheetAlum.getRange(i + 1, 6).setValue('PENDIENTE'); // Columna 6: WEB_STATUS
+            found = true;
+            break;
         }
     }
-    if (!found) sheetAlum.appendRow([dniInsc, params.nombre, params.email, dniInsc, new Date(), 'PENDIENTE']);
 
-    sheetInsc.appendRow([new Date(), dniInsc, params.nombre, params.email, params.edad, params.telefono, params.tutor, params.ciudad, params.experiencia, params.conocio, params.taller, params.horario, new Date()]);
+    // 2. Si no existe, crearlo en ALUMNOS (DNI, NOMBRE, EMAIL, CONTRASEÑA, FECHA, STATUS)
+    if (!found) {
+        sheetAlum.appendRow([
+            dniInsc,               // A: DNI
+            params.nombre,         // B: NOMBRE
+            params.email,          // C: E-MAIL
+            'alu1',                // D: CONTRASEÑA (Default)
+            new Date(),            // E: FECHA_INGRESO
+            'PENDIENTE'            // F: WEB_STATUS
+        ]);
+    }
+
+    // 3. Registrar en INSCRIPCIONES (13 columnas exactas)
+    // NOMBRE, DNI, ES MENOR?, TUTOR, CIUDAD, LOCALIDAD, DIRECCION, EMAIL, TELEFONO, CELULAR TUTOR, TALLER, FECHA, HORARIO
+    sheetInsc.appendRow([
+        params.nombre,           // A: NOMBRE
+        dniInsc,                 // B: DNI
+        params.es_menor_str,     // C: ES MENOR? (si/no)
+        params.tutor,            // D: TUTOR
+        params.ciudad,           // E: CIUDAD
+        params.localidad,        // F: LOCALIDAD
+        params.direccion,        // G: DIRECCION
+        params.email,            // H: EMAIL
+        params.telefono,         // I: TELEFONO (Alumno)
+        params.tutor_celular,    // J: CELULAR TUTOR
+        params.taller,           // K: TALLER
+        new Date(),              // L: FECHA
+        params.horario           // M: HORARIO
+    ]);
 
     try {
-        MailApp.sendEmail(SCHOOL_EMAIL, `SOLICITUD: ${params.nombre}`, `Nueva solicitud.`);
+        MailApp.sendEmail(SCHOOL_EMAIL, `SOLICITUD: ${params.nombre}`, `Nueva solicitud de: ${params.nombre}`);
     } catch (e) { }
 
-    return { status: 'success', message: 'Inscripcion guardada' };
+    return { status: 'success', message: 'Inscripcion guardada correctamente' };
 }
 
 function doGet(e) {
