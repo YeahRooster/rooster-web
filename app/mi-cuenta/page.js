@@ -181,10 +181,34 @@ export default function MiCuentaPage() {
         }
     };
 
-    const handleChangePassword = () => {
+    const handleChangePassword = async () => {
         const newPass = prompt("Ingresa tu nueva contraseña:");
-        if (newPass) {
-            alert("Solicitud enviada. Por seguridad, la administración validará el cambio en las próximas 24hs.");
+        if (!newPass) return;
+
+        if (newPass.length < 4) {
+            alert("La contraseña debe tener al menos 4 caracteres.");
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/v2/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    dni: user.dni,
+                    newPassword: newPass,
+                    role: user.role
+                })
+            });
+
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert("✅ ¡Éxito! Tu contraseña ha sido cambiada correctamente.");
+            } else {
+                alert("❌ Error: " + data.message);
+            }
+        } catch (error) {
+            alert("❌ Hubo un problema al conectar con el servidor.");
         }
     };
 
@@ -206,6 +230,17 @@ export default function MiCuentaPage() {
             <div className="section-padding container">
                 <h1 className="section-title text-yellow">Panel del Profesor: {user.nombre}</h1>
                 <p className={styles.subtitle}>Taller: {user.taller}</p>
+
+                <div className={styles.profileCard} style={{ marginBottom: '2rem', maxWidth: '500px' }}>
+                    <h2 className={styles.cardTitle}>Información Personal</h2>
+                    <p><strong>Perfil:</strong> Profesor</p>
+                    <p><strong>Nombre:</strong> {user.nombre}</p>
+                    <p><strong>DNI:</strong> {user.dni}</p>
+                    <p><strong>Taller:</strong> {user.taller}</p>
+                    <button onClick={handleChangePassword} className={styles.changePassBtn}>
+                        🔑 Cambiar Contraseña
+                    </button>
+                </div>
 
                 <div className={styles.teacherGrid}>
                     <div className={styles.card}>
@@ -376,7 +411,7 @@ export default function MiCuentaPage() {
                         </>
                     )}
                     <button onClick={handleChangePassword} className={styles.changePassBtn}>
-                        🔑 Cambiar Contraseña Admin
+                        🔑 Cambiar Contraseña
                     </button>
                     {user.role === 'admin' && (
                         <button

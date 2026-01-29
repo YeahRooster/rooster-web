@@ -9,18 +9,18 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// URL del Script de Google (v20.1 con dumpAll y file IDs)
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxWIAakwf_zVWTsSSEzUC38LRUAJYckfFXbrMwBh137DsFCnZfkRexPBAsYB7l8Nzgz/exec';
+// URL del Script de Google (Actualizada a la v18+)
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwTcj7oJqJiLsIjLVqLlkugEeoDr0oMvMaa-7yx4sYzFzBb4QgOiPixkc9859sbVn58/exec';
 
 async function migrate() {
-    console.log("🚀 Iniciando migración de datos (MODO LIMPIEZA TOTAL)...");
+    console.log("🚀 Iniciando migración de datos (MODO SINCRONIZACIÓN)...");
 
     try {
         // 1. Obtener todos los datos de Google Sheets
         console.log("📥 Extrayendo datos de Google Sheets...");
         const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=dumpAll`);
         const data = await response.json();
-        console.log(`✅ Datos recibidos de Sheets: ${Object.keys(data.data).join(', ')}`);
+        console.log(`✅ Datos recibidos de Sheets: ${Object.keys(data.data || {}).join(', ')}`);
 
         if (data.status !== 'success') {
             throw new Error("Error obteniendo datos: " + data.message);
@@ -32,8 +32,7 @@ async function migrate() {
         console.log("🧹 MODO SINCRONIZACIÓN SEGURA (UPSERT)...");
         // YA NO BORRAMOS TABLAS MAESTRAS PARA NO PERDER DATOS DE USUARIO (Galería, Likes, etc.)
         // Solo limpiamos tablas transaccionales que se regeneran 100% del Excel
-
-        await supabase.from('recursos').delete().neq('id', 0); // Limpiar recursos para regenerar
+        // YA NO BORRAMOS 'recursos' para no perder lo subido por profes desde el panel web
         const { error: delPagErr } = await supabase.from('pagos').delete().neq('id', 0);
         const { error: delInsErr } = await supabase.from('inscripciones').delete().neq('id', 0);
 

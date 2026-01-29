@@ -29,8 +29,7 @@ async function migrateResources() {
         const uniqueTalleres = [...new Set(talleres.map(t => t.titulo))];
         console.log(`🔎 Buscando recursos para ${uniqueTalleres.length} talleres...`);
 
-        // Limpiar tabla de recursos para carga fresca
-        await supabase.from('recursos').delete().filter('id', 'gt', 0);
+        // YA NO BORRAMOS 'recursos' de forma masiva para preservar lo subido por profes desde la web
 
         for (const taller of uniqueTalleres) {
             console.log(`\n📂 Procesando taller: ${taller}`);
