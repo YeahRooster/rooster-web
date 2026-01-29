@@ -21,6 +21,9 @@ export default function MiCuentaPage() {
     const [suggestedPayment, setSuggestedPayment] = useState(null);
     const [loadingPayment, setLoadingPayment] = useState(false);
 
+    // Estado para taller seleccionado (Profes que dan varios)
+    const [selectedTaller, setSelectedTaller] = useState('');
+
     useEffect(() => {
         if (user && user.role === 'student') {
             loadSuggestedPayment();
@@ -32,10 +35,17 @@ export default function MiCuentaPage() {
             }
         }
 
-        if (user && user.role === 'teacher') {
-            loadTeacherData();
+        if (user && user.role === 'teacher' && user.taller) {
+            const lista = user.taller.split(',').map(t => t.trim());
+            if (!selectedTaller) setSelectedTaller(lista[0]);
         }
     }, [user]);
+
+    useEffect(() => {
+        if (user && user.role === 'teacher' && selectedTaller) {
+            loadTeacherData(selectedTaller);
+        }
+    }, [user, selectedTaller]);
 
     const loadSuggestedPayment = async () => {
         if (!user?.dni) return;
@@ -53,16 +63,17 @@ export default function MiCuentaPage() {
         }
     };
 
-    const loadTeacherData = async () => {
-        if (!user?.taller) return;
+    const loadTeacherData = async (tallerName) => {
+        const taller = tallerName || selectedTaller;
+        if (!taller) return;
         setLoadingTeacher(true);
         try {
-            // INTENTO V2 (Ultra rápido: Alumnos + Recursos de Supabase)
-            const resV2 = await fetch(`/api/v2/teacher/data?taller=${encodeURIComponent(user.taller)}`);
+            // Alumnos
+            const resV2 = await fetch(`/api/v2/teacher/data?taller=${encodeURIComponent(taller)}`);
             const dataV2 = await resV2.json();
 
-            // Sincronizar Recursos también desde nuestra API v2
-            const resRes = await fetch(`/api/resources?taller=${encodeURIComponent(user.taller)}`);
+            // Recursos
+            const resRes = await fetch(`/api/resources?taller=${encodeURIComponent(taller)}`);
             const dataRes = await resRes.json();
 
             setTeacherData({
@@ -103,7 +114,7 @@ export default function MiCuentaPage() {
                         filename: file.name,
                         filetype: file.type,
                         data: base64,
-                        taller: user.taller,
+                        taller: selectedTaller,
                         teacher: user.nombre,
                         teacher_dni: user.dni
                     })
@@ -157,7 +168,7 @@ export default function MiCuentaPage() {
                     action: 'shareNote',
                     filename: noteTitle,
                     data: noteContent, // Texto o Link
-                    taller: user.taller,
+                    taller: selectedTaller,
                     teacher: user.nombre,
                     filetype: noteContent.startsWith('http') ? 'link' : 'note',
                     teacher_dni: user.dni
@@ -229,14 +240,42 @@ export default function MiCuentaPage() {
         return (
             <div className="section-padding container">
                 <h1 className="section-title text-yellow">Panel del Profesor: {user.nombre}</h1>
-                <p className={styles.subtitle}>Taller: {user.taller}</p>
 
-                <div className={styles.profileCard} style={{ marginBottom: '2rem', maxWidth: '500px' }}>
+                <div className={styles.profileCard} style={{ marginBottom: '2rem', maxWidth: '600px' }}>
                     <h2 className={styles.cardTitle}>Información Personal</h2>
                     <p><strong>Perfil:</strong> Profesor</p>
                     <p><strong>Nombre:</strong> {user.nombre}</p>
                     <p><strong>DNI:</strong> {user.dni}</p>
-                    <p><strong>Taller:</strong> {user.taller}</p>
+
+                    {/* Selector de Taller si tiene varios */}
+                    <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #374151' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--rooster-yellow)', fontWeight: 'bold' }}>
+                            Gestionar Taller:
+                        </label>
+                        <select
+                            value={selectedTaller}
+                            onChange={(e) => setSelectedTaller(e.target.value)}
+                            className={styles.workshopSelect}
+                            style={{
+                                width: '100%',
+                                padding: '10px',
+                                background: '#0d1b2a',
+                                color: 'white',
+                                border: '1px solid #374151',
+                                borderRadius: '8px',
+                                fontSize: '1rem',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            {user.taller.split(',').map((t, idx) => (
+                                <option key={idx} value={t.trim()}>{t.trim()}</option>
+                            ))}
+                        </select>
+                        <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginTop: '0.5rem' }}>
+                            * Seleccioná el taller para ver alumnos y subir material específico.
+                        </p>
+                    </div>
+
                     <button onClick={handleChangePassword} className={styles.changePassBtn}>
                         🔑 Cambiar Contraseña
                     </button>

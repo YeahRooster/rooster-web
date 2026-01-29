@@ -253,9 +253,9 @@ async function migrate() {
             for (const upd of actualizacionesInscripcion) {
                 await supabase.from('inscripciones')
                     .update({
-                        fecha_inicio_ciclo: upd.fecha_inicio_ciclo,
-                        fecha_vencimiento_ciclo: upd.fecha_vencimiento_ciclo,
-                        estado_inscripcion: upd.fecha_vencimiento_ciclo > new Date() ? 'VIGENTE' : 'VENCIDA'
+                        fecha_inicio_ciclo: upd.fechaInicio,
+                        fecha_vencimiento_ciclo: upd.fechaVencimiento,
+                        estado_inscripcion: upd.fechaVencimiento > new Date() ? 'VIGENTE' : 'VENCIDA'
                     })
                     .eq('alumno_dni', upd.dni)
                 // Intentar coincidir taller también si es posible, sino solo DNI (asumiendo 1 taller activo principal o iterando)

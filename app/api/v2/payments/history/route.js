@@ -45,9 +45,11 @@ export async function GET(request) {
             });
 
             return {
+                id: insc.id,
                 alumno_dni: insc.alumnos.dni,
                 alumno_nombre: insc.alumnos.nombre,
                 alumno_pais: insc.alumnos.pais,
+                monto_personalizado: insc.monto_personalizado || 0,
                 taller: insc.talleres?.titulo || insc.taller,
                 fecha_inicio_ciclo: insc.fecha_inicio_ciclo,
                 fecha_vencimiento_ciclo: insc.fecha_vencimiento_ciclo,

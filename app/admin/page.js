@@ -13,6 +13,7 @@ export default function AdminDashboard() {
     const [paymentsHistory, setPaymentsHistory] = useState([]);
     const [view, setView] = useState('stats'); // 'stats', 'students', 'resources', 'payments'
     const [filter, setFilter] = useState('all');
+    const [isSyncing, setIsSyncing] = useState(false);
 
     useEffect(() => {
         if (user && user.role === 'admin') {
@@ -140,6 +141,51 @@ export default function AdminDashboard() {
         } catch (e) { alert('Error enviando alertas'); }
     };
 
+    const handleSync = async () => {
+        if (!confirm('¿Sincronizar base de datos con Google Sheets?\n\nEste proceso actualizará alumnos, inscripciones y pagos con la información más reciente del Excel.')) return;
+
+        setIsSyncing(true);
+        try {
+            const res = await fetch('/api/v2/admin/sync', { method: 'POST' });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                alert('✅ Sincronización completada con éxito.');
+                loadStats();
+                loadStudents();
+                loadAllResources();
+            } else {
+                alert('❌ Error en sincronización: ' + data.message);
+            }
+        } catch (e) {
+            alert('❌ Error al conectar con el servidor para sincronizar.');
+            console.error(e);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    const editCustomPrice = async (inscId, nombre, montoActual) => {
+        const nuevoMonto = prompt(`💸 Establecer precio especial para ${nombre}\n(Solo para este taller. Dejar en 0 para usar precio general):\n\nActual: ${montoActual > 0 ? '$' + montoActual : 'General'}`, montoActual || 0);
+
+        if (nuevoMonto === null) return;
+
+        try {
+            const res = await fetch('/api/v2/admin/enrollment/update-price', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ inscripcion_id: inscId, monto_personalizado: parseFloat(nuevoMonto) })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert('✅ Precio actualizado');
+                loadPaymentsHistory();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (e) { alert('Error al actualizar precio'); }
+    };
+
     const loadStudents = async (status = '') => {
         try {
             const res = await fetch(`/api/v2/admin/students${status ? `?status=${status}` : ''}`, { cache: 'no-store' });
@@ -152,6 +198,23 @@ export default function AdminDashboard() {
 
     const [processingDni, setProcessingDni] = useState(null);
 
+    const toggleStudentStatus = async (dni, currentStatus) => {
+        setProcessingDni(dni);
+        try {
+            const res = await fetch('/api/v2/admin/students', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dni, activo: !currentStatus })
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                await loadStudents(filter === 'all' ? '' : filter);
+                await loadStats();
+            }
+        } catch (err) { alert("Error al cambiar estado"); }
+        finally { setProcessingDni(null); }
+    };
+
     const showPassword = async (dni) => {
         try {
             const res = await fetch(`/api/v2/admin/student-details?dni=${dni}`);
@@ -162,22 +225,6 @@ export default function AdminDashboard() {
                 alert('Error: ' + data.message);
             }
         } catch (e) { alert('Error obteniendo contraseña'); }
-    };
-
-    const toggleStudentStatus = async (dni, currentStatus) => {
-        setProcessingDni(dni);
-        try {
-            const res = await fetch('/api/v2/admin/students', {
-                method: 'PUT',
-                body: JSON.stringify({ dni, activo: !currentStatus })
-            });
-            const result = await res.json();
-            if (result.status === 'success') {
-                await loadStudents(filter === 'all' ? '' : filter);
-                await loadStats();
-            }
-        } catch (err) { alert("Error al cambiar estado"); }
-        finally { setProcessingDni(null); }
     };
 
     if (authLoading || loading) return <div className="section-padding container text-center">Cargando Panel de Control...</div>;
@@ -413,7 +460,30 @@ export default function AdminDashboard() {
                                     )}
                                     {paymentsHistory.map((alumno, idx) => (
                                         <tr key={idx}>
-                                            <td>{alumno.alumno_nombre}</td>
+                                            <td style={{ minWidth: '200px' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontWeight: 'bold' }}>{alumno.alumno_nombre}</span>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
+                                                        <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>DNI: {alumno.alumno_dni}</span>
+                                                        <button
+                                                            onClick={() => editCustomPrice(alumno.id, alumno.alumno_nombre, alumno.monto_personalizado)}
+                                                            className={styles.smallActionBtn}
+                                                            title="Editar precio especial"
+                                                            style={{
+                                                                background: alumno.monto_personalizado > 0 ? '#059669' : '#4b5563',
+                                                                border: 'none',
+                                                                color: 'white',
+                                                                fontSize: '0.65rem',
+                                                                padding: '2px 6px',
+                                                                borderRadius: '4px',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            {alumno.monto_personalizado > 0 ? `$${alumno.monto_personalizado} ✏️` : '💰 Especial'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </td>
                                             <td>{alumno.taller}</td>
                                             {alumno.pagos.map((pago, pidx) => (
                                                 <td key={pidx} style={{
@@ -477,8 +547,16 @@ export default function AdminDashboard() {
                     <button className="btn btn-outline" onClick={() => window.location.href = '/mi-cuenta'}>
                         👤 Mi Perfil / Seguridad
                     </button>
+                    <button
+                        className="btn btn-primary"
+                        onClick={handleSync}
+                        disabled={isSyncing}
+                        style={{ background: isSyncing ? '#4b5563' : '#10b981', border: 'none' }}
+                    >
+                        {isSyncing ? '⏳ Sincronizando...' : '📥 Sincronizar desde Sheets'}
+                    </button>
                     <button className="btn btn-outline" onClick={() => window.location.reload()}>
-                        🔄 Actualizar Datos
+                        🔄 Refrescar Vista
                     </button>
                 </div>
             </div>

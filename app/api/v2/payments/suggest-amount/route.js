@@ -6,102 +6,115 @@ export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
         const alumno_dni = searchParams.get('alumno_dni');
-        const fecha_pago = searchParams.get('fecha_pago') || new Date().toISOString().split('T')[0];
-        const metodo_pago = searchParams.get('metodo_pago') || 'TRANSFERENCIA';
+        const fecha_pago_str = searchParams.get('fecha_pago') || new Date().toISOString().split('T')[0];
+        const metodo_pago = (searchParams.get('metodo_pago') || 'TRANSFERENCIA').toUpperCase();
 
-        // 1. Buscar inscripción del alumno
-        const { data: inscripcion, error: inscErr } = await supabaseAdmin
+        if (!alumno_dni) {
+            return NextResponse.json({ status: 'error', message: 'Falta DNI' }, { status: 400 });
+        }
+
+        // 1. Buscar TODAS las inscripciones del alumno
+        const { data: inscripciones, error: inscErr } = await supabaseAdmin
             .from('inscripciones')
             .select('*, talleres(*)')
-            .eq('alumno_dni', alumno_dni)
-            .single();
+            .eq('alumno_dni', alumno_dni);
 
         if (inscErr) throw inscErr;
-        if (!inscripcion) {
+        if (!inscripciones || inscripciones.length === 0) {
             return NextResponse.json({ status: 'error', message: 'Alumno no inscrito' }, { status: 404 });
         }
 
-        // 1.2 Buscar pagos realizados para saber cuál toca
-        const { data: pagos, error: pagosErr } = await supabaseAdmin
+        // 2. Buscar pagos para saber qué cuota toca en cada taller
+        const { data: todosLosPagos } = await supabaseAdmin
             .from('pagos')
-            .select('cuota_numero, estado')
+            .select('*')
             .eq('alumno_dni', alumno_dni)
-            .neq('estado', 'pendiente'); // Solo pagos confirmados o pagados (ignorar pendientes si los hubiera)
+            .neq('estado', 'pendiente');
 
-        // Determinar siguiente cuota (Max pagada + 1)
-        // Convertimos a números para asegurar (a veces viene como string)
-        const cuotasPagadas = pagos?.map(p => parseInt(p.cuota_numero)) || [];
-        const ultimaCuota = cuotasPagadas.length > 0 ? Math.max(...cuotasPagadas) : 0;
-        const nextCuota = ultimaCuota + 1; // Si pagó la 1, toca la 2
+        const fechaPagoActual = new Date(fecha_pago_str);
 
-        // 2. Obtener precios del taller
-        const taller = inscripcion.talleres;
+        // Procesar cada taller
+        const sugerencias = inscripciones.map(insc => {
+            const taller = insc.talleres;
+            if (!taller) return null;
 
-        // 3. Calcular FECHA DE LA CUOTA OBJETIVO
-        let inicioCiclo = new Date(inscripcion.fecha_inicio_ciclo);
-        // Fallback: Si no hay inicio de ciclo, asumimos Enero del año actual
-        if (isNaN(inicioCiclo.getTime())) {
-            inicioCiclo = new Date(new Date().getFullYear(), 0, 1);
-        }
+            // Filtrar pagos de este taller
+            const pagosTaller = todosLosPagos?.filter(p =>
+                p.taller?.toLowerCase().trim() === taller.titulo?.toLowerCase().trim()
+            ) || [];
 
-        const fechaCuotaObjetivo = new Date(inicioCiclo);
-        fechaCuotaObjetivo.setMonth(inicioCiclo.getMonth() + (nextCuota - 1));
+            const ultimaCuota = pagosTaller.length > 0 ? Math.max(...pagosTaller.map(p => parseInt(p.cuota_numero) || 0)) : 0;
+            const nextCuota = ultimaCuota + 1;
 
-        // El vencimiento del descuento es el día 10 del MES DE LA CUOTA
-        const dia10DelMesCuota = new Date(fechaCuotaObjetivo.getFullYear(), fechaCuotaObjetivo.getMonth(), 10);
+            // Calcular fecha de la cuota objetivo
+            // Fallback robusto para fechas nulas o mal formadas
+            let inicioCiclo = insc.fecha_inicio_ciclo ? new Date(insc.fecha_inicio_ciclo) : null;
+            if (!inicioCiclo || isNaN(inicioCiclo.getTime()) || inicioCiclo.getFullYear() < 2000) {
+                inicioCiclo = new Date(new Date().getFullYear(), 0, 1);
+            }
 
-        // Fecha actual de pago
-        const fechaPagoReal = new Date(fecha_pago);
+            // Usamos el día 1 para evitar problemas con meses de 28/30/31 días
+            const baseDate = new Date(inicioCiclo.getFullYear(), inicioCiclo.getMonth(), 1);
+            const fechaCuotaObjetivo = new Date(baseDate);
+            fechaCuotaObjetivo.setMonth(baseDate.getMonth() + (nextCuota - 1));
 
-        // Lógica de descuento: ¿Estoy pagando ANTES del día 10 del mes de la cuota?
-        const is_adelantado = fechaPagoReal < new Date(fechaCuotaObjetivo.getFullYear(), fechaCuotaObjetivo.getMonth(), 1);
+            const mes_idx = fechaCuotaObjetivo.getMonth();
+            const anio_pago = fechaCuotaObjetivo.getFullYear();
+            const dia10DelMesCuota = new Date(anio_pago, mes_idx, 10);
 
-        // Mes lejible
-        const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-        const mes_nombre = meses[fechaCuotaObjetivo.getMonth()];
+            // ¿Es adelantado? (Pago antes del mes de la cuota)
+            const is_adelantado = fechaPagoActual < new Date(anio_pago, mes_idx, 1);
 
-        let monto_sugerido;
-        let nota = '';
+            let monto_sugerido;
+            let nota = '';
 
-        if (metodo_pago.toUpperCase() === 'EFECTIVO') {
-            monto_sugerido = taller.precio_desc_efectivo || taller.precio_base;
-            nota = 'Precio con descuento por efectivo';
-        } else if (fechaPagoReal <= dia10DelMesCuota) {
-            monto_sugerido = taller.precio_desc_dia10 || taller.precio_base;
-            nota = is_adelantado
-                ? `Precio adelantado con descuento (${mes_nombre})`
-                : `Precio con descuento (hasta el 10/${fechaCuotaObjetivo.getMonth() + 1})`;
-        } else {
-            monto_sugerido = taller.precio_base;
-            nota = 'Precio base (después del día 10)';
-        }
+            // --- PRIORIDAD 1: MONTO PERSONALIZADO ---
+            if (insc.monto_personalizado > 0) {
+                monto_sugerido = insc.monto_personalizado;
+                nota = 'Precio especial pactado';
+            }
+            // --- PRIORIDAD 2: EFECTIVO ---
+            else if (metodo_pago === 'EFECTIVO') {
+                monto_sugerido = taller.precio_desc_efectivo || taller.precio_base;
+                nota = 'Precio con descuento por efectivo';
+            }
+            // --- PRIORIDAD 3: TRANSFERENCIA ANTES DEL 10 ---
+            else if (fechaPagoActual <= dia10DelMesCuota) {
+                monto_sugerido = taller.precio_desc_dia10 || taller.precio_base;
+                const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                const mes_nombre = meses[mes_idx];
 
+                nota = is_adelantado
+                    ? `Precio adelantado con descuento (${mes_nombre})`
+                    : `Precio con descuento (hasta el 10/${mes_idx + 1})`;
+            }
+            // --- FALLBACK: PRECIO BASE ---
+            else {
+                monto_sugerido = taller.precio_base;
+                nota = 'Precio base (después del día 10)';
+            }
+
+            return {
+                taller: taller.titulo,
+                cuota_numero: nextCuota,
+                mes_nombre: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][mes_idx],
+                monto_sugerido,
+                nota,
+                is_adelantado
+            };
+        }).filter(s => s !== null);
+
+        // Para compatibilidad con el frontend que espera un objeto único, 
+        // devolvemos la primera sugerencia pero incluimos el array 'items' por si acaso.
         return NextResponse.json({
             status: 'success',
-            monto_sugerido,
-            nota,
-            taller: taller.titulo,
-            cuota_numero: nextCuota,
-            mes_nombre,
-            is_adelantado,
-            alumno: inscripcion.alumno_dni
+            ...sugerencias[0],
+            items: sugerencias,
+            alumno_dni
         });
 
     } catch (error) {
         console.error('Error suggesting amount:', error);
         return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
     }
-}
-
-// Función auxiliar para calcular número de cuota (1-12)
-function calculateCuotaNumero(fecha_inicio_ciclo, fecha_pago) {
-    if (!fecha_inicio_ciclo) return 1;
-
-    const inicio = new Date(fecha_inicio_ciclo);
-    const pago = new Date(fecha_pago);
-
-    const mesesDiff = (pago.getFullYear() - inicio.getFullYear()) * 12 +
-        (pago.getMonth() - inicio.getMonth());
-
-    return Math.max(1, Math.min(12, mesesDiff + 1));
 }
