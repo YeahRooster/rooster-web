@@ -51,7 +51,7 @@ export default function MiCuentaPage() {
         if (!user?.dni) return;
         setLoadingPayment(true);
         try {
-            const res = await fetch(`/api/v2/payments/suggest-amount?alumno_dni=${user.dni}&metodo_pago=TRANSFERENCIA`);
+            const res = await fetch(`/api/v2/payments/suggest-amount?alumno_dni=${user.dni}&metodo_pago=TRANSFERENCIA`, { cache: 'no-store' });
             const data = await res.json();
             if (data.status === 'success') {
                 setSuggestedPayment(data);
@@ -69,11 +69,11 @@ export default function MiCuentaPage() {
         setLoadingTeacher(true);
         try {
             // Alumnos
-            const resV2 = await fetch(`/api/v2/teacher/data?taller=${encodeURIComponent(taller)}`);
+            const resV2 = await fetch(`/api/v2/teacher/data?taller=${encodeURIComponent(taller)}`, { cache: 'no-store' });
             const dataV2 = await resV2.json();
 
             // Recursos
-            const resRes = await fetch(`/api/resources?taller=${encodeURIComponent(taller)}`);
+            const resRes = await fetch(`/api/resources?taller=${encodeURIComponent(taller)}`, { cache: 'no-store' });
             const dataRes = await resRes.json();
 
             setTeacherData({

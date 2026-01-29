@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/config/supabase';
+import { supabaseAdmin } from '@/config/supabaseAdmin';
 
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
@@ -13,7 +13,7 @@ export async function GET(request) {
         console.log(`--- SUPABASE TEACHER DATA v2 for: ${tallerNombre} ---`);
 
         // 1. Obtener alumnos inscriptos en este taller
-        const { data: inscripciones, error: iErr } = await supabase
+        const { data: inscripciones, error: iErr } = await supabaseAdmin
             .from('inscripciones')
             .select(`
                 alumno_dni,
@@ -29,7 +29,7 @@ export async function GET(request) {
 
         const dnis = inscripciones.map(i => i.alumno_dni);
 
-        const { data: pagos, error: pErr } = await supabase
+        const { data: pagos, error: pErr } = await supabaseAdmin
             .from('pagos')
             .select('alumno_dni, estado')
             .in('alumno_dni', dnis)

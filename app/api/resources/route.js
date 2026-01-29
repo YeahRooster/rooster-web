@@ -20,7 +20,8 @@ export async function GET(request) {
             .order('fecha_subida', { ascending: false });
 
         if (taller) {
-            query = query.eq('taller', taller);
+            // Usamos ilike para que no falle por mayúsculas/minúsculas
+            query = query.ilike('taller', `%${taller.trim()}%`);
         }
 
         const { data, error } = await query;
