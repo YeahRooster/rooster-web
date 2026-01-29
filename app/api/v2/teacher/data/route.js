@@ -33,6 +33,7 @@ export async function GET(request) {
             .from('pagos')
             .select('alumno_dni, estado')
             .in('alumno_dni', dnis)
+            .ilike('taller', `%${tallerNombre}%`) // FILTRO POR TALLER ESPECÍFICO
             .eq('mes', String(mesActual))
             .eq('anio', anioActual)
             .eq('estado', 'pagado');

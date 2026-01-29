@@ -30,25 +30,57 @@ export async function GET(request) {
         // Necesitaremos un parser básico en el frontend si el texto es muy sucio, 
         // pero aquí devolvemos la data cruda limpia.
 
-        const schedule = data.map(i => ({
-            student: i.alumnos?.nombre || 'Desconocido',
-            dni: i.alumno_dni,
-            workshop: i.taller_nombre,
-            raw_schedule: i.horario || 'Sin Horario',
-            // Intentar extraer día si es posible (Lunes, Martes...)
-            day: detectDay(i.horario),
-            time_block: detectTimeBlock(i.horario)
-        }));
+        const schedule = data.flatMap(i => {
+            const rawHorario = i.horario || 'Sin Horario';
+            const entries = parseScheduleEntries(rawHorario);
+
+            return entries.map(entry => ({
+                student: i.alumnos?.nombre || 'Desconocido',
+                dni: i.alumno_dni,
+                workshop: i.taller_nombre,
+                raw_schedule: rawHorario,
+                day: entry.day,
+                time_block: entry.time_block
+            }));
+        });
 
         return NextResponse.json({ status: 'success', data: schedule });
     } catch (error) {
+        console.error("Schedule API Error:", error);
         return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
     }
 }
 
-// Helpers simples para clasificar (Mejorable según data real)
+// Procesa una cadena de horario que puede contener múltiples días/horas
+function parseScheduleEntries(text) {
+    if (!text || text === 'Sin Horario') return [{ day: 'Sin Definir', time_block: 'Sin Horario' }];
+
+    // Separar por "y", ",", ";" o "/"
+    const parts = text.split(/ y |,|;|\/|&/i);
+    const results = [];
+
+    parts.forEach(part => {
+        const trimmed = part.trim();
+        if (!trimmed) return;
+
+        const day = detectDay(trimmed);
+        const timeBlock = detectTimeBlock(trimmed);
+
+        // Si detectamos un día pero no un bloque, o viceversa, lo agregamos
+        if (day !== 'Otros' || timeBlock !== 'Sin Horario') {
+            results.push({ day, time_block: timeBlock });
+        }
+    });
+
+    // Si no detectó nada separado, intentar con el texto completo
+    if (results.length === 0) {
+        return [{ day: detectDay(text), time_block: detectTimeBlock(text) }];
+    }
+
+    return results;
+}
+
 function detectDay(text) {
-    if (!text) return 'Sin Definir';
     const lower = text.toLowerCase();
     if (lower.includes('lunes')) return 'Lunes';
     if (lower.includes('martes')) return 'Martes';
@@ -60,11 +92,23 @@ function detectDay(text) {
 }
 
 function detectTimeBlock(text) {
-    if (!text) return 'Sin Horario';
     const lower = text.toLowerCase();
-    // Lógica básica basada en palabras clave comunes
-    if (lower.includes('mañana') || lower.includes('10') || lower.includes('11') || lower.includes('09') || lower.includes('9')) return 'Mañana';
-    if (lower.includes('siesta') || lower.includes('14') || lower.includes('15') || lower.includes('13')) return 'Siesta';
-    if (lower.includes('tarde') || lower.includes('18') || lower.includes('19') || lower.includes('17') || lower.includes('16') || lower.includes('20')) return 'Tarde';
-    return 'Tarde'; // Default fallback
+
+    // 1. Prioridad por palabras clave
+    if (lower.includes('mañana')) return 'Mañana';
+    if (lower.includes('siesta')) return 'Siesta';
+    if (lower.includes('tarde') || lower.includes('noche')) return 'Tarde';
+
+    // 2. Detección por números de hora (Ej: "10hs", "18:00")
+    const hours = text.match(/(\d+)/g);
+    if (hours) {
+        for (let h of hours) {
+            const hr = parseInt(h);
+            if (hr >= 7 && hr <= 12) return 'Mañana';
+            if (hr >= 13 && hr <= 15) return 'Siesta';
+            if (hr >= 16 && hr <= 22) return 'Tarde';
+        }
+    }
+
+    return 'Tarde'; // Default
 }

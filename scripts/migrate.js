@@ -9,8 +9,8 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// URL del Script de Google (Actualizada a la v18+)
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwTcj7oJqJiLsIjLVqLlkugEeoDr0oMvMaa-7yx4sYzFzBb4QgOiPixkc9859sbVn58/exec';
+// URL del Script de Google (Actualizada a la v19+)
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyC0J3TAwWOXT3K-nSAgbn5wmLCGav6q4VhZWPBRdbUk0hSAMDI3zcu3ppoafmEMWgN/exec';
 
 async function migrate() {
     console.log("🚀 Iniciando migración de datos (MODO SINCRONIZACIÓN)...");
@@ -86,83 +86,103 @@ async function migrate() {
         });
 
         // 3. Upsert Alumnos (CLAVE: NO BORRAR)
-        // PROTECCIÓN DE CONTRASEÑAS:
-        // Buscamos alumnos existentes para NO pisar su password si ya existe en DB.
         const { data: existingAlumnos } = await supabase.from('alumnos').select('dni, password');
         const passwordMapAlumnos = {};
         existingAlumnos?.forEach(a => passwordMapAlumnos[a.dni] = a.password);
 
-        console.log(`👤 Sincronizando ${alumnos.length} alumnos (UPSERT)...`);
-        const { error: errA } = await supabase.from('alumnos').upsert(alumnos.map(a => ({
-            dni: String(a[0]).trim(),
-            nombre: a[1],
-            email: a[2],
-            // Si ya tiene password en DB, la mantenemos. Si no, usamos la del sheet.
-            password: passwordMapAlumnos[String(a[0]).trim()] || String(a[3]),
-            fecha_ingreso: a[4] ? new Date(a[4]) : new Date(),
-            activo: String(a[5]).toUpperCase() === 'ACTIVO'
-        })), {
-            onConflict: 'dni',
-            ignoreDuplicates: false // Actualizar si existe
+        console.log(`👤 Procesando ${alumnos.length} filas de alumnos...`);
+        const validAlumnosMap = new Map();
+        alumnos.forEach(a => {
+            const dni = String(a[0]).trim();
+            if (dni === "") return;
+            const email = String(a[2] || "").trim();
+            validAlumnosMap.set(dni, {
+                dni: dni,
+                nombre: a[1] || 'Sin Nombre',
+                email: email === "" ? null : email,
+                password: passwordMapAlumnos[dni] || String(a[3] || dni),
+                fecha_ingreso: a[4] ? new Date(a[4]) : new Date(),
+                activo: String(a[5]).toUpperCase() === 'ACTIVO'
+            });
         });
+
+        const alumnosParaUpsert = Array.from(validAlumnosMap.values());
+        console.log(`👤 Sincronizando ${alumnosParaUpsert.length} alumnos únicos...`);
+        const { error: errA } = await supabase.from('alumnos').upsert(alumnosParaUpsert, { onConflict: 'dni' });
+
         if (errA) {
-            console.error("⚠️ Error en alumnos:", errA);
-            console.log("Tip: Revisá si hay emails duplicados en tu Google Sheets");
+            console.error("⚠️ Error en alumnos:", errA.message);
+            // Si hay un error de UNIQUE en el email, intentamos loguearlo
+            if (errA.code === '23505') console.log("Tip: Hay emails duplicados en el Sheets.");
+        } else {
+            console.log("✅ Alumnos sincronizados.");
         }
 
         // 4. Upsert Profesores
         const profesoresList = profesores || [];
-        // Mismo mecanismo para profesores
         const { data: existingProfes } = await supabase.from('profesores').select('dni, password');
         const passwordMapProfes = {};
         existingProfes?.forEach(p => passwordMapProfes[p.dni] = p.password);
 
-        console.log(`👨‍🏫 Sincronizando ${profesoresList.length} profesores (UPSERT)...`);
-        const { error: errP } = await supabase.from('profesores').upsert(profesoresList.map(p => ({
-            dni: String(p[0]).trim(),
-            nombre: p[1],
-            // Si ya tiene password en DB, la mantenemos.
-            password: passwordMapProfes[String(p[0]).trim()] || String(p[3]),
-            taller_asignado: p[4]
-        })), { onConflict: 'dni' });
-        if (errP) console.error("Error en profesores:", errP);
-
-        // 5. Insertar Inscripciones (Nuevas, porque las borramos antes)
-        console.log(`📝 Migrando ${inscripciones.length} inscripciones...`);
-        const processedInscriptions = new Set();
-        const uniqueInscriptions = inscripciones.filter(i => {
-            const key = `${i[1]}-${i[10]}`.toLowerCase();
-            if (processedInscriptions.has(key)) return false;
-            processedInscriptions.add(key);
-            return true;
+        const validProfesMap = new Map();
+        profesoresList.forEach(p => {
+            const dni = String(p[0]).trim();
+            if (dni === "") return;
+            validProfesMap.set(dni, {
+                dni: dni,
+                nombre: p[1],
+                password: passwordMapProfes[dni] || String(p[3] || "prof1"),
+                taller_asignado: p[4]
+            });
         });
 
-        const { error: errI } = await supabase.from('inscripciones').insert(uniqueInscriptions.map(i => ({
-            alumno_dni: String(i[1]).trim(),
-            taller_nombre: i[10],
-            taller_id: tallerMap[String(i[10]).toLowerCase().trim()] || null,
-            horario: i[12] || '', // Columna M (Indice 12) es Horario (Usuario confirmó L es Fecha)
-            fecha_inscripcion: i[11] ? new Date(i[11]) : new Date() // Columna L (11) es Fecha
-        })));
-        if (errI) console.error("Error en inscripciones:", errI);
+        const profesParaUpsert = Array.from(validProfesMap.values());
+        console.log(`👨‍🏫 Sincronizando ${profesParaUpsert.length} profesores únicos...`);
+        const { error: errP } = await supabase.from('profesores').upsert(profesParaUpsert, { onConflict: 'dni' });
+        if (errP) console.error("Error en profesores:", errP.message);
 
-        // 6. Insertar Pagos
-        // 6. Procesar PAGOS (Formato Horizontal)
-        // Estructura: [DNI, Nombre, Taller, C1, C2...C12, Vencimiento]
-        console.log(`💰 Procesando pagos horizontales (${pagos.length} alumnos)...`);
+        // 5. Insertar Inscripciones
+        console.log(`📝 Procesando ${inscripciones.length} filas de inscripciones...`);
+        const uniqueInscMap = new Map();
+        inscripciones.forEach(i => {
+            const dni = String(i[1]).trim();
+            const taller = String(i[10]).trim();
+            if (dni === "" || taller === "") return;
+            const key = `${dni}-${taller}`.toLowerCase();
+            uniqueInscMap.set(key, {
+                alumno_dni: dni,
+                taller_nombre: taller,
+                taller_id: tallerMap[taller.toLowerCase()] || null,
+                horario: i[12] || '',
+                fecha_inscripcion: i[11] ? new Date(i[11]) : new Date()
+            });
+        });
 
-        const pagosParaInsertar = [];
+        const inscParaInsertar = Array.from(uniqueInscMap.values());
+        console.log(`📝 Insertando ${inscParaInsertar.length} inscripciones únicas...`);
+        const { error: errI } = await supabase.from('inscripciones').insert(inscParaInsertar);
+
+        if (errI) {
+            console.error("❌ Error en inscripciones:", errI.message);
+            if (errI.code === '23503') console.log("Error: Registros refieren a DNIs que no existen en 'alumnos'.");
+        } else {
+            console.log("✅ Inscripciones sincronizadas.");
+        }
+
+        // 6. Procesar PAGOS
+        console.log(`💰 Procesando pagos horizontales (${pagos.length} filas)...`);
+        const pagosMap = new Map();
         const actualizacionesInscripcion = [];
 
         for (const fila of pagos) {
             const dni = String(fila[0]).trim();
             const taller = fila[2];
-            let vencimientoStr = fila[15]; // Columna P (índice 15) es INSCR_VENCE
-            const anioSheet = parseInt(fila[16]); // Columna Q (índice 16) es AÑO (Antes estaba mal mapeado a 14)
+            if (!dni || !taller) continue;
 
-            // Lógica Fallback de Fechas
+            let vencimientoStr = fila[15];
+            const anioSheet = parseInt(fila[16]);
+
             let fechaInicio, fechaVencimiento;
-
             if (vencimientoStr) {
                 fechaVencimiento = new Date(vencimientoStr);
                 if (!isNaN(fechaVencimiento.getTime())) {
@@ -170,57 +190,38 @@ async function migrate() {
                     fechaInicio.setFullYear(fechaInicio.getFullYear() - 1);
                 }
             }
-
-            // Si no hay vencimiento válido, usamos el AÑO (Cols O)
             if ((!fechaVencimiento || isNaN(fechaVencimiento.getTime())) && anioSheet) {
-                // Asumimos ciclo Enero - Diciembre del año indicado
-                fechaInicio = new Date(anioSheet, 0, 1); // 1 Ene
-                fechaVencimiento = new Date(anioSheet, 11, 31); // 31 Dic
-                console.log(`⚠️ Alumno ${dni}: Usando año ${anioSheet} como fallback (Sin fecha exacta)`);
+                fechaInicio = new Date(anioSheet, 0, 1);
+                fechaVencimiento = new Date(anioSheet, 11, 31);
             }
 
-            // Si logramos determinar fechas, procesamos
-            if (fechaInicio && dni) {
-                // Guardar para actualizar después
-                actualizacionesInscripcion.push({
-                    dni,
-                    taller,
-                    fecha_inicio_ciclo: fechaInicio,
-                    fecha_vencimiento_ciclo: fechaVencimiento
-                });
+            if (fechaInicio) {
+                actualizacionesInscripcion.push({ dni, taller, fechaInicio, fechaVencimiento });
 
-                // Determinamos qué cuota corresponde al mes actual (simplificado)
                 const hoy = new Date();
                 const mesActualCal = hoy.getMonth() + 1;
                 const anioActualCal = hoy.getFullYear();
-                const estadoGral = String(fila[17] || "").toLowerCase(); // Columna R
+                const estadoGral = String(fila[17] || "").toLowerCase();
 
-                // Procesar las 12 cuotas
                 for (let i = 1; i <= 12; i++) {
-                    const colIndex = 2 + i; // C1 está en índice 3
+                    const colIndex = 2 + i;
                     const rawMonto = String(fila[colIndex] || "").replace(/[^0-9.]/g, '');
                     const monto = parseFloat(rawMonto);
 
-                    if (monto > 0 || i === 1) { // Aseguramos al menos la C1 o si tiene monto
+                    if (monto > 0 || i === 1) {
                         const fechaCuota = new Date(fechaInicio);
                         fechaCuota.setMonth(fechaInicio.getMonth() + (i - 1));
-
                         const mesCuota = fechaCuota.getMonth() + 1;
                         const anioCuota = fechaCuota.getFullYear();
 
-                        // Lógica de ESTADO: 
-                        // Si la columna R dice "deudor" y este registro coincide con el mes/año actual, lo marcamos como pendiente.
-                        let estadoFinal = 'pagado';
-                        if (monto === 0 || isNaN(monto)) {
-                            estadoFinal = 'pendiente';
-                        }
-
-                        // Si el estado general del Excel dice Deudor, forzamos deudor en la cuota actual
+                        let estadoFinal = (monto > 0) ? 'pagado' : 'pendiente';
                         if (mesCuota === mesActualCal && anioCuota === anioActualCal && estadoGral.includes('deud')) {
                             estadoFinal = 'pendiente';
                         }
 
-                        pagosParaInsertar.push({
+                        // LLAVE ÚNICA PARA PAGOS: Alumno + Taller + Mes + Año
+                        const pKey = `${dni}-${taller}-${mesCuota}-${anioCuota}`.toLowerCase();
+                        pagosMap.set(pKey, {
                             alumno_dni: dni,
                             taller: taller,
                             mes: mesCuota,
@@ -237,14 +238,13 @@ async function migrate() {
             }
         }
 
-        // Insertar pagos en lotes
-        if (pagosParaInsertar.length > 0) {
-            console.log(`Guardando ${pagosParaInsertar.length} pagos individuales...`);
-            const { error: errPag } = await supabase.from('pagos').upsert(pagosParaInsertar, {
-                onConflict: 'alumno_dni,mes,anio,taller', // Evitar duplicados
-                ignoreDuplicates: false
+        const pagosFinal = Array.from(pagosMap.values());
+        if (pagosFinal.length > 0) {
+            console.log(`💰 Guardando ${pagosFinal.length} pagos únicos (UPSERT)...`);
+            const { error: errPag } = await supabase.from('pagos').upsert(pagosFinal, {
+                onConflict: 'alumno_dni,taller,mes,anio'
             });
-            if (errPag) console.error("Error insertando pagos:", errPag);
+            if (errPag) console.error("Error insertando pagos:", errPag.message);
         }
 
         // Actualizar fechas de ciclo en inscripciones
