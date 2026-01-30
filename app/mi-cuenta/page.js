@@ -239,7 +239,7 @@ export default function MiCuentaPage() {
     if (user.role === 'teacher') {
         return (
             <div className="section-padding container">
-                <h1 className="section-title text-yellow">Panel del Profesor: {user.nombre}</h1>
+                <h1 className="section-title text-yellow">Panel del Profesor (v2.2): {user.nombre}</h1>
 
                 <div className={styles.profileCard} style={{ marginBottom: '2rem', maxWidth: '600px' }}>
                     <h2 className={styles.cardTitle}>Información Personal</h2>
@@ -298,7 +298,13 @@ export default function MiCuentaPage() {
                                     <thead><tr><th>Nombre</th><th>Estado Cuota</th></tr></thead>
                                     <tbody>
                                         {teacherData.students.length === 0 ? (
-                                            <tr><td colSpan="2" className="text-center">No hay alumnos.</td></tr>
+                                            <tr>
+                                                <td colSpan="2" className="text-center" style={{ padding: '2rem', color: '#9ca3af' }}>
+                                                    No hay alumnos en "{selectedTaller}".
+                                                    <br />
+                                                    <small>* Verificá la sincronización desde el Admin si esto es un error.</small>
+                                                </td>
+                                            </tr>
                                         ) : (
                                             teacherData.students.map((s, i) => (
                                                 <tr key={i}>
