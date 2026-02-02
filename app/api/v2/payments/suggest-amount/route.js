@@ -13,23 +13,26 @@ export async function GET(request) {
             return NextResponse.json({ status: 'error', message: 'Falta DNI' }, { status: 400 });
         }
 
-        // 1. Buscar TODAS las inscripciones del alumno
-        const { data: inscripciones, error: inscErr } = await supabaseAdmin
-            .from('inscripciones')
-            .select('*, talleres(*)')
-            .eq('alumno_dni', alumno_dni);
+        // 1. Buscar inscripciones y pagos en paralelo para mayor velocidad
+        const [inscRes, pagosRes] = await Promise.all([
+            supabaseAdmin
+                .from('inscripciones')
+                .select('*, talleres(*)')
+                .eq('alumno_dni', alumno_dni),
+            supabaseAdmin
+                .from('pagos')
+                .select('*')
+                .eq('alumno_dni', alumno_dni)
+                .neq('estado', 'pendiente')
+        ]);
 
-        if (inscErr) throw inscErr;
+        if (inscRes.error) throw inscRes.error;
+        const inscripciones = inscRes.data;
+        const todosLosPagos = pagosRes.data;
+
         if (!inscripciones || inscripciones.length === 0) {
             return NextResponse.json({ status: 'error', message: 'Alumno no inscrito' }, { status: 404 });
         }
-
-        // 2. Buscar pagos para saber qué cuota toca en cada taller
-        const { data: todosLosPagos } = await supabaseAdmin
-            .from('pagos')
-            .select('*')
-            .eq('alumno_dni', alumno_dni)
-            .neq('estado', 'pendiente');
 
         const fechaPagoActual = new Date(fecha_pago_str);
 
