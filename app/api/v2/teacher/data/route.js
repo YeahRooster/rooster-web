@@ -19,7 +19,7 @@ export async function GET(request) {
                 alumno_dni,
                 alumnos (nombre)
             `)
-            .ilike('taller_nombre', `%${tallerNombre}%`);
+            .ilike('taller_nombre', tallerNombre.trim());
 
         if (iErr) throw iErr;
 
@@ -33,7 +33,7 @@ export async function GET(request) {
             .from('pagos')
             .select('alumno_dni, estado')
             .in('alumno_dni', dnis)
-            .ilike('taller', `%${tallerNombre}%`) // FILTRO POR TALLER ESPECÍFICO
+            .ilike('taller', tallerNombre.trim()) // FILTRO POR TALLER ESPECÍFICO EXACTO
             .eq('mes', String(mesActual))
             .eq('anio', anioActual)
             .eq('estado', 'pagado');

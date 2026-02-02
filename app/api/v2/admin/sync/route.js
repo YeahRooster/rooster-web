@@ -147,17 +147,22 @@ export async function POST(request) {
 
                 for (let i = 1; i <= 12; i++) {
                     const colIndex = 2 + i;
-                    const rawMonto = String(fila[colIndex] || "").replace(/[^0-9.]/g, '');
-                    const monto = parseFloat(rawMonto);
+                    const val = String(fila[colIndex] || "").trim();
+                    const rawMonto = val.replace(/[^0-9.]/g, '');
+                    const monto = parseFloat(rawMonto) || 0;
 
-                    if (monto > 0 || i === 1) {
+                    if (monto > 0 || i === 1 || val !== "") {
                         const fechaCuota = new Date(fechaInicio);
                         fechaCuota.setMonth(fechaInicio.getMonth() + (i - 1));
                         const mesCuota = fechaCuota.getMonth() + 1;
                         const anioCuota = fechaCuota.getFullYear();
 
                         let estadoFinal = (monto > 0) ? 'pagado' : 'pendiente';
-                        if (mesCuota === mesActualCal && anioCuota === anioActualCal && estadoGral.includes('deud')) {
+
+                        // Si el estado general dice Deudor, el mes actual (o futuros) deben ser pendientes
+                        // incluso si hay un monto (ej: entrega parcial)
+                        const esMesActual = (mesCuota === mesActualCal && anioCuota === anioActualCal);
+                        if (esMesActual && estadoGral.toLowerCase().includes('deud')) {
                             estadoFinal = 'pendiente';
                         }
 

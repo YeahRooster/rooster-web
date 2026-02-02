@@ -20,8 +20,8 @@ export async function GET(request) {
             .order('fecha_subida', { ascending: false });
 
         if (taller) {
-            // Usamos ilike para que no falle por mayúsculas/minúsculas
-            query = query.ilike('taller', `%${taller.trim()}%`);
+            // Usamos ilike sin comodines para un match exacto pero insensible a mayúsculas
+            query = query.ilike('taller', taller.trim());
         }
 
         const { data, error } = await query;

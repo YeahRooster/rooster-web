@@ -499,48 +499,81 @@ export default function MiCuentaPage() {
                 </div>
 
                 {/* NUEVO: Tarjeta de Pago Automatizada */}
-                <div className={styles.profileCard} style={{ border: '1px solid #ffd700' }}>
+                <div className={styles.profileCard} style={{ border: '1px solid #ffd700', gridColumn: '1 / -1' }}>
                     <h2 className={styles.cardTitle}>💳 Pagar Cuota del Mes</h2>
                     {loadingPayment ? <p>Calculando monto actual...</p> : (
-                        suggestedPayment ? (
+                        suggestedPayment && suggestedPayment.items && suggestedPayment.items.length > 0 ? (
                             <div>
-                                <p style={{ fontSize: '1.2rem', marginBottom: '10px' }}>
-                                    {suggestedPayment.taller} - Cuota {suggestedPayment.cuota_numero}
-                                </p>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                                    {suggestedPayment.items.map((item, idx) => (
+                                        <div key={idx} style={{ background: '#122336', padding: '1.5rem', borderRadius: '12px', border: '1px solid #2a4a6d' }}>
+                                            <p style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '10px', color: 'var(--rooster-yellow)' }}>
+                                                {item.taller}
+                                            </p>
+                                            <p style={{ fontSize: '0.9rem', color: '#9ca3af', marginBottom: '1rem' }}>
+                                                Cuota {item.cuota_numero} ({item.mes_nombre})
+                                            </p>
 
-                                <div style={{ background: '#1f2937', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
-                                    <p style={{ color: '#9ca3af', margin: 0 }}>Monto a pagar hoy:</p>
-                                    <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#4ade80', margin: '5px 0' }}>
-                                        ${suggestedPayment.monto_sugerido}
-                                    </p>
-                                    <small style={{ color: '#ffd700' }}>
-                                        ℹ️ {suggestedPayment.nota}
-                                    </small>
+                                            <div style={{ background: '#0d1b2a', padding: '1rem', borderRadius: '8px', marginBottom: '10px' }}>
+                                                <p style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#4ade80', margin: 0 }}>
+                                                    ${item.monto_sugerido}
+                                                </p>
+                                                <small style={{ color: '#ffd700', fontSize: '0.75rem' }}>
+                                                    ℹ️ {item.nota}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
 
-                                <div style={{ borderTop: '1px solid #374151', paddingTop: '15px' }}>
-                                    <p style={{ marginBottom: '5px' }}><strong>Datos para Transferencia:</strong></p>
-                                    <p style={{ fontFamily: 'monospace', background: '#000', padding: '5px', borderRadius: '4px' }}>
-                                        Alias: <span style={{ color: '#ffd700', fontSize: '1.2em' }}>escuelarooster</span>
-                                    </p>
-                                    <p style={{ fontSize: '0.9em', color: '#9ca3af' }}>
-                                        Titular: Emiliano Gallo
-                                    </p>
-                                </div>
+                                <div style={{ background: '#1f2937', padding: '1.5rem', borderRadius: '12px', border: '2px dashed #ffd700' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                                        <div>
+                                            <h3 style={{ margin: 0, fontSize: '1.4rem' }}>Total a Transferir</h3>
+                                            <p style={{ color: '#9ca3af', margin: '5px 0 0 0', fontSize: '0.9rem' }}>
+                                                Sumatoria de {suggestedPayment.items.length} taller(es)
+                                            </p>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <p style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#4ade80', margin: 0 }}>
+                                                ${suggestedPayment.items.reduce((acc, curr) => acc + curr.monto_sugerido, 0)}
+                                            </p>
+                                        </div>
+                                    </div>
 
-                                <button
-                                    className="btn btn-primary"
-                                    style={{ width: '100%', marginTop: '15px' }}
-                                    onClick={() => {
-                                        const msg = `Hola! Ya realicé el pago de la Cuota ${suggestedPayment.cuota_numero} ($${suggestedPayment.monto_sugerido}) para ${user.nombre}. Adjunto comprobante!`;
-                                        window.open(`https://wa.me/5493416417649?text=${encodeURIComponent(msg)}`, '_blank');
-                                    }}
-                                >
-                                    📲 Informar Pago (WhatsApp)
-                                </button>
+                                    <div style={{ borderTop: '1px solid #374151', marginTop: '1.5rem', paddingTop: '1rem' }}>
+                                        <p style={{ marginBottom: '8px' }}><strong>Datos para la Transferencia:</strong></p>
+                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '15px', background: '#000', padding: '10px', borderRadius: '4px' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.8rem' }}>Alias:</p>
+                                                <p style={{ margin: 0, color: '#ffd700', fontSize: '1.2rem', fontFamily: 'monospace' }}>escuelarooster</p>
+                                            </div>
+                                            <div style={{ borderLeft: '1px solid #333', paddingLeft: '10px' }}>
+                                                <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.8rem' }}>Titular:</p>
+                                                <p style={{ margin: 0, fontSize: '0.9rem' }}>Emiliano Gallo</p>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            className="btn btn-primary"
+                                            style={{ width: '100%', fontSize: '1.1rem', padding: '12px' }}
+                                            onClick={() => {
+                                                const total = suggestedPayment.items.reduce((acc, curr) => acc + curr.monto_sugerido, 0);
+                                                const detalle = suggestedPayment.items.map(i => `${i.taller} (C${i.cuota_numero})`).join(', ');
+                                                const msg = `Hola! Realicé la transferencia de $${total} por: ${detalle}. Alumno: ${user.nombre}. Adjunto comprobante!`;
+                                                window.open(`https://wa.me/5493416417649?text=${encodeURIComponent(msg)}`, '_blank');
+                                            }}
+                                        >
+                                            📲 Informar Pago por WhatsApp
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         ) : (
-                            <p>No tienes pagos pendientes o no estás inscripto en un ciclo activo.</p>
+                            <div style={{ textAlign: 'center', padding: '2rem' }}>
+                                <p style={{ fontSize: '1.2rem', color: '#9ca3af' }}>No tienes cuotas pendientes por abonar.</p>
+                                <p style={{ fontSize: '0.9rem', color: '#666' }}>¡Gracias por estar al día!</p>
+                            </div>
                         )
                     )}
                 </div>
