@@ -106,12 +106,14 @@ export async function POST(request) {
             const taller = String(i[10]).trim();
             if (!dni || !taller) return;
             const key = `${dni}-${taller}`.toLowerCase();
+            const dateVal = i[11] ? new Date(i[11]) : new Date();
             uniqueInscMap.set(key, {
                 alumno_dni: dni,
                 taller_nombre: taller,
                 taller_id: tallerMap[taller.toLowerCase()] || null,
                 horario: i[12] || '',
-                fecha_inscripcion: i[11] ? new Date(i[11]) : new Date()
+                fecha_inscripcion: dateVal,
+                fecha_inicio_ciclo: dateVal // Aseguramos que el ciclo inicie en la fecha de inscripción
             });
         });
         await supabaseAdmin.from('inscripciones').insert(Array.from(uniqueInscMap.values()));
@@ -193,3 +195,4 @@ export async function POST(request) {
         return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
     }
 }
+Broadway

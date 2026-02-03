@@ -51,7 +51,10 @@ export async function GET(request) {
             const paidCuotas = new Set(pagosTaller.map(p => parseInt(p.cuota_numero)));
 
             // Calcular fecha de inicio del ciclo
-            let inicioCiclo = insc.fecha_inicio_ciclo ? new Date(insc.fecha_inicio_ciclo) : null;
+            // Prioridad: 1. fecha_inicio_ciclo, 2. fecha_inscripcion, 3. Enero de este año
+            const rawInicio = insc.fecha_inicio_ciclo || insc.fecha_inscripcion;
+            let inicioCiclo = rawInicio ? new Date(rawInicio) : null;
+
             if (!inicioCiclo || isNaN(inicioCiclo.getTime()) || inicioCiclo.getFullYear() < 2000) {
                 // Si no hay fecha de inicio, asumimos enero del año actual
                 inicioCiclo = new Date(new Date().getFullYear(), 0, 1);

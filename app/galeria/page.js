@@ -104,9 +104,17 @@ export default function GaleriaPage() {
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
+            // Validación de tamaño: 15MB (para fotos de alta calidad de celus)
+            if (file.size > 15 * 1024 * 1024) {
+                alert("La imagen es demasiado pesada (máximo 15MB). Por favor, intentá con una versión un poco más liviana.");
+                e.target.value = ""; // Limpiar input
+                return;
+            }
+
             const reader = new FileReader();
             reader.onloadend = () => {
-                setNewPost({ ...newPost, image: reader.result.split(',')[1] });
+                // Guardamos el Data URI completo (incluyendo el prefijo data:image/...)
+                setNewPost({ ...newPost, image: reader.result });
             };
             reader.readAsDataURL(file);
         }
@@ -120,20 +128,27 @@ export default function GaleriaPage() {
         try {
             const res = await fetch('/api/social/posts', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...newPost,
                     dni: user.dni,
                     nombre: user.nombre
                 })
             });
+
             const result = await res.json();
+
             if (result.status === 'success') {
+                alert("¡Obra subida con éxito! Ya podés verla en la galería. 🎨✨");
                 setShowUploadModal(false);
                 setNewPost({ titulo: '', descripcion: '', image: null });
                 loadPosts();
+            } else {
+                throw new Error(result.message || "Error del servidor");
             }
         } catch (error) {
-            alert("Error al subir obra");
+            console.error("Error al subir:", error);
+            alert("Hubo un problema al subir tu obra. Si la foto es muy grande, intenta achicarla o bajarle la resolución antes de subirla.");
         } finally {
             setUploading(false);
         }
@@ -264,6 +279,8 @@ export default function GaleriaPage() {
                         <h2>Subir Nueva Obra 📸</h2>
                         <div className={styles.moderationNotice}>
                             ⚠️ <strong>Aviso Importante:</strong> Para mantener nuestra comunidad segura, no se permite contenido explícito, ofensivo o inapropiado. Cualquier obra que infrinja estas normas será eliminada inmediatamente.
+                            <br /><br />
+                            📌 <strong>Tamaño máximo:</strong> 15MB. Si tu foto es muy pesada, intenta achicarla un poco antes de subirla.
                         </div>
                         <form onSubmit={handleUpload}>
                             <div className={styles.inputGroup}>

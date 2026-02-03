@@ -47,10 +47,10 @@ export async function POST(request) {
 
         if (!image || !dni) throw new Error("Imagen y DNI requeridos");
 
-        console.log(`📸 Subiendo obra de arte de ${nombre} a Cloudinary...`);
+        console.log(`📸 Subiendo obra de arte de ${nombre} (DNI: ${dni}) a Cloudinary...`);
 
-        // Subir a Cloudinary
-        const uploadRes = await cloudinary.uploader.upload(`data:image/jpeg;base64,${image}`, {
+        // Subir a Cloudinary (esperamos que 'image' ya sea el Data URI completo)
+        const uploadRes = await cloudinary.uploader.upload(image, {
             folder: `rooster/galeria_alumnos/${dni}`,
             public_id: `post_${Date.now()}`,
             resource_type: "image"
