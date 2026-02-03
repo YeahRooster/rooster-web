@@ -66,14 +66,20 @@ export async function POST(request) {
                     fecha_inscripcion: new Date()
                 });
 
-                // 3. Enviar Emails (No bloquea la respuesta)
-                sendEnrollmentEmails({
-                    ...body,
-                    workshopTitle: body.workshopTitle,
-                    selectedSchedules: body.selectedSchedules
-                }).catch(err => console.error("Error enviando mails:", err));
+                // 3. Enviar Emails (IMPORTANTE: Await para que Vercel no mate el proceso)
+                try {
+                    console.log(`📧 Intentando enviar mails de inscripción para ${body.name}...`);
+                    await sendEnrollmentEmails({
+                        ...body,
+                        workshopTitle: body.workshopTitle,
+                        selectedSchedules: body.selectedSchedules
+                    });
+                    console.log("✅ Emails de inscripción enviados con éxito");
+                } catch (errMail) {
+                    console.error("❌ Error enviando mails de inscripción:", errMail);
+                }
 
-                console.log("✅ Datos espejados en Supabase y emails procesados");
+                console.log("✅ Datos espejados en Supabase correctamente");
             } catch (errSup) {
                 console.error("❌ Error espejando en Supabase:", errSup);
                 // No bloqueamos la respuesta al usuario porque Sheets ya guardó bien

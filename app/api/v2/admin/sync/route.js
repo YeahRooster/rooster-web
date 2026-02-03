@@ -2,13 +2,12 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/config/supabaseAdmin';
 import { GOOGLE_SCRIPT_URL } from '@/config/google_script';
 
-export const maxDuration = 60; // 60 segundos por si el Sheets es lento (Vercel Hobby es 10s, Pro 300s)
+export const maxDuration = 60;
 
 export async function POST(request) {
     try {
         console.log("🚀 Iniciando Sincronización desde la WEB...");
 
-        // 1. Obtener todos los datos de Google Sheets
         const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=dumpAll`);
         const result = await response.json();
 
@@ -18,12 +17,9 @@ export async function POST(request) {
 
         const { talleres, alumnos, profesores, inscripciones, pagos } = result.data;
 
-        // --- LIMPIEZA TABLAS TRANSACCIONALES ---
-        // Borramos pagos e inscripciones para regenerarlos (son el espejo del Excel)
         await supabaseAdmin.from('pagos').delete().neq('id', 0);
         await supabaseAdmin.from('inscripciones').delete().neq('id', 0);
 
-        // 2. Sincronizar Talleres
         for (const t of talleres) {
             const titulo = t[1];
             const dia = t[2];
@@ -55,12 +51,10 @@ export async function POST(request) {
             }
         }
 
-        // Mapa para vincular inscripciones
         const { data: allTalleres } = await supabaseAdmin.from('talleres').select('id, titulo');
         const tallerMap = {};
         allTalleres?.forEach(t => { tallerMap[t.titulo.toLowerCase().trim()] = t.id; });
 
-        // 3. Upsert Alumnos (Preservando Passwords)
         const { data: existingAlumnos } = await supabaseAdmin.from('alumnos').select('dni, password');
         const passwordMapAlumnos = {};
         existingAlumnos?.forEach(a => passwordMapAlumnos[a.dni] = a.password);
@@ -81,7 +75,6 @@ export async function POST(request) {
         });
         await supabaseAdmin.from('alumnos').upsert(Array.from(validAlumnosMap.values()), { onConflict: 'dni' });
 
-        // 4. Upsert Profesores
         const { data: existingProfes } = await supabaseAdmin.from('profesores').select('dni, password');
         const passwordMapProfes = {};
         existingProfes?.forEach(p => passwordMapProfes[p.dni] = p.password);
@@ -99,7 +92,6 @@ export async function POST(request) {
         });
         await supabaseAdmin.from('profesores').upsert(Array.from(validProfesMap.values()), { onConflict: 'dni' });
 
-        // 5. Insertar Inscripciones
         const uniqueInscMap = new Map();
         inscripciones.forEach(i => {
             const dni = String(i[1]).trim();
@@ -113,12 +105,11 @@ export async function POST(request) {
                 taller_id: tallerMap[taller.toLowerCase()] || null,
                 horario: i[12] || '',
                 fecha_inscripcion: dateVal,
-                fecha_inicio_ciclo: dateVal // Aseguramos que el ciclo inicie en la fecha de inscripción
+                fecha_inicio_ciclo: dateVal
             });
         });
         await supabaseAdmin.from('inscripciones').insert(Array.from(uniqueInscMap.values()));
 
-        // 6. Procesar Pagos
         const pagosMap = new Map();
         for (const fila of pagos) {
             const dni = String(fila[0]).trim();
@@ -127,18 +118,17 @@ export async function POST(request) {
 
             const vencimientoStr = fila[15];
             const anioSheet = parseInt(fila[16]);
-            let fechaInicio, fechaVencimiento;
+            let fechaInicio;
 
             if (vencimientoStr) {
-                fechaVencimiento = new Date(vencimientoStr);
-                if (!isNaN(fechaVencimiento.getTime())) {
-                    fechaInicio = new Date(fechaVencimiento);
+                const fv = new Date(vencimientoStr);
+                if (!isNaN(fv.getTime())) {
+                    fechaInicio = new Date(fv);
                     fechaInicio.setFullYear(fechaInicio.getFullYear() - 1);
                 }
             }
-            if ((!fechaVencimiento || isNaN(fechaVencimiento.getTime())) && anioSheet) {
+            if (!fechaInicio && anioSheet) {
                 fechaInicio = new Date(anioSheet, 0, 1);
-                fechaVencimiento = new Date(anioSheet, 11, 31);
             }
 
             if (fechaInicio) {
@@ -148,8 +138,7 @@ export async function POST(request) {
                 const estadoGral = String(fila[17] || "").toLowerCase();
 
                 for (let i = 1; i <= 12; i++) {
-                    const colIndex = 2 + i;
-                    const val = String(fila[colIndex] || "").trim();
+                    const val = String(fila[2 + i] || "").trim();
                     const rawMonto = val.replace(/[^0-9.]/g, '');
                     const monto = parseFloat(rawMonto) || 0;
 
@@ -160,11 +149,7 @@ export async function POST(request) {
                         const anioCuota = fechaCuota.getFullYear();
 
                         let estadoFinal = (monto > 0) ? 'pagado' : 'pendiente';
-
-                        // Si el estado general dice Deudor, el mes actual (o futuros) deben ser pendientes
-                        // incluso si hay un monto (ej: entrega parcial)
-                        const esMesActual = (mesCuota === mesActualCal && anioCuota === anioActualCal);
-                        if (esMesActual && estadoGral.toLowerCase().includes('deud')) {
+                        if (mesCuota === mesActualCal && anioCuota === anioActualCal && estadoGral.includes('deud')) {
                             estadoFinal = 'pendiente';
                         }
 
@@ -175,8 +160,8 @@ export async function POST(request) {
                             mes: mesCuota,
                             anio: anioCuota,
                             cuota_numero: i,
-                            monto: monto || 0,
-                            monto_final: monto || 0,
+                            monto: monto,
+                            monto_final: monto,
                             estado: estadoFinal,
                             metodo_pago: 'MIGRACION',
                             fecha_pago: new Date()
@@ -187,7 +172,6 @@ export async function POST(request) {
         }
         await supabaseAdmin.from('pagos').upsert(Array.from(pagosMap.values()), { onConflict: 'alumno_dni,taller,mes,anio' });
 
-        console.log("✅ Sincronización WEB Exitosa");
         return NextResponse.json({ status: 'success', message: 'Sincronización completada' });
 
     } catch (error) {
@@ -195,4 +179,3 @@ export async function POST(request) {
         return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
     }
 }
-Broadway
