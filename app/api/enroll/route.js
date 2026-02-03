@@ -3,44 +3,53 @@ import { GOOGLE_SCRIPT_URL } from '@/config/google_script';
 import { supabase } from '@/config/supabase';
 import { sendEnrollmentEmails } from '@/lib/email';
 
+export const maxDuration = 30; // Aumentamos el tiempo de espera para que los mails salgan
+
 export async function POST(request) {
     try {
         const body = await request.json();
+        const { name, email, workshopTitle, selectedSchedules } = body;
 
-        // 1. Mapeo de campos para Google Sheets (GAS espera nombres específicos)
+        console.log(`📝 Iniciando proceso para: ${name} (${workshopTitle})`);
+
+        // 1. Mapeo de campos para Google Sheets
         const gasData = {
             dni: String(body.dni).trim(),
             nombre: body.name,
             email: body.email,
-            telefono: body.phone, // I: TELEFONO (Alumno)
-            tutor_celular: body.parentPhone, // J: CELULAR TUTOR
+            telefono: body.phone,
+            tutor_celular: body.parentPhone,
             ciudad: body.city,
             localidad: body.locality,
             direccion: body.address,
             tutor: body.tutorName,
             taller: body.workshopTitle,
             horario: body.selectedSchedules,
-            es_menor_str: body.isMinor ? 'si' : 'no', // C: ES MENOR?
+            es_menor_str: body.isMinor ? 'si' : 'no',
             experiencia: body.experiencia || 'No especifica',
             conocio: body.conocio || 'No especifica'
         };
 
-        // Guardar en Google Sheets (Sigue siendo el respaldo oficial)
+        // Guardar en Google Sheets
+        console.log("📡 Guardando en Sheets...");
         const response = await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
             body: JSON.stringify(gasData)
         });
         const result = await response.json();
+        console.log("📊 Resultado Sheets:", result.status);
 
-        // 2. Si se guardó bien en Sheets, lo espejamos en Supabase para que el Login v2 funcione al instante
+        // 2. Si Sheets OK, espejamos y enviamos mails
         if (result.status === 'success') {
+
+            // --- INSCRIPCIÓN EN SUPABASE ---
             try {
-                // Espejamos datos extendidos en Alumnos
+                console.log("🗄️ Guardando en base de datos Supabase...");
                 await supabase.from('alumnos').upsert({
                     dni: String(body.dni).trim(),
                     nombre: body.name,
                     email: body.email,
-                    password: String(body.dni).trim(), // Default password
+                    password: String(body.dni).trim(),
                     direccion: body.address,
                     telefono: body.phone,
                     ciudad: body.city,
@@ -49,10 +58,9 @@ export async function POST(request) {
                     tutor_telefono: body.parentPhone,
                     es_menor: body.isMinor,
                     fecha_ingreso: new Date(),
-                    activo: false // Requiere aprobación manual del admin
+                    activo: false
                 });
 
-                // Insert en Inscripciones
                 const { data: tData } = await supabase
                     .from('talleres')
                     .select('id')
@@ -65,30 +73,25 @@ export async function POST(request) {
                     taller_id: tData?.id || null,
                     fecha_inscripcion: new Date()
                 });
-
-                // 3. Enviar Emails (IMPORTANTE: Await para que Vercel no mate el proceso)
-                try {
-                    console.log(`📧 Intentando enviar mails de inscripción para ${body.name}...`);
-                    await sendEnrollmentEmails({
-                        ...body,
-                        workshopTitle: body.workshopTitle,
-                        selectedSchedules: body.selectedSchedules
-                    });
-                    console.log("✅ Emails de inscripción enviados con éxito");
-                } catch (errMail) {
-                    console.error("❌ Error enviando mails de inscripción:", errMail);
-                }
-
-                console.log("✅ Datos espejados en Supabase correctamente");
+                console.log("✅ Datos guardados en Supabase");
             } catch (errSup) {
-                console.error("❌ Error espejando en Supabase:", errSup);
-                // No bloqueamos la respuesta al usuario porque Sheets ya guardó bien
+                console.error("❌ Error Supabase (continuamos):", errSup.message);
+            }
+
+            // --- ENVIO DE EMAILS ---
+            try {
+                console.log(`📧 Intentando enviar mails de inscripción a Alumno (${email}) y Admin...`);
+                // IMPORTANTE: Se pasan todos los campos incluyendo experiencia y conocio
+                await sendEnrollmentEmails(body);
+                console.log("✅ Mails enviados exitosamente");
+            } catch (errMail) {
+                console.error("❌ ERROR CRÍTICO ENVIANDO MAILS:", errMail);
             }
         }
 
         return NextResponse.json(result);
     } catch (error) {
-        console.error("❌ Error en /api/enroll:", error);
+        console.error("❌ Error general en proceso de inscripción:", error);
         return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
     }
 }
