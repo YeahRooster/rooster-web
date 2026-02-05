@@ -215,6 +215,43 @@ export default function AdminDashboard() {
         finally { setProcessingDni(null); }
     };
 
+    const toggleNotifications = async (dni, currentStatus) => {
+        // Actualización optimista para feedback instantáneo
+        setStudents(prev => prev.map(s => s.dni === dni ? { ...s, notificaciones_activas: !currentStatus } : s));
+
+        try {
+            const res = await fetch('/api/v2/admin/students', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dni, notificaciones_activas: !currentStatus })
+            });
+            const result = await res.json();
+            if (result.status !== 'success') {
+                // Revertir si falló
+                setStudents(prev => prev.map(s => s.dni === dni ? { ...s, notificaciones_activas: currentStatus } : s));
+                alert("Error al actualizar: " + result.message);
+            }
+        } catch (err) {
+            setStudents(prev => prev.map(s => s.dni === dni ? { ...s, notificaciones_activas: currentStatus } : s));
+            alert("Error de conexión al cambiar notificaciones");
+        }
+    };
+
+    const sendPaymentReminders = async () => {
+        const secret = 'rooster-reminders-2026';
+        if (!confirm('¿Enviar recordatorios de pago automáticos?\n\nEste proceso enviará mails a los alumnos que deban el mes actual.')) return;
+
+        try {
+            const res = await fetch(`/api/v2/notifications/payment-reminders?secret=${secret}`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert(`✅ Se procesaron ${data.total_procesados} avisos.\n\nTipo: ${data.tipoAlerta}`);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (e) { alert('Error enviando recordatorios'); }
+    };
+
     const showPassword = async (dni) => {
         try {
             const res = await fetch(`/api/v2/admin/student-details?dni=${dni}`);
@@ -280,6 +317,7 @@ export default function AdminDashboard() {
                                 <tr>
                                     <th>Nombre</th>
                                     <th>DNI</th>
+                                    <th>Alertas</th>
                                     <th>Estado</th>
                                     <th>Acción</th>
                                 </tr>
@@ -289,6 +327,16 @@ export default function AdminDashboard() {
                                     <tr key={s.dni}>
                                         <td>{s.nombre}</td>
                                         <td>{s.dni}</td>
+                                        <td>
+                                            <label className={styles.switch}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={s.notificaciones_activas !== false} // Por defecto true si es null o true
+                                                    onChange={() => toggleNotifications(s.dni, s.notificaciones_activas !== false)}
+                                                />
+                                                <span className={styles.slider}></span>
+                                            </label>
+                                        </td>
                                         <td>
                                             <span className={s.activo ? styles.tagActive : styles.tagPending}>
                                                 {s.activo ? 'Activo' : 'Pendiente'}
@@ -531,7 +579,14 @@ export default function AdminDashboard() {
                                 className="btn btn-outline"
                                 style={{ border: '1px solid #eab308', color: '#eab308' }}
                             >
-                                🔔 Enviar Alertas de Renovación (Mes 11)
+                                🔔 Alerta Renovación Anual
+                            </button>
+                            <button
+                                onClick={sendPaymentReminders}
+                                className="btn btn-outline"
+                                style={{ border: '1px solid #10b981', color: '#10b981', marginLeft: '10px' }}
+                            >
+                                📩 Enviar Avisos de Pago del Mes
                             </button>
                         </div>
                     </div>
