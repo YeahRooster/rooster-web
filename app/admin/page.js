@@ -15,6 +15,13 @@ export default function AdminDashboard() {
     const [filter, setFilter] = useState('all');
     const [isSyncing, setIsSyncing] = useState(false);
 
+    // Estados para Centro de Comunicación
+    const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+    const [broadcastMessage, setBroadcastMessage] = useState('');
+    const [selectedTallerIds, setSelectedTallerIds] = useState([]); // Array de IDs
+    const [broadcastTargetAll, setBroadcastTargetAll] = useState(false);
+    const [isBroadcasting, setIsBroadcasting] = useState(false);
+
     useEffect(() => {
         if (user && user.role === 'admin') {
             loadStats();
@@ -250,6 +257,33 @@ export default function AdminDashboard() {
                 alert('Error: ' + data.message);
             }
         } catch (e) { alert('Error enviando recordatorios'); }
+    };
+
+    const handleBroadcast = async () => {
+        if (!broadcastMessage.trim()) return alert("Escribí un mensaje.");
+        if (!broadcastTargetAll && selectedTallerIds.length === 0) return alert("Seleccioná al menos un taller o marcá 'Todos'.");
+
+        setIsBroadcasting(true);
+        try {
+            const res = await fetch('/api/social/notifications/broadcast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    mensaje: broadcastMessage,
+                    tallerIds: selectedTallerIds,
+                    targetAll: broadcastTargetAll
+                })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert(`✅ Notificación enviada a ${data.count} alumnos.`);
+                setShowBroadcastModal(false);
+                setBroadcastMessage('');
+                setSelectedTallerIds([]);
+                setBroadcastTargetAll(false);
+            } else { alert('Error: ' + data.message); }
+        } catch (e) { alert('Error enviando notificación'); }
+        finally { setIsBroadcasting(false); }
     };
 
     const showPassword = async (dni) => {
@@ -587,6 +621,89 @@ export default function AdminDashboard() {
                                 style={{ border: '1px solid #10b981', color: '#10b981', marginLeft: '10px' }}
                             >
                                 📩 Enviar Avisos de Pago del Mes
+                            </button>
+                            <button
+                                onClick={() => setShowBroadcastModal(true)}
+                                className="btn btn-outline"
+                                style={{ border: '1px solid #c084fc', color: '#c084fc', marginLeft: '10px' }}
+                            >
+                                📣 Comunicar a Alumnos
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL DE COMUNICACIÓN */}
+            {showBroadcastModal && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modal}>
+                        <h2>Centro de Comunicación 📣</h2>
+                        <p className={styles.modalSubtitle}>Enviá una notificación directa a la campanita de los alumnos.</p>
+
+                        <div className={styles.formGroup}>
+                            <label>Tu mensaje:</label>
+                            <textarea
+                                className={styles.textarea}
+                                placeholder="Escribe aquí lo que quieras comunicar..."
+                                value={broadcastMessage}
+                                onChange={(e) => setBroadcastMessage(e.target.value)}
+                            />
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label>¿A quién enviar?</label>
+                            <div style={{ marginBottom: '1rem' }}>
+                                <label className={styles.checkboxItem} style={{ fontWeight: 'bold', borderBottom: '1px solid #374151', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={broadcastTargetAll}
+                                        onChange={(e) => {
+                                            setBroadcastTargetAll(e.target.checked);
+                                            if (e.target.checked) setSelectedTallerIds([]);
+                                        }}
+                                    />
+                                    🚀 Enviar a TODOS los alumnos activos
+                                </label>
+                            </div>
+
+                            {!broadcastTargetAll && (
+                                <div className={styles.selectorGrid}>
+                                    {talleres.map(t => (
+                                        <label key={t.titulo} className={styles.checkboxItem}>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedTallerIds.some(id => t.ids.includes(id))}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setSelectedTallerIds(prev => [...prev, ...t.ids]);
+                                                    } else {
+                                                        setSelectedTallerIds(prev => prev.filter(id => !t.ids.includes(id)));
+                                                    }
+                                                }}
+                                            />
+                                            {t.titulo}
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className={styles.modalActions}>
+                            <button
+                                className="btn btn-outline"
+                                onClick={() => setShowBroadcastModal(false)}
+                                disabled={isBroadcasting}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleBroadcast}
+                                style={{ background: '#c084fc', border: 'none' }}
+                                disabled={isBroadcasting}
+                            >
+                                {isBroadcasting ? 'Enviando...' : 'Enviar Notificación'}
                             </button>
                         </div>
                     </div>

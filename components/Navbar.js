@@ -114,7 +114,11 @@ export default function Navbar() {
                                         ) : (
                                             notifications.map((n) => (
                                                 <div key={n.id} className={`${styles.notificationItem} ${!n.leida ? styles.unreadLine : ''}`}>
-                                                    <p>❤️ <strong>{n.actor_nombre}</strong> le dio me gusta a tu obra.</p>
+                                                    {n.tipo === 'GALLERY_PROMO' ? (
+                                                        <p>🎨 {n.mensaje || '¡No te olvides de compartir tu obra en la galería!'}</p>
+                                                    ) : (
+                                                        <p>❤️ <strong>{n.actor_nombre}</strong> le dio me gusta a tu obra.</p>
+                                                    )}
                                                     <span>{new Date(n.fecha).toLocaleDateString()}</span>
                                                 </div>
                                             ))
