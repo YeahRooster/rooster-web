@@ -118,6 +118,8 @@ export default function Navbar() {
                                                         <p>🎨 {n.mensaje || '¡No te olvides de compartir tu obra en la galería!'}</p>
                                                     ) : n.tipo === 'BROADCAST' ? (
                                                         <p>📢 {n.mensaje}</p>
+                                                    ) : n.tipo === 'RECURSO' ? (
+                                                        <p>📚 {n.mensaje}</p>
                                                     ) : (
                                                         <p>❤️ <strong>{n.actor_nombre}</strong> le dio me gusta a tu obra.</p>
                                                     )}

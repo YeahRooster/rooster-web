@@ -77,7 +77,7 @@ export async function POST(request) {
                 destinatario_dni: i.alumno_dni,
                 actor_nombre: teacher || 'Tu profesor',
                 tipo: 'RECURSO',
-                mensaje: `Subió "${filename}" en el taller de ${taller}`,
+                mensaje: `Tu profesor subió material nuevo al taller de ${taller}. ¡Ya está disponible para descargarlo!`,
                 leida: false
             }));
 
