@@ -116,6 +116,8 @@ export default function Navbar() {
                                                 <div key={n.id} className={`${styles.notificationItem} ${!n.leida ? styles.unreadLine : ''}`}>
                                                     {n.tipo === 'GALLERY_PROMO' ? (
                                                         <p>🎨 {n.mensaje || '¡No te olvides de compartir tu obra en la galería!'}</p>
+                                                    ) : n.tipo === 'BROADCAST' ? (
+                                                        <p>📢 {n.mensaje}</p>
                                                     ) : (
                                                         <p>❤️ <strong>{n.actor_nombre}</strong> le dio me gusta a tu obra.</p>
                                                     )}

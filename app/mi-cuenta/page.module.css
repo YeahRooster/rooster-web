@@ -71,6 +71,15 @@
     font-weight: 700;
 }
 
+.tagExcluded {
+    background: #4b5563;
+    color: #e5e7eb;
+    padding: 0.2rem 0.6rem;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
 @media (max-width: 900px) {
     .dashboard {
         grid-template-columns: 1fr;

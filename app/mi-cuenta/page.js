@@ -485,8 +485,12 @@ export default function MiCuentaPage() {
                                             <td>{p.taller}</td>
                                             <td>{p.mes}</td>
                                             <td>
-                                                <span className={p.estado?.toLowerCase() === 'pagado' ? styles.tagPaid : styles.tagPending}>
-                                                    {p.estado}
+                                                <span className={
+                                                    p.estado?.toLowerCase() === 'pagado' ? styles.tagPaid :
+                                                        p.estado?.toLowerCase() === 'excluido' ? styles.tagExcluded :
+                                                            styles.tagPending
+                                                }>
+                                                    {p.estado === 'excluido' ? 'excluido' : p.estado}
                                                 </span>
                                             </td>
                                             <td>${p.monto}</td>

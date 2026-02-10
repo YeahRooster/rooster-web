@@ -13,11 +13,11 @@ export async function GET(request) {
             return NextResponse.json({ status: 'error', message: 'Falta DNI' }, { status: 400 });
         }
 
-        // 1. Buscar inscripciones y pagos en paralelo para mayor velocidad
+        // 1. Buscar inscripciones (con datos del alumno) y pagos en paralelo
         const [inscRes, pagosRes] = await Promise.all([
             supabaseAdmin
                 .from('inscripciones')
-                .select('*, talleres(*)')
+                .select('*, talleres(*), alumnos(fecha_ingreso)')
                 .eq('alumno_dni', alumno_dni),
             supabaseAdmin
                 .from('pagos')
@@ -41,6 +41,7 @@ export async function GET(request) {
 
         for (const insc of inscripciones) {
             const taller = insc.talleres;
+            const alumno = insc.alumnos;
             if (!taller) continue;
 
             // Filtrar pagos de este taller (solo los realizados/validados)
@@ -51,9 +52,15 @@ export async function GET(request) {
             const paidCuotas = new Set(pagosTaller.map(p => parseInt(p.cuota_numero)));
 
             // Calcular fecha de inicio del ciclo
-            // Prioridad: 1. fecha_inicio_ciclo, 2. fecha_inscripcion, 3. Enero de este año
+            // Prioridad: El mayor entre (insc.fecha_inicio_ciclo || insc.fecha_inscripcion) y (alumno.fecha_ingreso)
             const rawInicio = insc.fecha_inicio_ciclo || insc.fecha_inscripcion;
             let inicioCiclo = rawInicio ? new Date(rawInicio) : null;
+            const fechaIngreso = alumno?.fecha_ingreso ? new Date(alumno.fecha_ingreso) : null;
+
+            // El ciclo para este alumno no puede empezar antes de que ingrese a la escuela
+            if (fechaIngreso && (!inicioCiclo || fechaIngreso > inicioCiclo)) {
+                inicioCiclo = fechaIngreso;
+            }
 
             if (!inicioCiclo || isNaN(inicioCiclo.getTime()) || inicioCiclo.getFullYear() < 2000) {
                 // Si no hay fecha de inicio, asumimos enero del año actual
@@ -61,22 +68,26 @@ export async function GET(request) {
             }
 
             // ¿En qué cuota deberíamos estar hoy?
-            // Calculamos la diferencia en meses entre inicio de ciclo y hoy
-            const monthsDiff = (fechaPagoActual.getFullYear() - inicioCiclo.getFullYear()) * 12 + (fechaPagoActual.getMonth() - inicioCiclo.getMonth());
-            const currentCuotaTarget = monthsDiff + 1; // La cuota que corresponde al mes actual
+            const anioHoy = fechaPagoActual.getFullYear();
+            const mesHoy = fechaPagoActual.getMonth() + 1;
+            const indHoy = anioHoy * 12 + (mesHoy - 1);
+
+            const indInicio = inicioCiclo.getUTCFullYear() * 12 + inicioCiclo.getUTCMonth();
+            const monthsDiff = indHoy - indInicio;
+            const currentCuotaTarget = monthsDiff + 1;
 
             const tallerSuggestions = [];
 
             // Función auxiliar para generar la sugerencia de una cuota específica
             const getSuggestionForCuota = (num) => {
-                const baseDate = new Date(inicioCiclo.getFullYear(), inicioCiclo.getMonth(), 1);
-                const fechaCuotaObjetivo = new Date(baseDate);
-                fechaCuotaObjetivo.setMonth(baseDate.getMonth() + (num - 1));
+                const mesCuotaOffset = (num - 1);
+                // Calculamos anio y mes de la cuota objetivo
+                const totalMonths = indInicio + mesCuotaOffset;
+                const anioCuota = Math.floor(totalMonths / 12);
+                const mesIdxCuota = totalMonths % 12;
 
-                const mes_idx = fechaCuotaObjetivo.getMonth();
-                const anio_pago = fechaCuotaObjetivo.getFullYear();
-                const dia10DelMesCuota = new Date(anio_pago, mes_idx, 10);
-                const is_adelantado = fechaPagoActual < new Date(anio_pago, mes_idx, 1);
+                const dia10DelMesCuota = new Date(anioCuota, mesIdxCuota, 10);
+                const is_adelantado = fechaPagoActual < new Date(anioCuota, mesIdxCuota, 1);
 
                 let monto_sugerido;
                 let nota = '';
@@ -90,8 +101,8 @@ export async function GET(request) {
                 } else if (fechaPagoActual <= dia10DelMesCuota) {
                     monto_sugerido = taller.precio_desc_dia10 || taller.precio_base;
                     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-                    const mes_nombre = meses[mes_idx];
-                    nota = is_adelantado ? `Precio adelantado (${mes_nombre})` : `Precio con descuento (hasta el 10/${mes_idx + 1})`;
+                    const mes_nombre = meses[mesIdxCuota];
+                    nota = is_adelantado ? `Precio adelantado (${mes_nombre})` : `Precio con descuento (hasta el 10/${mesIdxCuota + 1})`;
                 } else {
                     monto_sugerido = taller.precio_base;
                     nota = 'Precio base (después del día 10)';
@@ -100,7 +111,7 @@ export async function GET(request) {
                 return {
                     taller: taller.titulo,
                     cuota_numero: num,
-                    mes_nombre: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][mes_idx],
+                    mes_nombre: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][mesIdxCuota],
                     monto_sugerido,
                     nota,
                     is_adelantado
@@ -110,14 +121,26 @@ export async function GET(request) {
             // 1. Agregar todas las cuotas vencidas o actuales que no están pagadas
             for (let c = 1; c <= currentCuotaTarget; c++) {
                 if (!paidCuotas.has(c)) {
-                    tallerSuggestions.push(getSuggestionForCuota(c));
+                    // Evitar sugerir cuotas previas al mes real de ingreso (indIngreso)
+                    const indIngresoReal = fechaIngreso ? (fechaIngreso.getUTCFullYear() * 12 + fechaIngreso.getUTCMonth()) : 0;
+                    const indCuotaC = indInicio + (c - 1);
+
+                    // REGLA: Ignorar el mes de ingreso si no está pago (para evitar deudas de fin de mes)
+                    // A menos que sea el mes actual y no haya otros pagos? No, mejor ser consistente con el sync.
+                    if (indCuotaC > indIngresoReal) {
+                        tallerSuggestions.push(getSuggestionForCuota(c));
+                    }
                 }
             }
 
-            // 2. Si el alumno está totalmente al día, sugerir la siguiente cuota (adelantada)
+            // 2. Si el alumno está al día (o incluso en vacaciones), sugerir la siguiente cuota adelantada
+            // IMPORTANTE: Siempre sugerir la cuota N+1 para que el botón de pago esté disponible
+            const ultimaCuotaSync = paidCuotas.size > 0 ? Math.max(...Array.from(paidCuotas)) : 0;
+            const proximaCuota = Math.max(currentCuotaTarget + 1, ultimaCuotaSync + 1);
+
+            // Opcional: Solo sugerir si no hay deudas o si el usuario quiere pagar adelantado
             if (tallerSuggestions.length === 0) {
-                const ultimaCuotaPagada = paidCuotas.size > 0 ? Math.max(...Array.from(paidCuotas)) : 0;
-                tallerSuggestions.push(getSuggestionForCuota(ultimaCuotaPagada + 1));
+                tallerSuggestions.push(getSuggestionForCuota(proximaCuota));
             }
 
             allSugerencias.push(...tallerSuggestions);

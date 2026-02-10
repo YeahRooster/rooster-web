@@ -22,10 +22,16 @@ export default function AdminDashboard() {
     const [broadcastTargetAll, setBroadcastTargetAll] = useState(false);
     const [isBroadcasting, setIsBroadcasting] = useState(false);
 
+    // NUEVOS ESTADOS: Búsqueda y Modal de Alumno
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+    const [newStudent, setNewStudent] = useState({ dni: '', nombre: '', email: '', telefono: '', talleres: [] });
+    const [isAddingStudent, setIsAddingStudent] = useState(false);
+
     useEffect(() => {
         if (user && user.role === 'admin') {
             loadStats();
-            loadStudents();
+            loadStudents(); // Cargará datos enriquecidos
             loadAllResources();
             loadTalleres();
         }
@@ -195,7 +201,8 @@ export default function AdminDashboard() {
 
     const loadStudents = async (status = '') => {
         try {
-            const res = await fetch(`/api/v2/admin/students${status ? `?status=${status}` : ''}`, { cache: 'no-store' });
+            // Usamos la v2 de /enriched para tener estado de pago y cuotas
+            const res = await fetch(`/api/v2/admin/students/enriched`, { cache: 'no-store' });
             const result = await res.json();
             if (result.status === 'success') {
                 setStudents(result.data);
@@ -286,6 +293,44 @@ export default function AdminDashboard() {
         finally { setIsBroadcasting(false); }
     };
 
+    const handleAddStudent = async () => {
+        if (!newStudent.dni || !newStudent.nombre) return alert("DNI y Nombre son obligatorios");
+        setIsAddingStudent(true);
+        try {
+            const res = await fetch('/api/v2/admin/students', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newStudent)
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert("✅ Alumno registrado y sincronizado con éxito.");
+                setShowAddStudentModal(false);
+                setNewStudent({ dni: '', nombre: '', email: '', telefono: '', talleres: [] });
+                loadStudents();
+            } else {
+                alert("❌ Error: " + data.message);
+            }
+        } catch (e) { alert("Error al registrar alumno"); }
+        finally { setIsAddingStudent(false); }
+    };
+
+    const sendIndividualReminder = async (dni, nombre) => {
+        if (!confirm(`¿Enviar recordatorio de pago a ${nombre}?`)) return;
+        try {
+            const res = await fetch('/api/social/notifications/broadcast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    mensaje: `¡Hola ${nombre}! Te recordamos que la cuota del mes se encuentra vencida. Por favor regularizá tu situación en Mi Cuenta.`,
+                    targetDni: dni // Necesitaré ajustar la API para aceptar targetDni o usar la existente
+                })
+            });
+            const data = await res.json();
+            if (data.status === 'success') alert("✅ Recordatorio enviado.");
+        } catch (e) { alert("Error al enviar recordatorio"); }
+    };
+
     const showPassword = async (dni) => {
         try {
             const res = await fetch(`/api/v2/admin/student-details?dni=${dni}`);
@@ -339,67 +384,117 @@ export default function AdminDashboard() {
 
             {view === 'students' && (
                 <div className={styles.studentsSection}>
+                    <div className={styles.topActions}>
+                        <div className={styles.searchBar}>
+                            <input
+                                type="text"
+                                placeholder="Buscar por nombre, DNI o email..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                            <span className={styles.searchIcon}>🔍</span>
+                        </div>
+                        <button
+                            className="btn btn-primary"
+                            style={{ background: '#c084fc', border: 'none', fontWeight: 'bold' }}
+                            onClick={() => setShowAddStudentModal(true)}
+                        >
+                            + Nuevo Alumno
+                        </button>
+                    </div>
+
                     <div className={styles.filterBar}>
                         <button onClick={() => { setFilter('all'); loadStudents(); }} className={filter === 'all' ? styles.btnFilterActive : ''}>Todos</button>
                         <button onClick={() => { setFilter('pending'); loadStudents('pending'); }} className={filter === 'pending' ? styles.btnFilterActive : ''}>Pendientes 🟡</button>
                         <button onClick={() => { setFilter('active'); loadStudents('active'); }} className={filter === 'active' ? styles.btnFilterActive : ''}>Activos 🟢</button>
                     </div>
 
-                    <div className={styles.tableWrapper}>
-                        <table className={styles.table}>
-                            <thead>
-                                <tr>
-                                    <th>Nombre</th>
-                                    <th>DNI</th>
-                                    <th>Alertas</th>
-                                    <th>Estado</th>
-                                    <th>Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {students.map((s) => (
-                                    <tr key={s.dni}>
-                                        <td>{s.nombre}</td>
-                                        <td>{s.dni}</td>
-                                        <td>
-                                            <label className={styles.switch}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={s.notificaciones_activas !== false} // Por defecto true si es null o true
-                                                    onChange={() => toggleNotifications(s.dni, s.notificaciones_activas !== false)}
-                                                />
-                                                <span className={styles.slider}></span>
-                                            </label>
-                                        </td>
-                                        <td>
-                                            <span className={s.activo ? styles.tagActive : styles.tagPending}>
-                                                {s.activo ? 'Activo' : 'Pendiente'}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div style={{ display: 'flex', gap: '5px' }}>
-                                                <button
-                                                    onClick={() => toggleStudentStatus(s.dni, s.activo)}
-                                                    className={s.activo ? styles.btnDeactivate : styles.btnActivate}
-                                                    disabled={processingDni === s.dni}
-                                                    title={s.activo ? "Dar de Baja" : "Dar de Alta"}
-                                                >
-                                                    {processingDni === s.dni ? '...' : (s.activo ? '🛑' : '✅')}
-                                                </button>
-                                                <button
-                                                    onClick={() => showPassword(s.dni)}
-                                                    className={styles.actionBtn}
-                                                    title="Ver Contraseña"
-                                                    style={{ background: '#3b82f6', border: 'none', cursor: 'pointer', padding: '5px 10px', borderRadius: '4px', fontSize: '1.2rem' }}
-                                                >
-                                                    👁️
-                                                </button>
+                    <div className={styles.cardsGrid}>
+                        {students
+                            .filter(s => {
+                                const q = searchQuery.toLowerCase();
+                                return s.nombre.toLowerCase().includes(q) || s.dni.includes(q) || (s.email && s.email.toLowerCase().includes(q));
+                            })
+                            .filter(s => {
+                                if (filter === 'all') return true;
+                                return filter === 'active' ? s.activo : !s.activo;
+                            })
+                            .map((s) => (
+                                <div key={s.dni} className={styles.studentCard}>
+                                    <div className={styles.cardHeader}>
+                                        <div className={styles.avatar}>
+                                            {s.nombre.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className={styles.headerInfo}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                <div>
+                                                    <h4>{s.nombre}</h4>
+                                                    <p>{s.email || 'Sin email'}</p>
+                                                    <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>{s.dni}</p>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'flex-start' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                                        <span style={{ fontSize: '0.65rem', color: '#9ca3af', fontWeight: 'bold' }}>ALERTAS</span>
+                                                        <label className={styles.switch}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={s.notificaciones_activas}
+                                                                onChange={() => toggleNotifications(s.dni, s.notificaciones_activas)}
+                                                            />
+                                                            <span className={styles.slider}></span>
+                                                        </label>
+                                                    </div>
+                                                    <div className={`${styles.statusBadge} ${s.paga_este_mes ? styles.statusPaid : styles.statusPending}`} style={{ position: 'static' }}>
+                                                        {s.paga_este_mes ? 'PAGADO' : 'PENDIENTE'}
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.cardBody}>
+                                        <div className={styles.feeInfo}>
+                                            <span>Cobro Mensual</span>
+                                            <strong onClick={() => {
+                                                // Permitir edición rápida si es un solo taller
+                                                if (s.inscripciones?.length === 1) {
+                                                    editCustomPrice(s.inscripciones[0].id, s.nombre, s.inscripciones[0].monto);
+                                                } else {
+                                                    alert("Este alumno tiene varios talleres. Editá los precios en la sección de 'Pagos'.");
+                                                }
+                                            }} style={{ cursor: 'pointer' }}>
+                                                ${s.cuota_total}/mes ✏️
+                                            </strong>
+                                        </div>
+                                        <div className={styles.vencimiento}>
+                                            <span>📅 Día 10</span>
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.cardActions}>
+                                        <a href={`https://wa.me/${s.telefono?.replace(/\D/g, '') || ''}`} target="_blank" rel="noreferrer" className={styles.actionBtnSocial}>
+                                            WhatsApp
+                                        </a>
+                                        <a href={`mailto:${s.email}`} className={styles.actionBtnSocial}>
+                                            Email
+                                        </a>
+                                        <button onClick={() => sendIndividualReminder(s.dni, s.nombre)} className={styles.actionBtnSocial} style={{ background: 'rgba(192, 132, 252, 0.1)', color: '#c084fc' }}>
+                                            Recordatorio
+                                        </button>
+                                    </div>
+
+                                    <div className={styles.cardFooter}>
+                                        <button onClick={() => showPassword(s.dni)} className={styles.footerBtn}>🔑 Ver Pass</button>
+                                        <button
+                                            onClick={() => toggleStudentStatus(s.dni, s.activo)}
+                                            className={`${styles.footerBtn} ${s.activo ? styles.textRed : styles.textGreen}`}
+                                        >
+                                            {s.activo ? '🛑 Dar de Baja' : '✅ Dar de Alta'}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        }
                     </div>
                 </div>
             )}
@@ -704,6 +799,94 @@ export default function AdminDashboard() {
                                 disabled={isBroadcasting}
                             >
                                 {isBroadcasting ? 'Enviando...' : 'Enviar Notificación'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showAddStudentModal && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modal}>
+                        <h2>👤 Registrar Nuevo Alumno</h2>
+                        <p className={styles.modalSubtitle}>Completá los datos para cargar al alumno en Supabase y el Excel.</p>
+
+                        <div className={styles.formGroup} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                                <label>DNI:</label>
+                                <input
+                                    type="text"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    value={newStudent.dni}
+                                    onChange={(e) => setNewStudent({ ...newStudent, dni: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label>Nombre Completo:</label>
+                                <input
+                                    type="text"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    value={newStudent.nombre}
+                                    onChange={(e) => setNewStudent({ ...newStudent, nombre: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className={styles.formGroup} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                                <label>Email:</label>
+                                <input
+                                    type="email"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    value={newStudent.email}
+                                    onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label>Teléfono (WhatsApp):</label>
+                                <input
+                                    type="text"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    placeholder="Ej: 549342..."
+                                    value={newStudent.telefono}
+                                    onChange={(e) => setNewStudent({ ...newStudent, telefono: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label>Inscribir a Talleres:</label>
+                            <div className={styles.selectorGrid} style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                                {talleres.map(t => (
+                                    <div key={t.ids[0]} className={styles.checkboxItem}>
+                                        <input
+                                            type="checkbox"
+                                            id={`new-taller-${t.ids[0]}`}
+                                            checked={newStudent.talleres.includes(t.ids[0])}
+                                            onChange={(e) => {
+                                                if (e.target.checked) setNewStudent({ ...newStudent, talleres: [...newStudent.talleres, t.ids[0]] });
+                                                else setNewStudent({ ...newStudent, talleres: newStudent.talleres.filter(id => id !== t.ids[0]) });
+                                            }}
+                                        />
+                                        <label htmlFor={`new-taller-${t.ids[0]}`} style={{ margin: 0 }}>{t.titulo}</label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className={styles.modalActions}>
+                            <button className="btn" onClick={() => setShowAddStudentModal(false)}>Cancelar</button>
+                            <button
+                                className="btn btn-primary"
+                                disabled={isAddingStudent}
+                                onClick={handleAddStudent}
+                                style={{ background: '#10b981', borderColor: '#10b981' }}
+                            >
+                                {isAddingStudent ? 'Registrando...' : 'Registrar Alumno'}
                             </button>
                         </div>
                     </div>
