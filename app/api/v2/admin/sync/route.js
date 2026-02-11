@@ -92,7 +92,28 @@ export async function POST(request) {
                 activo: String(a[5]).toUpperCase() === 'ACTIVO'
             });
         });
-        await supabaseAdmin.from('alumnos').upsert(Array.from(validAlumnosMap.values()), { onConflict: 'dni' });
+
+        // --- MANEJO DE DUPLICADOS DE EMAIL ---
+        // Si hay DNIs con el mismo email, Supabase fallará. Debemos quedarnos con uno o limpiar el email.
+        const emailsVistos = new Set();
+        const listaAlumnosRobustos = Array.from(validAlumnosMap.values()).map(a => {
+            if (a.email && emailsVistos.has(a.email.toLowerCase())) {
+                console.warn(`⚠️ Email duplicado detectado para DNI ${a.dni}: ${a.email}. Se anula el email para este registro para permitir la carga.`);
+                return { ...a, email: null };
+            }
+            if (a.email) emailsVistos.add(a.email.toLowerCase());
+            return a;
+        });
+
+        const alumnosRobustosFinal = listaAlumnosRobustos;
+        const { error: errA } = await supabaseAdmin.from('alumnos').upsert(alumnosRobustosFinal, { onConflict: 'dni' });
+        if (errA) console.error("❌ Error upserting alumnos:", errA.message);
+
+        // Obtener la lista real de DNIs existentes en Supabase (para filtrar huerfanos)
+        const { data: dbAlumnos, error: dbAErr } = await supabaseAdmin.from('alumnos').select('dni');
+        if (dbAErr) console.error("❌ Error fetching dbAlumnos:", dbAErr.message);
+        const allowedDnis = new Set(dbAlumnos?.map(a => String(a.dni)) || []);
+        console.log(`✅ DNIs permitidos en DB: ${allowedDnis.size}`);
 
         const { data: existingProfes } = await supabaseAdmin.from('profesores').select('dni, password');
         const passwordMapProfes = {};
@@ -109,7 +130,8 @@ export async function POST(request) {
                 taller_asignado: p[4]
             });
         });
-        await supabaseAdmin.from('profesores').upsert(Array.from(validProfesMap.values()), { onConflict: 'dni' });
+        const { error: errP } = await supabaseAdmin.from('profesores').upsert(Array.from(validProfesMap.values()), { onConflict: 'dni' });
+        if (errP) console.error("❌ Error upserting profesores:", errP.message);
 
         const uniqueInscMap = new Map();
         inscripciones.forEach(i => {
@@ -122,6 +144,10 @@ export async function POST(request) {
             const d = i[11] ? new Date(i[11]) : new Date();
             const dateVal = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12, 0, 0));
 
+            if (!allowedDnis.has(dni)) {
+                return;
+            }
+
             uniqueInscMap.set(key, {
                 alumno_dni: dni,
                 taller_nombre: taller,
@@ -131,7 +157,9 @@ export async function POST(request) {
                 fecha_inicio_ciclo: dateVal
             });
         });
-        await supabaseAdmin.from('inscripciones').insert(Array.from(uniqueInscMap.values()));
+        const { error: errI } = await supabaseAdmin.from('inscripciones').insert(Array.from(uniqueInscMap.values()));
+        if (errI) console.error("❌ Error inserting inscripciones:", errI.message);
+        else console.log(`✅ Inscripciones insertadas: ${uniqueInscMap.size}`);
 
         const pagosMap = new Map();
         for (const fila of pagos) {
@@ -140,6 +168,11 @@ export async function POST(request) {
             if (!dni || !taller) continue;
 
             const alumnoInfo = validAlumnosMap.get(dni);
+
+            if (!allowedDnis.has(dni)) {
+                continue;
+            }
+
             const fechaIngresoAlumno = alumnoInfo ? new Date(alumnoInfo.fecha_ingreso) : null;
 
             const vencimientoStr = fila[15];
@@ -254,9 +287,14 @@ export async function POST(request) {
                 }
             }
         }
-        await supabaseAdmin.from('pagos').upsert(Array.from(pagosMap.values()), { onConflict: 'alumno_dni,taller,mes,anio' });
+        console.log(`💰 Pagos preparados para guardar: ${pagosMap.size}`);
+        if (pagosMap.size > 0) {
+            const { error: errPag } = await supabaseAdmin.from('pagos').upsert(Array.from(pagosMap.values()), { onConflict: 'alumno_dni,taller,mes,anio' });
+            if (errPag) console.error("❌ Error upserting pagos:", errPag.message);
+            else console.log(`✅ Pagos guardados con éxito.`);
+        }
 
-        return NextResponse.json({ status: 'success', message: 'Sincronización completada' });
+        return NextResponse.json({ status: 'success', message: `Sincronización completada. Alumnos: ${listaAlumnosRobustos.length}, Pagos: ${pagosMap.size}` });
 
     } catch (error) {
         console.error("❌ Error en Sync API:", error);

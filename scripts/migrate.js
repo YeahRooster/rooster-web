@@ -106,9 +106,25 @@ async function migrate() {
             });
         });
 
-        const alumnosParaUpsert = Array.from(validAlumnosMap.values());
+        const alumnosParaUpsertPre = Array.from(validAlumnosMap.values());
+
+        // --- MANEJO DE DUPLICADOS DE EMAIL ---
+        const emailsVistos = new Set();
+        const alumnosParaUpsert = alumnosParaUpsertPre.map(a => {
+            if (a.email && emailsVistos.has(a.email.toLowerCase())) {
+                console.warn(`⚠️ Email duplicado detectado para DNI ${a.dni}: ${a.email}. Se anula el email.`);
+                return { ...a, email: null };
+            }
+            if (a.email) emailsVistos.add(a.email.toLowerCase());
+            return a;
+        });
+
         console.log(`👤 Sincronizando ${alumnosParaUpsert.length} alumnos únicos...`);
         const { error: errA } = await supabase.from('alumnos').upsert(alumnosParaUpsert, { onConflict: 'dni' });
+
+        // Obtener DNIs válidos en DB
+        const { data: dbAlumnos } = await supabase.from('alumnos').select('dni');
+        const allowedDnis = new Set(dbAlumnos?.map(a => String(a.dni)) || []);
 
         if (errA) {
             console.error("⚠️ Error en alumnos:", errA.message);
@@ -149,6 +165,11 @@ async function migrate() {
             const taller = String(i[10]).trim();
             if (dni === "" || taller === "") return;
             const key = `${dni}-${taller}`.toLowerCase();
+            if (!allowedDnis.has(dni)) {
+                console.warn(`⚠️ Saltando inscripción: Alumno DNI ${dni} no existe en la base de datos.`);
+                return;
+            }
+
             uniqueInscMap.set(key, {
                 alumno_dni: dni,
                 taller_nombre: taller,
@@ -178,6 +199,8 @@ async function migrate() {
             const dni = String(fila[0]).trim();
             const taller = fila[2];
             if (!dni || !taller) continue;
+
+            if (!allowedDnis.has(dni)) continue;
 
             let vencimientoStr = fila[15];
             const anioSheet = parseInt(fila[16]);
