@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS challenge_submissions (
     alumno_dni TEXT NOT NULL,
     alumno_nombre TEXT,
     imagen_url TEXT NOT NULL,
+    bio TEXT, -- Descripción coincidente con el modal
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(challenge_id, alumno_dni) -- Un alumno solo sube una obra por desafío
 );

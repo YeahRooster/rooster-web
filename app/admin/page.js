@@ -26,6 +26,9 @@ export default function AdminDashboard() {
         fecha_cierre_votacion: ''
     });
     const [isSavingChallenge, setIsSavingChallenge] = useState(false);
+    const [showSubmissionsModal, setShowSubmissionsModal] = useState(false);
+    const [currentSubmissions, setCurrentSubmissions] = useState([]);
+    const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
 
     // Estados para Centro de Comunicación
     const [showBroadcastModal, setShowBroadcastModal] = useState(false);
@@ -167,6 +170,17 @@ export default function AdminDashboard() {
             const data = await res.json();
             if (data.status === 'success') setChallenges(data.data);
         } catch (e) { console.error(e); }
+    };
+
+    const loadChallengeSubmissions = async (challengeId) => {
+        setIsLoadingSubmissions(true);
+        setShowSubmissionsModal(true);
+        try {
+            const res = await fetch(`/api/v2/admin/challenges?challenge_id=${challengeId}`);
+            const data = await res.json();
+            if (data.status === 'success') setCurrentSubmissions(data.data);
+        } catch (e) { console.error(e); }
+        finally { setIsLoadingSubmissions(false); }
     };
 
     const generateCoupon = async (alumno, mesIdx, montoBase) => {
@@ -739,7 +753,16 @@ export default function AdminDashboard() {
                                             <h3 style={{ color: 'white', margin: 0 }}>{c.titulo}</h3>
                                             <span style={{ fontSize: '0.8rem', color: etapaColor, fontWeight: 'bold' }}>{etapa}</span>
                                         </div>
-                                        <button onClick={() => handleDeleteChallenge(c.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>🗑️</button>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <button
+                                                onClick={() => loadChallengeSubmissions(c.id)}
+                                                className="btn btn-outline"
+                                                style={{ padding: '4px 12px', fontSize: '0.8rem', border: '1px solid #60a5fa', color: '#60a5fa' }}
+                                            >
+                                                👁️ Ver Obras
+                                            </button>
+                                            <button onClick={() => handleDeleteChallenge(c.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>🗑️</button>
+                                        </div>
                                     </div>
                                     <p style={{ fontSize: '0.9rem', color: '#9ca3af', margin: '0.5rem 0' }}>{c.descripcion?.substring(0, 100)}...</p>
 
@@ -1110,6 +1133,37 @@ export default function AdminDashboard() {
                                 {isAddingStudent ? 'Registrando...' : 'Registrar Alumno'}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {showSubmissionsModal && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalContent} style={{ maxWidth: '900px', width: '900px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h2 style={{ color: 'var(--rooster-yellow)', margin: 0 }}>🖼️ Obras Recibidas</h2>
+                            <button className="btn" onClick={() => setShowSubmissionsModal(false)}>Cerrar</button>
+                        </div>
+
+                        {isLoadingSubmissions ? (
+                            <p className="text-center">Cargando obras...</p>
+                        ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1.5rem', maxHeight: '70vh', overflowY: 'auto', padding: '10px' }}>
+                                {currentSubmissions.map(s => (
+                                    <div key={s.id} style={{ background: '#111827', borderRadius: '12px', overflow: 'hidden', border: '1px solid #374151' }}>
+                                        <div style={{ height: '180px' }}>
+                                            <img src={s.imagen_url} alt="Obra" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        </div>
+                                        <div style={{ padding: '10px' }}>
+                                            <strong style={{ display: 'block', color: 'white', fontSize: '0.9rem' }}>{s.alumno_nombre}</strong>
+                                            <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{s.alumno_dni}</span>
+                                            <p style={{ fontSize: '0.8rem', color: '#d1d5db', marginTop: '8px', fontStyle: 'italic' }}>"{s.bio}"</p>
+                                        </div>
+                                    </div>
+                                ))}
+                                {currentSubmissions.length === 0 && <p style={{ gridColumn: '1/-1', textAlign: 'center', padding: '2rem', opacity: 0.5 }}>Aún no se han subido obras para este desafío.</p>}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

@@ -1,9 +1,95 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/config/supabaseAdmin';
 
-// GET: Listar retos (Admin)
-export async function GET() {
+// Función helper para notificar alumnos
+async function broadcastChallengeNotification(titulo, mensaje, talleresParticipantes) {
     try {
+        if (!talleresParticipantes || talleresParticipantes.length === 0) return;
+
+        let dnis = [];
+
+        if (talleresParticipantes.includes('Todos')) {
+            // Caso 1: Todos los alumnos activos
+            const { data: alumnos, error } = await supabaseAdmin
+                .from('alumnos')
+                .select('dni')
+                .eq('activo', true);
+
+            if (error) throw error;
+            if (alumnos) dnis = alumnos.map(a => a.dni);
+        } else {
+            // Caso 2: Alumnos de talleres específicos
+            // 1. Obtener IDs de los talleres por su título
+            const { data: talleresDB, error: tErr } = await supabaseAdmin
+                .from('talleres')
+                .select('id, titulo');
+
+            if (tErr) throw tErr;
+
+            // Filtramos los IDs que coinciden con los nombres base (ej: "Dibujo")
+            const targetIds = talleresDB
+                .filter(t => talleresParticipantes.some(tp => t.titulo.toLowerCase().includes(tp.toLowerCase())))
+                .map(t => t.id);
+
+            if (targetIds.length === 0) return;
+
+            // 2. Obtener DNIs de inscripciones
+            const { data: inscripciones, error: iErr } = await supabaseAdmin
+                .from('inscripciones')
+                .select('alumno_dni')
+                .in('taller_id', targetIds);
+
+            if (iErr) throw iErr;
+            if (inscripciones) {
+                // Eliminar duplicados
+                dnis = [...new Set(inscripciones.map(i => i.alumno_dni))];
+            }
+        }
+
+        if (dnis.length === 0) return;
+
+        // 3. Insertar notificaciones
+        // NOTA: La tabla social_notifications no tiene columna 'titulo'. 
+        // Combinamos todo en 'mensaje'.
+        const notifications = dnis.map(dni => ({
+            destinatario_dni: dni,
+            mensaje: `${titulo}: ${mensaje}`,
+            tipo: 'DESAFIO',
+            leida: false,
+            fecha: new Date().toISOString()
+        }));
+
+        const { error: notifyErr } = await supabaseAdmin
+            .from('social_notifications')
+            .insert(notifications);
+
+        if (notifyErr) throw notifyErr;
+        return true;
+    } catch (err) {
+        console.error("Error in broadcast:", err);
+        return false;
+    }
+}
+
+// GET: Listar retos o submisiones de un reto específico (Admin)
+export async function GET(request) {
+    const { searchParams } = new URL(request.url);
+    const challengeId = searchParams.get('challenge_id');
+
+    try {
+        if (challengeId) {
+            // Obtener todas las obras subidas para este reto
+            const { data, error } = await supabaseAdmin
+                .from('challenge_submissions')
+                .select('*')
+                .eq('challenge_id', challengeId)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            return NextResponse.json({ status: 'success', data });
+        }
+
+        // Listar todos los retos
         const { data, error } = await supabaseAdmin
             .from('challenges')
             .select('*')
@@ -43,9 +129,12 @@ export async function POST(request) {
 
         if (error) throw error;
 
-        // NOTIFICACIÓN: Enviar broadcast a los alumnos de los talleres seleccionados
-        // El frontend se encargará de esto o podemos dispararlo aquí. 
-        // Por ahora, devolvemos el éxito.
+        // NOTIFICACIÓN: Nuevo Desafío
+        await broadcastChallengeNotification(
+            "🏆 Nuevo Desafío Artístico",
+            `Se ha publicado el reto: "${titulo}". ¡Entrá a participar!`,
+            talleres_participantes
+        );
 
         return NextResponse.json({ status: 'success', data });
     } catch (error) {
@@ -69,6 +158,22 @@ export async function PUT(request) {
             .single();
 
         if (error) throw error;
+
+        // NOTIFICACIÓN: Ganador o Cambio de etapa
+        if (updates.ganador_dni) {
+            await broadcastChallengeNotification(
+                "👑 ¡Tenemos un Ganador!",
+                `El desafío "${data.titulo}" ha finalizado. ¡Entrá a ver quién ganó!`,
+                data.talleres_participantes
+            );
+        } else if (updates.stage_manual === 'VOTACION' || (updates.fecha_cierre_subida && new Date(updates.fecha_cierre_subida) < new Date())) {
+            // Si el admin cambia algo que inicie la votación
+            await broadcastChallengeNotification(
+                "🗳️ ¡A Votar!",
+                `Ya podés votar las obras del desafío: "${data.titulo}".`,
+                data.talleres_participantes
+            );
+        }
 
         return NextResponse.json({ status: 'success', data });
     } catch (error) {

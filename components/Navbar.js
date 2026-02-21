@@ -86,6 +86,7 @@ export default function Navbar() {
                 <li><Link href="/" className={styles.navLink} onClick={closeMenu}>Inicio</Link></li>
                 <li><Link href="/talleres" className={styles.navLink} onClick={closeMenu}>Talleres</Link></li>
                 <li><Link href="/galeria" className={styles.navLink} onClick={closeMenu}>Galería</Link></li>
+                <li><Link href="/desafios" className={styles.navLink} onClick={closeMenu}>Desafíos</Link></li>
                 <li><Link href="/recursos" className={styles.navLink} onClick={closeMenu}>Recursos</Link></li>
                 <li><Link href="/contacto" className={styles.navLink} onClick={closeMenu}>Contacto</Link></li>
                 {user?.role === 'admin' && (
@@ -115,15 +116,22 @@ export default function Navbar() {
                                         ) : (
                                             notifications.map((n) => (
                                                 <div key={n.id} className={`${styles.notificationItem} ${!n.leida ? styles.unreadLine : ''}`}>
-                                                    {n.tipo === 'GALLERY_PROMO' ? (
-                                                        <p>🎨 {n.mensaje || '¡No te olvides de compartir tu obra en la galería!'}</p>
-                                                    ) : n.tipo === 'BROADCAST' ? (
-                                                        <p>📢 {n.mensaje}</p>
-                                                    ) : n.tipo === 'RECURSO' ? (
-                                                        <p>📚 {n.mensaje}</p>
-                                                    ) : (
-                                                        <p>❤️ <strong>{n.actor_nombre}</strong> le dio me gusta a tu obra.</p>
-                                                    )}
+                                                    {(() => {
+                                                        const tipo = n.tipo?.toUpperCase().trim();
+                                                        if (tipo === 'GALLERY_PROMO') return <p>🎨 {n.mensaje || '¡No te olvides de compartir tu obra en la galería!'}</p>;
+                                                        if (tipo === 'BROADCAST') return <p>📢 {n.mensaje}</p>;
+                                                        if (tipo === 'RECURSO') return <p>📚 {n.mensaje}</p>;
+                                                        if (tipo === 'DESAFIO') return <p>🏆 {n.mensaje}</p>;
+
+                                                        // Fallback para likes u otros
+                                                        return (
+                                                            <p>
+                                                                {tipo === 'LIKE' ? '❤️ ' : '🔔 '}
+                                                                {n.actor_nombre && <strong>{n.actor_nombre} </strong>}
+                                                                {n.mensaje || 'le dio me gusta a tu obra.'}
+                                                            </p>
+                                                        );
+                                                    })()}
                                                     <span>{new Date(n.fecha).toLocaleDateString()}</span>
                                                 </div>
                                             ))

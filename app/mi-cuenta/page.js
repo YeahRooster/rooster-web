@@ -577,106 +577,22 @@ export default function MiCuentaPage() {
                     )}
                 </div>
 
-                <div className={styles.paymentsCard} style={{ gridColumn: '1 / -1' }}>
-                    <h2 className={styles.cardTitle}>🏆 Desafíos Artísticos</h2>
-                    {loadingChallenges ? <p>Buscando retos...</p> : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-                            {challenges.length === 0 && <p className={styles.noData}>No hay desafíos activos para tus talleres en este momento.</p>}
-                            {challenges.map(c => {
-                                const ahora = new Date();
-                                const inicio = new Date(c.fecha_inicio);
-                                const finSubida = new Date(c.fecha_cierre_subida);
-                                const finVotacion = new Date(c.fecha_cierre_votacion);
-
-                                let etapa = "PROXIMAMENTE";
-                                let etapaDesc = "El reto aún no ha comenzado.";
-                                if (ahora >= inicio && ahora < finSubida) {
-                                    etapa = "SUBIDA";
-                                    etapaDesc = "¡Es hora de crear! Sube tu obra antes del " + finSubida.toLocaleDateString();
-                                } else if (ahora >= finSubida && ahora < finVotacion) {
-                                    etapa = "VOTACION";
-                                    etapaDesc = "Mirá las obras de tus compañeros y votá por tus 3 favoritas.";
-                                } else if (ahora >= finVotacion) {
-                                    etapa = "FINALIZADO";
-                                    etapaDesc = "El desafío ha terminado. ¡Pronto anunciaremos ganadores!";
-                                }
-
-                                const hasSubmitted = c.mySubmission;
-                                const stats = voterStats[c.id] || { used: 0, locked: false, myVotes: [] };
-
-                                return (
-                                    <div key={c.id} style={{ background: '#111827', padding: '1.5rem', borderRadius: '16px', border: '1px solid #374151', display: 'flex', flexDirection: 'column' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                                            <h3 style={{ margin: 0, color: 'white' }}>{c.titulo}</h3>
-                                            <span style={{ fontSize: '0.7rem', fontWeight: 'bold', background: etapa === 'VOTACION' ? '#f59e0b' : '#374151', padding: '4px 8px', borderRadius: '6px' }}>{etapa}</span>
-                                        </div>
-                                        <p style={{ fontSize: '0.9rem', color: '#9ca3af', flex: 1 }}>{etapaDesc}</p>
-
-                                        <div style={{ marginTop: '1.5rem' }}>
-                                            {etapa === 'SUBIDA' && (
-                                                hasSubmitted ? (
-                                                    <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '10px', borderRadius: '8px', textAlign: 'center', fontSize: '0.9rem' }}>
-                                                        ✅ Ya subiste tu obra. ¡Éxito!
-                                                    </div>
-                                                ) : (
-                                                    <button
-                                                        className="btn btn-primary"
-                                                        style={{ width: '100%', background: 'var(--rooster-yellow)', border: 'none', color: '#0d1b2a' }}
-                                                        onClick={() => { setSelectedChallenge(c); setShowSubmitModal(true); }}
-                                                    >
-                                                        🎨 Subir mi Obra
-                                                    </button>
-                                                )
-                                            )}
-
-                                            {etapa === 'VOTACION' && (
-                                                <div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '0.85rem' }}>
-                                                        <span>Votos usados: <strong>{stats.used}/3</strong></span>
-                                                        {stats.locked && <span style={{ color: '#10b981' }}>🔒 Votación Cerrada</span>}
-                                                    </div>
-                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                                        {c.submissions?.filter(s => s.student_dni !== user.dni).map(s => {
-                                                            const voted = stats.myVotes.includes(s.id);
-                                                            return (
-                                                                <div key={s.id} style={{ position: 'relative' }}>
-                                                                    <img
-                                                                        src={s.image_url}
-                                                                        alt="Obra"
-                                                                        style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: '8px', border: voted ? '2px solid #f59e0b' : 'none' }}
-                                                                    />
-                                                                    <button
-                                                                        onClick={() => handleVote(c.id, s.id)}
-                                                                        style={{
-                                                                            position: 'absolute', bottom: '5px', right: '5px',
-                                                                            background: voted ? '#f59e0b' : 'rgba(0,0,0,0.6)',
-                                                                            color: 'white', border: 'none', borderRadius: '50%',
-                                                                            width: '30px', height: '30px', cursor: 'pointer',
-                                                                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                                                        }}
-                                                                        title={voted ? "Quitar voto" : "Votar"}
-                                                                    >
-                                                                        {voted ? '⭐' : '☆'}
-                                                                    </button>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {etapa === 'FINALIZADO' && (
-                                                <div style={{ textAlign: 'center', opacity: 0.6 }}>
-                                                    <p style={{ margin: 0 }}>Desafío Concluido</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                <div className={styles.profileCard} style={{ border: '1px solid #ffd700', gridColumn: '1 / -1' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                        <h2 className={styles.cardTitle} style={{ marginBottom: 0 }}>🏆 Desafíos Artísticos</h2>
+                        <button
+                            onClick={() => window.location.href = '/desafios'}
+                            className="btn btn-primary"
+                            style={{ background: 'var(--rooster-yellow)', color: '#0d1b2a', border: 'none', fontWeight: 'bold' }}
+                        >
+                            Ver Desafíos Activos →
+                        </button>
+                    </div>
+                    <p style={{ color: '#9ca3af', fontSize: '0.95rem' }}>
+                        Participá en los retos mensuales, subí tus obras y votá por las mejores creaciones de la escuela.
+                    </p>
                 </div>
+
                 <div className={styles.profileCard} style={{ border: '1px solid #ffd700', gridColumn: '1 / -1' }}>
                     <h2 className={styles.cardTitle}>💳 Pagar Cuota del Mes</h2>
                     {loadingPayment ? <p>Calculando monto actual...</p> : (
