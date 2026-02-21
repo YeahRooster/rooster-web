@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import styles from './page.module.css';
+import GalleryMarquee from '@/components/GalleryMarquee';
 
 export default function Home() {
   return (
@@ -55,6 +56,9 @@ export default function Home() {
           </p>
         </div>
       </section>
+
+      {/* Gallery Marquee */}
+      <GalleryMarquee />
 
       {/* Benefits Section */}
       <section className={styles.benefits}>

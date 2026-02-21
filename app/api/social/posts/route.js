@@ -3,6 +3,8 @@ import { supabase } from '@/config/supabase';
 import { supabaseAdmin } from '@/config/supabaseAdmin';
 import { v2 as cloudinary } from 'cloudinary';
 
+export const dynamic = 'force-dynamic';
+
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
@@ -15,15 +17,19 @@ export async function GET(request) {
         const status = searchParams.get('status') || 'active'; // 'active' por defecto
 
         // Obtener posts con cuenta de likes (vía join lateral o conteo simple)
-        // Agregamos filtro por estado
-        const { data, error } = await supabase
+        let query = supabase
             .from('social_posts')
             .select(`
                 *,
                 social_likes (usuario_dni)
-            `)
-            .eq('status', status)
-            .order('fecha_creacion', { ascending: false });
+            `);
+
+        // Si status es 'all' (para admin), no filtramos por status
+        if (status !== 'all') {
+            query = query.eq('status', status);
+        }
+
+        const { data, error } = await query.order('fecha_creacion', { ascending: false });
 
         if (error) throw error;
 

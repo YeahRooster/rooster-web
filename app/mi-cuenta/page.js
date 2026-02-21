@@ -24,6 +24,15 @@ export default function MiCuentaPage() {
     // Estado para taller seleccionado (Profes que dan varios)
     const [selectedTaller, setSelectedTaller] = useState('');
 
+    // Estados para desafíos (Retos)
+    const [challenges, setChallenges] = useState([]);
+    const [loadingChallenges, setLoadingChallenges] = useState(false);
+    const [showSubmitModal, setShowSubmitModal] = useState(false);
+    const [selectedChallenge, setSelectedChallenge] = useState(null);
+    const [submissionData, setSubmissionData] = useState({ imageBase64: '', caption: '' });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [voterStats, setVoterStats] = useState({}); // { challengeId: { used: 0, locked: false, myVotes: [] } }
+
     useEffect(() => {
         if (user && user.role === 'student') {
             loadSuggestedPayment();
@@ -33,6 +42,7 @@ export default function MiCuentaPage() {
                 const dismissed = localStorage.getItem('dismiss_discount_alert');
                 if (!dismissed) setShowAlert(true);
             }
+            loadAccountChallenges();
         }
 
         if (user && user.role === 'teacher' && user.taller) {
@@ -85,6 +95,71 @@ export default function MiCuentaPage() {
         } finally {
             setLoadingTeacher(false);
         }
+    };
+
+    const loadAccountChallenges = async () => {
+        if (!user?.dni) return;
+        setLoadingChallenges(true);
+        try {
+            const res = await fetch(`/api/v2/challenges?dni=${user.dni}`);
+            const data = await res.json();
+            if (data.status === 'success' && Array.isArray(data.data)) {
+                setChallenges(data.data);
+                const stats = {};
+                data.data.forEach(c => {
+                    stats[c.id] = {
+                        used: (c.myVotes || []).length,
+                        locked: c.isLocked || false,
+                        myVotes: c.myVotes || []
+                    };
+                });
+                setVoterStats(stats);
+            }
+        } catch (e) { console.error(e); }
+        finally { setLoadingChallenges(false); }
+    };
+
+    const handleSubmitChallenge = async () => {
+        if (!submissionData.imageBase64 || !submissionData.caption) return alert("Falta imagen o descripción");
+        setIsSubmitting(true);
+        try {
+            const res = await fetch('/api/v2/challenges', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    challenge_id: selectedChallenge.id,
+                    student_dni: user.dni,
+                    student_name: user.nombre,
+                    image_base64: submissionData.imageBase64,
+                    bio: submissionData.caption
+                })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert("✅ Obra subida con éxito! Mucha suerte.");
+                setShowSubmitModal(false);
+                setSubmissionData({ imageBase64: '', caption: '' });
+                loadAccountChallenges();
+            } else { alert("❌ Error: " + data.message); }
+        } catch (e) { alert("Error de conexión"); }
+        finally { setIsSubmitting(false); }
+    };
+
+    const handleVote = async (challengeId, submissionId) => {
+        const stats = voterStats[challengeId];
+        if (stats?.locked) return alert("🔒 Ya has usado tus 3 votos para este desafío.");
+
+        try {
+            const res = await fetch('/api/v2/challenges/vote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ challenge_id: challengeId, submission_id: submissionId, voter_dni: user.dni })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                loadAccountChallenges();
+            } else { alert(data.message); }
+        } catch (e) { alert("Error al votar"); }
     };
 
     const processFile = async (file) => {
@@ -480,7 +555,7 @@ export default function MiCuentaPage() {
                                     <tr><th>Taller</th><th>Mes</th><th>Estado</th><th>Monto</th></tr>
                                 </thead>
                                 <tbody>
-                                    {pagos.map((p, i) => (
+                                    {pagos.filter(p => p.mes && p.anio && p.mes !== '-').map((p, i) => (
                                         <tr key={i}>
                                             <td>{p.taller}</td>
                                             <td>{p.mes}</td>
@@ -490,10 +565,10 @@ export default function MiCuentaPage() {
                                                         p.estado?.toLowerCase() === 'excluido' ? styles.tagExcluded :
                                                             styles.tagPending
                                                 }>
-                                                    {p.estado === 'excluido' ? 'excluido' : p.estado}
+                                                    {p.estado?.toLowerCase() === 'excluido' ? 'Vacaciones' : p.estado}
                                                 </span>
                                             </td>
-                                            <td>${p.monto}</td>
+                                            <td>{p.estado?.toLowerCase() === 'excluido' ? 'N/A' : `$${p.monto}`}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -502,7 +577,106 @@ export default function MiCuentaPage() {
                     )}
                 </div>
 
-                {/* NUEVO: Tarjeta de Pago Automatizada */}
+                <div className={styles.paymentsCard} style={{ gridColumn: '1 / -1' }}>
+                    <h2 className={styles.cardTitle}>🏆 Desafíos Artísticos</h2>
+                    {loadingChallenges ? <p>Buscando retos...</p> : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                            {challenges.length === 0 && <p className={styles.noData}>No hay desafíos activos para tus talleres en este momento.</p>}
+                            {challenges.map(c => {
+                                const ahora = new Date();
+                                const inicio = new Date(c.fecha_inicio);
+                                const finSubida = new Date(c.fecha_cierre_subida);
+                                const finVotacion = new Date(c.fecha_cierre_votacion);
+
+                                let etapa = "PROXIMAMENTE";
+                                let etapaDesc = "El reto aún no ha comenzado.";
+                                if (ahora >= inicio && ahora < finSubida) {
+                                    etapa = "SUBIDA";
+                                    etapaDesc = "¡Es hora de crear! Sube tu obra antes del " + finSubida.toLocaleDateString();
+                                } else if (ahora >= finSubida && ahora < finVotacion) {
+                                    etapa = "VOTACION";
+                                    etapaDesc = "Mirá las obras de tus compañeros y votá por tus 3 favoritas.";
+                                } else if (ahora >= finVotacion) {
+                                    etapa = "FINALIZADO";
+                                    etapaDesc = "El desafío ha terminado. ¡Pronto anunciaremos ganadores!";
+                                }
+
+                                const hasSubmitted = c.mySubmission;
+                                const stats = voterStats[c.id] || { used: 0, locked: false, myVotes: [] };
+
+                                return (
+                                    <div key={c.id} style={{ background: '#111827', padding: '1.5rem', borderRadius: '16px', border: '1px solid #374151', display: 'flex', flexDirection: 'column' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                                            <h3 style={{ margin: 0, color: 'white' }}>{c.titulo}</h3>
+                                            <span style={{ fontSize: '0.7rem', fontWeight: 'bold', background: etapa === 'VOTACION' ? '#f59e0b' : '#374151', padding: '4px 8px', borderRadius: '6px' }}>{etapa}</span>
+                                        </div>
+                                        <p style={{ fontSize: '0.9rem', color: '#9ca3af', flex: 1 }}>{etapaDesc}</p>
+
+                                        <div style={{ marginTop: '1.5rem' }}>
+                                            {etapa === 'SUBIDA' && (
+                                                hasSubmitted ? (
+                                                    <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '10px', borderRadius: '8px', textAlign: 'center', fontSize: '0.9rem' }}>
+                                                        ✅ Ya subiste tu obra. ¡Éxito!
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        className="btn btn-primary"
+                                                        style={{ width: '100%', background: 'var(--rooster-yellow)', border: 'none', color: '#0d1b2a' }}
+                                                        onClick={() => { setSelectedChallenge(c); setShowSubmitModal(true); }}
+                                                    >
+                                                        🎨 Subir mi Obra
+                                                    </button>
+                                                )
+                                            )}
+
+                                            {etapa === 'VOTACION' && (
+                                                <div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '0.85rem' }}>
+                                                        <span>Votos usados: <strong>{stats.used}/3</strong></span>
+                                                        {stats.locked && <span style={{ color: '#10b981' }}>🔒 Votación Cerrada</span>}
+                                                    </div>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                                        {c.submissions?.filter(s => s.student_dni !== user.dni).map(s => {
+                                                            const voted = stats.myVotes.includes(s.id);
+                                                            return (
+                                                                <div key={s.id} style={{ position: 'relative' }}>
+                                                                    <img
+                                                                        src={s.image_url}
+                                                                        alt="Obra"
+                                                                        style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: '8px', border: voted ? '2px solid #f59e0b' : 'none' }}
+                                                                    />
+                                                                    <button
+                                                                        onClick={() => handleVote(c.id, s.id)}
+                                                                        style={{
+                                                                            position: 'absolute', bottom: '5px', right: '5px',
+                                                                            background: voted ? '#f59e0b' : 'rgba(0,0,0,0.6)',
+                                                                            color: 'white', border: 'none', borderRadius: '50%',
+                                                                            width: '30px', height: '30px', cursor: 'pointer',
+                                                                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                                        }}
+                                                                        title={voted ? "Quitar voto" : "Votar"}
+                                                                    >
+                                                                        {voted ? '⭐' : '☆'}
+                                                                    </button>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {etapa === 'FINALIZADO' && (
+                                                <div style={{ textAlign: 'center', opacity: 0.6 }}>
+                                                    <p style={{ margin: 0 }}>Desafío Concluido</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
                 <div className={styles.profileCard} style={{ border: '1px solid #ffd700', gridColumn: '1 / -1' }}>
                     <h2 className={styles.cardTitle}>💳 Pagar Cuota del Mes</h2>
                     {loadingPayment ? <p>Calculando monto actual...</p> : (
@@ -582,6 +756,66 @@ export default function MiCuentaPage() {
                     )}
                 </div>
             </div>
+
+            {showSubmitModal && (
+                <div className={styles.modalOverlay} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+                    <div style={{ background: '#1f2937', padding: '2rem', borderRadius: '20px', maxWidth: '500px', width: '100%', border: '1px solid #374151' }}>
+                        <h2 style={{ color: 'var(--rooster-yellow)', marginBottom: '0.5rem' }}>🎨 Participar en {selectedChallenge?.titulo}</h2>
+                        <p style={{ color: '#aaa', fontSize: '0.9rem', marginBottom: '2rem' }}>Subí una foto de tu obra y contanos un poquito sobre ella.</p>
+
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <label style={{ display: 'block', color: 'white', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Tu Obra:</label>
+                            {submissionData.imageBase64 ? (
+                                <div style={{ position: 'relative' }}>
+                                    <img src={`data:image/jpeg;base64,${submissionData.imageBase64}`} style={{ width: '100%', borderRadius: '12px' }} />
+                                    <button onClick={() => setSubmissionData({ ...submissionData, imageBase64: '' })} style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', cursor: 'pointer', borderRadius: '50%', width: '30px', height: '30px' }}>✕</button>
+                                </div>
+                            ) : (
+                                <div style={{ border: '2px dashed #4b5563', padding: '2rem', textAlign: 'center', borderRadius: '12px' }}>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        id="sub-file"
+                                        hidden
+                                        onChange={(e) => {
+                                            const file = e.target.files[0];
+                                            if (file) {
+                                                const reader = new FileReader();
+                                                reader.onload = (f) => setSubmissionData({ ...submissionData, imageBase64: f.target.result.split(',')[1] });
+                                                reader.readAsDataURL(file);
+                                            }
+                                        }}
+                                    />
+                                    <label htmlFor="sub-file" style={{ cursor: 'pointer', color: 'var(--rooster-yellow)', fontWeight: 'bold' }}>📷 Seleccionar Foto</label>
+                                </div>
+                            )}
+                        </div>
+
+                        <div style={{ marginBottom: '2rem' }}>
+                            <label style={{ display: 'block', color: 'white', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Contanos sobre tu obra (Bio/Descripción):</label>
+                            <textarea
+                                style={{ width: '100%', background: '#0d1b2a', border: '1px solid #374151', borderRadius: '8px', color: 'white', padding: '10px', resize: 'vertical' }}
+                                rows="3"
+                                placeholder="¿Qué te inspiró? ¿Qué materiales usaste?"
+                                value={submissionData.caption}
+                                onChange={(e) => setSubmissionData({ ...submissionData, caption: e.target.value })}
+                            ></textarea>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setShowSubmitModal(false)}>Cancelar</button>
+                            <button
+                                className="btn btn-primary"
+                                style={{ flex: 1, background: 'var(--rooster-yellow)', border: 'none', color: '#0d1b2a' }}
+                                disabled={isSubmitting}
+                                onClick={handleSubmitChallenge}
+                            >
+                                {isSubmitting ? 'Subiendo...' : '🚀 Subir Obra'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

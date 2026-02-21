@@ -62,7 +62,9 @@ export async function POST(request) {
                 email: student.email,
                 dni: student.dni,
                 talleresInscriptos,
-                pagos: student.pagos || []
+                pagos: student.pagos || [],
+                avatar_id: student.avatar_id || 'gallo',
+                avatar_url: student.avatar_url,
             });
         }
 

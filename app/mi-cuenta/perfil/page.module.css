@@ -1,0 +1,57 @@
+.avatarSelectionContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.currentAvatar {
+    margin-bottom: 3rem;
+    text-align: center;
+}
+
+.bigAvatar {
+    border: 4px solid var(--rooster-yellow) !important;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.optionsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 2rem;
+    width: 100%;
+}
+
+.optionItem {
+    background: #1f2937;
+    border: 2px solid #374151;
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.optionItem:hover {
+    background: #374151;
+    transform: translateY(-5px);
+}
+
+.selected {
+    border-color: var(--rooster-yellow);
+    background: rgba(255, 215, 0, 0.1);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+}
+
+.selected:hover {
+    background: rgba(255, 215, 0, 0.2);
+}
+
+.optionItem span {
+    font-weight: bold;
+    color: #e5e7eb;
+}

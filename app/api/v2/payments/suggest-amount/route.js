@@ -133,17 +133,18 @@ export async function GET(request) {
                 }
             }
 
-            // 2. Si el alumno está al día (o incluso en vacaciones), sugerir la siguiente cuota adelantada
-            // IMPORTANTE: Siempre sugerir la cuota N+1 para que el botón de pago esté disponible
+            // 2. IMPORTANTE: Siempre sugerimos la cuota actual y la SIGUIENTE 
+            // para que el botón de pago adelantado esté disponible
             const ultimaCuotaSync = paidCuotas.size > 0 ? Math.max(...Array.from(paidCuotas)) : 0;
-            const proximaCuota = Math.max(currentCuotaTarget + 1, ultimaCuotaSync + 1);
+            const proximaCuota = Math.max(currentCuotaTarget, ultimaCuotaSync) + 1;
 
-            // Opcional: Solo sugerir si no hay deudas o si el usuario quiere pagar adelantado
-            if (tallerSuggestions.length === 0) {
-                tallerSuggestions.push(getSuggestionForCuota(proximaCuota));
+            // Siempre agregamos la sugerencia de la próxima cuota para pago adelantado
+            const sugerenciaFutura = getSuggestionForCuota(proximaCuota);
+
+            // Si la cuota futura ya está pagara (e.j. pagó todo el año), no la duplicamos
+            if (!paidCuotas.has(proximaCuota)) {
+                allSugerencias.push(sugerenciaFutura);
             }
-
-            allSugerencias.push(...tallerSuggestions);
         }
 
         return NextResponse.json({

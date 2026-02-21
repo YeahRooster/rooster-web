@@ -65,31 +65,28 @@ export async function POST(request) {
 
         const validAlumnosMap = new Map();
         alumnos.forEach(a => {
-            const dni = String(a[0]).trim();
-            if (!dni) return;
-            const email = String(a[2] || "").trim();
+            // Robustez en detección de DNI: En 'ALUMNOS', el DNI suele estar en la columna 4 (index 3) 
+            // y el teléfono en la columna 1 (index 0).
+            const col0 = String(a[0] || "").trim();
+            const col3 = String(a[3] || "").trim();
 
-            // Normalizar fecha de ingreso a las 12h UTC para evitar cambios de día por zona horaria
-            let fechaIng = new Date();
-            if (a[4]) {
-                const parts = String(a[4]).split(/[-/]/);
-                if (parts.length === 3) {
-                    // Asumimos YYYY-MM-DD o DD-MM-YYYY dependiendo del formato de Sheets
-                    // Para mayor seguridad parseamos y forzamos mediodía
-                    const d = new Date(a[4]);
-                    if (!isNaN(d.getTime())) {
-                        fechaIng = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12, 0, 0));
-                    }
-                }
-            }
+            // Intentamos detectar cuál es el DNI (7-9 dígitos)
+            let dni = col3;
+            if (col0.length >= 7 && col0.length <= 9) dni = col0;
+            else if (col3.length >= 7 && col3.length <= 9) dni = col3;
+            else dni = col3 || col0; // Fallback
+
+            if (!dni) return;
+
+            const email = String(a[7] || "").trim(); // En el dump raw, el email parece estar más adelante (index 7 en Juan Perez)
 
             validAlumnosMap.set(dni, {
                 dni: dni,
                 nombre: a[1] || 'Sin Nombre',
                 email: email === "" ? null : email,
                 password: passwordMapAlumnos[dni] || String(a[3] || dni),
-                fecha_ingreso: fechaIng,
-                activo: String(a[5]).toUpperCase() === 'ACTIVO'
+                fecha_ingreso: new Date(a[4] || new Date()), // Columna 5 (index 4)
+                activo: String(a[5]).toUpperCase() === 'ACTIVO' // Columna 6 (index 5)
             });
         });
 

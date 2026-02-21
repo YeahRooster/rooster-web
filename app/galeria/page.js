@@ -101,6 +101,23 @@ export default function GaleriaPage() {
         }
     };
 
+    const toggleFeature = async (postId, currentStatus) => {
+        try {
+            const res = await fetch('/api/v2/gallery/feature', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ post_id: postId, featured: !currentStatus })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                // Actualizar estado local
+                setPosts(prev => prev.map(p => p.id === postId ? { ...p, featured: !currentStatus } : p));
+            } else {
+                alert('Error al destacar: ' + data.message);
+            }
+        } catch (e) { alert('Error de conexión'); }
+    };
+
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -215,6 +232,10 @@ export default function GaleriaPage() {
                                 fill
                                 style={{ objectFit: 'cover' }}
                             />
+                            {/* Estrella si está destacada (Solo visible para Admin) */}
+                            {post.featured && isAdmin && (
+                                <div style={{ position: 'absolute', top: 10, right: 10, background: 'gold', borderRadius: '50%', padding: '5px', zIndex: 10, boxShadow: '0 2px 5px rgba(0,0,0,0.3)' }}>⭐</div>
+                            )}
                         </div>
                         <div className={styles.postInfo}>
                             <h3 className={styles.postTitle}>{post.titulo}</h3>
@@ -230,13 +251,32 @@ export default function GaleriaPage() {
                                         </button>
 
                                         {isAdmin && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); changePostStatus(post.id, 'trash'); }}
-                                                style={{ marginLeft: 'auto', background: 'none', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', padding: '2px 8px' }}
-                                                title="Mover a Papelera"
-                                            >
-                                                🗑️ Borrar
-                                            </button>
+                                            <>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); toggleFeature(post.id, post.featured); }}
+                                                    style={{
+                                                        marginLeft: 'auto',
+                                                        background: post.featured ? '#ffd700' : 'transparent',
+                                                        border: '1px solid #ffd700',
+                                                        color: post.featured ? '#000' : '#ffd700',
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.8rem',
+                                                        padding: '2px 8px',
+                                                        marginRight: '5px'
+                                                    }}
+                                                    title={post.featured ? "Quitar de destacados" : "Destacar en Home"}
+                                                >
+                                                    {post.featured ? '⭐' : '☆'}
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); changePostStatus(post.id, 'trash'); }}
+                                                    style={{ background: 'none', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', padding: '2px 8px' }}
+                                                    title="Mover a Papelera"
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </>
                                         )}
                                     </>
                                 ) : (

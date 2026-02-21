@@ -11,9 +11,21 @@ export default function AdminDashboard() {
     const [allResources, setAllResources] = useState([]);
     const [talleres, setTalleres] = useState([]); // Para editor de precios
     const [paymentsHistory, setPaymentsHistory] = useState([]);
-    const [view, setView] = useState('stats'); // 'stats', 'students', 'resources', 'payments'
+    const [view, setView] = useState('stats'); // 'stats', 'students', 'resources', 'payments', 'gallery'
     const [filter, setFilter] = useState('all');
     const [isSyncing, setIsSyncing] = useState(false);
+    const [galleryPosts, setGalleryPosts] = useState([]);
+    const [challenges, setChallenges] = useState([]);
+    const [showChallengeModal, setShowChallengeModal] = useState(false);
+    const [newChallenge, setNewChallenge] = useState({
+        titulo: '',
+        descripcion: '',
+        talleres_participantes: [],
+        fecha_inicio: '',
+        fecha_cierre_subida: '',
+        fecha_cierre_votacion: ''
+    });
+    const [isSavingChallenge, setIsSavingChallenge] = useState(false);
 
     // Estados para Centro de Comunicación
     const [showBroadcastModal, setShowBroadcastModal] = useState(false);
@@ -34,6 +46,8 @@ export default function AdminDashboard() {
             loadStudents(); // Cargará datos enriquecidos
             loadAllResources();
             loadTalleres();
+            loadGalleryPosts();
+            loadChallenges();
         }
     }, [user]);
 
@@ -96,6 +110,48 @@ export default function AdminDashboard() {
         } catch (e) { console.error(e); }
     };
 
+    const loadGalleryPosts = async () => {
+        try {
+            const res = await fetch('/api/social/posts?status=all&limit=50', { cache: 'no-store' });
+            if (!res.ok) throw new Error('Error cargando galería');
+
+            const data = await res.json();
+            if (data.status === 'success') setGalleryPosts(data.data); // Nota: api/social/posts devuelve { data: posts }
+        } catch (e) {
+            console.error("Error al cargar galería:", e);
+        }
+    };
+
+    const toggleFeaturePost = async (postId, currentStatus) => {
+        try {
+            const res = await fetch('/api/v2/gallery/feature', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ post_id: postId, featured: !currentStatus })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                // Actualización optimista o recarga
+                setGalleryPosts(prev => prev.map(p => p.id === postId ? { ...p, featured: !currentStatus } : p));
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (e) { alert('Error al destacar obra'); }
+    };
+
+    const deletePost = async (postId) => {
+        if (!confirm('¿Seguro que querés eliminar esta obra definitivamente?')) return;
+        try {
+            const res = await fetch(`/api/social/posts?id=${postId}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.status === 'success') {
+                setGalleryPosts(prev => prev.filter(p => p.id !== postId));
+            } else {
+                alert('Error al eliminar');
+            }
+        } catch (e) { alert('Error de conexión'); }
+    };
+
     const loadStats = async () => {
         try {
             const res = await fetch('/api/v2/admin/stats', { cache: 'no-store' });
@@ -103,6 +159,14 @@ export default function AdminDashboard() {
             setStats(data);
         } catch (err) { console.error(err); }
         setLoading(false);
+    };
+
+    const loadChallenges = async () => {
+        try {
+            const res = await fetch('/api/v2/admin/challenges');
+            const data = await res.json();
+            if (data.status === 'success') setChallenges(data.data);
+        } catch (e) { console.error(e); }
     };
 
     const generateCoupon = async (alumno, mesIdx, montoBase) => {
@@ -343,6 +407,41 @@ export default function AdminDashboard() {
         } catch (e) { alert('Error obteniendo contraseña'); }
     };
 
+    const handleSaveChallenge = async () => {
+        if (!newChallenge.titulo || !newChallenge.fecha_inicio || !newChallenge.fecha_cierre_subida || !newChallenge.fecha_cierre_votacion) {
+            return alert("Faltan campos obligatorios");
+        }
+        setIsSavingChallenge(true);
+        try {
+            const res = await fetch('/api/v2/admin/challenges', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newChallenge)
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert("✅ Desafío creado con éxito");
+                setShowChallengeModal(false);
+                setNewChallenge({ titulo: '', descripcion: '', talleres_participantes: [], fecha_inicio: '', fecha_cierre_subida: '', fecha_cierre_votacion: '' });
+                loadChallenges();
+            } else {
+                alert("❌ Error: " + data.message);
+            }
+        } catch (e) { alert("Error al guardar desafío"); }
+        finally { setIsSavingChallenge(false); }
+    };
+
+    const handleDeleteChallenge = async (id) => {
+        if (!confirm('¿Seguro que querés eliminar este desafío? Se perderán todas las obras y votos.')) return;
+        try {
+            const res = await fetch(`/api/v2/admin/challenges?id=${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.status === 'success') {
+                loadChallenges();
+            } else { alert('Error al eliminar'); }
+        } catch (e) { alert('Error de conexión'); }
+    };
+
     if (authLoading || loading) return <div className="section-padding container text-center">Cargando Panel de Control...</div>;
 
     if (!user || user.role !== 'admin') {
@@ -358,7 +457,9 @@ export default function AdminDashboard() {
                 <button className={`${styles.tab} ${view === 'stats' ? styles.tabActive : ''}`} onClick={() => setView('stats')}>📈 Estadísticas</button>
                 <button className={`${styles.tab} ${view === 'students' ? styles.tabActive : ''}`} onClick={() => setView('students')}>👤 Gestión de Alumnos</button>
                 <button className={`${styles.tab} ${view === 'resources' ? styles.tabActive : ''}`} onClick={() => setView('resources')}>📚 Materiales</button>
+                <button className={`${styles.tab} ${view === 'gallery' ? styles.tabActive : ''}`} onClick={() => { setView('gallery'); loadGalleryPosts(); }}>🎨 Galería</button>
                 <button className={`${styles.tab} ${view === 'payments' ? styles.tabActive : ''}`} onClick={() => { setView('payments'); loadPaymentsHistory(); loadTalleres(); }}>💳 Pagos</button>
+                <button className={`${styles.tab} ${view === 'challenges' ? styles.tabActive : ''}`} onClick={() => { setView('challenges'); loadChallenges(); loadTalleres(); }}>🏆 Desafíos</button>
                 <button className={`${styles.tab}`} onClick={() => window.location.href = '/cronograma'}>📅 Ver Cronograma</button>
             </div>
 
@@ -513,38 +614,158 @@ export default function AdminDashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {(() => {
-                                    // Fetch resources on render if needed, or better, use effect. 
-                                    // For simplicity here, we assume a loadResources function populates a state 'allResources'
-                                    // But since I can't inject state easily in replace_file, I'll allow this block to use 'allResources' if I define it above,
-                                    // OR I will refactor to put logic inside this block? No, react hooks rules.
-                                    // I MUST inject the state variable 'allResources' in the top of component first.
-                                    return allResources.length === 0 ? (
-                                        <tr><td colSpan="5" className="text-center">No hay recursos compartidos.</td></tr>
-                                    ) : (
-                                        allResources.map(r => (
-                                            <tr key={r.id}>
-                                                <td><a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa' }}>📄 {r.nombre}</a></td>
-                                                <td>{r.taller}</td>
-                                                <td>{r.profesor}</td>
-                                                <td>{r.fecha}</td>
-                                                <td>
-                                                    <button
-                                                        onClick={async () => {
-                                                            if (confirm('¿Borrar archivo de profesor?')) {
-                                                                await fetch(`/api/resources?id=${r.id}`, { method: 'DELETE' });
-                                                                loadAllResources(); // Reload
-                                                            }
-                                                        }}
-                                                        style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-                                                    >🗑️</button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    );
-                                })()}
+                                {allResources.length === 0 ? (
+                                    <tr><td colSpan="5" className="text-center">No hay recursos compartidos.</td></tr>
+                                ) : (
+                                    allResources.map(r => (
+                                        <tr key={r.id}>
+                                            <td><a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa' }}>📄 {r.nombre}</a></td>
+                                            <td>{r.taller}</td>
+                                            <td>{r.profesor}</td>
+                                            <td>{r.fecha}</td>
+                                            <td>
+                                                <button
+                                                    onClick={async () => {
+                                                        if (confirm('¿Borrar archivo de profesor?')) {
+                                                            await fetch(`/api/resources?id=${r.id}`, { method: 'DELETE' });
+                                                            loadAllResources(); // Reload
+                                                        }
+                                                    }}
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                                                >🗑️</button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {view === 'gallery' && (
+                <div className={styles.studentsSection}>
+                    <div className={styles.topActions} style={{ marginBottom: '1rem' }}>
+                        <p style={{ color: '#aaa' }}>Marcá con la estrella (⭐) las obras que querés que aparezcan en el Muro de Honor de la Home.</p>
+                        <button className="btn btn-outline" onClick={loadGalleryPosts}>🔄 Actualizar</button>
+                    </div>
+                    <div className={styles.cardsGrid} style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
+                        {galleryPosts.map(post => (
+                            <div key={post.id} className={styles.studentCard} style={{ padding: 0, overflow: 'hidden' }}>
+                                <div style={{ height: '200px', backgroundColor: '#333', position: 'relative' }}>
+                                    <img
+                                        src={post.imagen_url}
+                                        alt="Obra"
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    />
+                                    {post.featured && (
+                                        <div style={{ position: 'absolute', top: 10, right: 10, background: 'gold', borderRadius: '50%', padding: '5px' }}>⭐</div>
+                                    )}
+                                </div>
+                                <div style={{ padding: '1rem' }}>
+                                    <h4 style={{ margin: '0 0 5px 0' }}>{post.autor?.nombre} {post.autor?.apellido}</h4>
+                                    <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '10px' }}>{new Date(post.fecha_publicacion).toLocaleDateString()}</p>
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <button
+                                            onClick={() => toggleFeaturePost(post.id, post.featured)}
+                                            style={{
+                                                flex: 1,
+                                                padding: '8px',
+                                                border: '1px solid #ffd700',
+                                                background: post.featured ? '#ffd700' : 'transparent',
+                                                color: post.featured ? '#000' : '#ffd700',
+                                                borderRadius: '5px',
+                                                cursor: 'pointer',
+                                                fontWeight: 'bold'
+                                            }}
+                                        >
+                                            {post.featured ? '⭐ Destacada' : '☆ Destacar'}
+                                        </button>
+                                        <button
+                                            onClick={() => deletePost(post.id)}
+                                            style={{ padding: '8px', border: '1px solid #ef4444', background: 'transparent', color: '#ef4444', borderRadius: '5px', cursor: 'pointer' }}
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {view === 'challenges' && (
+                <div className={styles.studentsSection}>
+                    <div className={styles.topActions}>
+                        <div>
+                            <h2>🏆 Gestión de Desafíos</h2>
+                            <p style={{ color: '#aaa' }}>Crea retos para tus alumnos y gestiona las etapas de subida y votación.</p>
+                        </div>
+                        <button
+                            className="btn btn-primary"
+                            style={{ background: '#f59e0b', border: 'none', fontWeight: 'bold' }}
+                            onClick={() => setShowChallengeModal(true)}
+                        >
+                            + Crear Nuevo Desafío
+                        </button>
+                    </div>
+
+                    <div className={styles.cardsGrid}>
+                        {challenges.length === 0 && <p className="text-center" style={{ gridColumn: '1/-1', opacity: 0.5, padding: '2rem' }}>No hay desafíos creados aún.</p>}
+                        {challenges.map(c => {
+                            const ahora = new Date();
+                            const inicio = new Date(c.fecha_inicio);
+                            const finSubida = new Date(c.fecha_cierre_subida);
+                            const finVotacion = new Date(c.fecha_cierre_votacion);
+
+                            let etapa = "Programado";
+                            let etapaColor = "#9ca3af";
+                            if (ahora >= inicio && ahora < finSubida) {
+                                etapa = "Subida de Obras 🎨";
+                                etapaColor = "#60a5fa";
+                            } else if (ahora >= finSubida && ahora < finVotacion) {
+                                etapa = "Votación Abierta 🗳️";
+                                etapaColor = "#f59e0b";
+                            } else if (ahora >= finVotacion) {
+                                etapa = "Finalizado ✅";
+                                etapaColor = "#10b981";
+                            }
+
+                            return (
+                                <div key={c.id} className={styles.studentCard}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div>
+                                            <h3 style={{ color: 'white', margin: 0 }}>{c.titulo}</h3>
+                                            <span style={{ fontSize: '0.8rem', color: etapaColor, fontWeight: 'bold' }}>{etapa}</span>
+                                        </div>
+                                        <button onClick={() => handleDeleteChallenge(c.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>🗑️</button>
+                                    </div>
+                                    <p style={{ fontSize: '0.9rem', color: '#9ca3af', margin: '0.5rem 0' }}>{c.descripcion?.substring(0, 100)}...</p>
+
+                                    <div style={{ background: '#1f2937', padding: '1rem', borderRadius: '12px', fontSize: '0.85rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                            <span>Inicio:</span>
+                                            <strong style={{ color: 'white' }}>{inicio.toLocaleDateString()}</strong>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                            <span>Fin Subida:</span>
+                                            <strong style={{ color: 'white' }}>{finSubida.toLocaleDateString()}</strong>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <span>Fin Votación:</span>
+                                            <strong style={{ color: 'white' }}>{finVotacion.toLocaleDateString()}</strong>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                                        {c.talleres_participantes?.map(t => (
+                                            <span key={t} style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px' }}>{t}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -887,6 +1108,104 @@ export default function AdminDashboard() {
                                 style={{ background: '#10b981', borderColor: '#10b981' }}
                             >
                                 {isAddingStudent ? 'Registrando...' : 'Registrar Alumno'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showChallengeModal && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modal}>
+                        <h2>🏆 Crear Nuevo Desafío</h2>
+                        <p className={styles.modalSubtitle}>Configura el nombre, reglas y fechas del reto artístico.</p>
+
+                        <div className={styles.formGroup}>
+                            <label>Nombre del Desafío:</label>
+                            <input
+                                type="text"
+                                className={styles.textarea}
+                                style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                placeholder="Ej: Paisajes de Verano"
+                                value={newChallenge.titulo}
+                                onChange={(e) => setNewChallenge({ ...newChallenge, titulo: e.target.value })}
+                            />
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label>Reglas y Condiciones:</label>
+                            <textarea
+                                className={styles.textarea}
+                                placeholder="Ej: Una sola obra por alumno. Técnica libre..."
+                                value={newChallenge.descripcion}
+                                onChange={(e) => setNewChallenge({ ...newChallenge, descripcion: e.target.value })}
+                            />
+                        </div>
+
+                        <div className={styles.formGroup} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                            <div>
+                                <label>Fecha Inicio:</label>
+                                <input
+                                    type="date"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    value={newChallenge.fecha_inicio}
+                                    onChange={(e) => setNewChallenge({ ...newChallenge, fecha_inicio: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label>Cierre Subida (y Voto):</label>
+                                <input
+                                    type="date"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    value={newChallenge.fecha_cierre_subida}
+                                    onChange={(e) => setNewChallenge({ ...newChallenge, fecha_cierre_subida: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label>Cierre Final:</label>
+                                <input
+                                    type="date"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    value={newChallenge.fecha_cierre_votacion}
+                                    onChange={(e) => setNewChallenge({ ...newChallenge, fecha_cierre_votacion: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label>Talleres que pueden participar:</label>
+                            <div className={styles.selectorGrid} style={{ maxHeight: '180px' }}>
+                                {talleres.map(t => (
+                                    <label key={t.titulo} className={styles.checkboxItem}>
+                                        <input
+                                            type="checkbox"
+                                            checked={newChallenge.talleres_participantes.includes(t.titulo)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setNewChallenge(prev => ({ ...prev, talleres_participantes: [...prev.talleres_participantes, t.titulo] }));
+                                                } else {
+                                                    setNewChallenge(prev => ({ ...prev, talleres_participantes: prev.talleres_participantes.filter(n => n !== t.titulo) }));
+                                                }
+                                            }}
+                                        />
+                                        {t.titulo}
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className={styles.modalActions}>
+                            <button className="btn" onClick={() => setShowChallengeModal(false)}>Cancelar</button>
+                            <button
+                                className="btn btn-primary"
+                                disabled={isSavingChallenge}
+                                onClick={handleSaveChallenge}
+                                style={{ background: '#f59e0b', borderColor: '#f59e0b' }}
+                            >
+                                {isSavingChallenge ? 'Creando...' : 'Publicar Desafío'}
                             </button>
                         </div>
                     </div>
