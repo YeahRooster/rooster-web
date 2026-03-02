@@ -95,8 +95,19 @@
     border-radius: 20px;
     max-width: 500px;
     width: 100%;
+    max-height: 90vh;
+    /* Limita la altura al 90% de la pantalla */
+    overflow-y: auto;
+    /* Permite scroll vertical si el contenido es largo */
     border: 1px solid #374151;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 640px) {
+    .modalContent {
+        padding: 1.5rem;
+        border-radius: 16px;
+    }
 }
 
 .emptyState {
