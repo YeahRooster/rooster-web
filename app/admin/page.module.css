@@ -47,6 +47,13 @@
     margin-bottom: 2rem;
     border-bottom: 1px solid #374151;
     padding-bottom: 1rem;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+}
+
+.tabs::-webkit-scrollbar {
+    display: none;
 }
 
 .tab {
@@ -58,6 +65,7 @@
     padding: 0.8rem 1.5rem;
     transition: all 0.3s;
     border-radius: 10px;
+    flex-shrink: 0;
 }
 
 .tabActive {
@@ -579,5 +587,22 @@
 
     .cardsGrid {
         grid-template-columns: 1fr;
+    }
+
+    .studentsSection {
+        padding: 1.2rem;
+    }
+
+    .table {
+        min-width: 800px;
+    }
+
+    .tab {
+        padding: 0.6rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .modal {
+        padding: 1.5rem;
     }
 }
