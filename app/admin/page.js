@@ -456,6 +456,24 @@ export default function AdminDashboard() {
         } catch (e) { alert('Error de conexión'); }
     };
 
+    const handleDeleteSubmission = async (submissionId) => {
+        if (!confirm("¿Seguro que quieres eliminar esta obra? El alumno podrá volver a subir una nueva una vez eliminada.")) return;
+        try {
+            const res = await fetch(`/api/v2/admin/challenges?submission_id=${submissionId}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.status === 'success') {
+                // Actualizar la lista local quitando la obra eliminada
+                setCurrentSubmissions(prev => prev.filter(s => s.id !== submissionId));
+                alert("Obra eliminada correctamente.");
+            } else {
+                alert("Error: " + data.message);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error de conexión");
+        }
+    };
+
     if (authLoading || loading) return <div className="section-padding container text-center">Cargando Panel de Control...</div>;
 
     if (!user || user.role !== 'admin') {
@@ -1158,6 +1176,21 @@ export default function AdminDashboard() {
                                             <strong style={{ display: 'block', color: 'white', fontSize: '0.9rem' }}>{s.alumno_nombre}</strong>
                                             <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{s.alumno_dni}</span>
                                             <p style={{ fontSize: '0.8rem', color: '#d1d5db', marginTop: '8px', fontStyle: 'italic' }}>"{s.bio}"</p>
+
+                                            <button
+                                                className="btn"
+                                                onClick={() => handleDeleteSubmission(s.id)}
+                                                style={{
+                                                    marginTop: '10px',
+                                                    width: '100%',
+                                                    fontSize: '0.75rem',
+                                                    background: 'rgba(239, 68, 68, 0.1)',
+                                                    color: '#ef4444',
+                                                    border: '1px solid rgba(239, 68, 68, 0.2)'
+                                                }}
+                                            >
+                                                🗑️ Eliminar Obra
+                                            </button>
                                         </div>
                                     </div>
                                 ))}

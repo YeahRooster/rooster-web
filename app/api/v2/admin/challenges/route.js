@@ -181,12 +181,25 @@ export async function PUT(request) {
     }
 }
 
-// DELETE: Eliminar reto
+// DELETE: Eliminar reto o una obra específica
 export async function DELETE(request) {
     try {
         const { searchParams } = new URL(request.url);
-        const id = searchParams.get('id');
+        const id = searchParams.get('id'); // ID del desafío
+        const submissionId = searchParams.get('submission_id'); // ID de la obra específica
 
+        // Caso 1: Eliminar una obra específica (submission)
+        if (submissionId) {
+            const { error: subErr } = await supabaseAdmin
+                .from('challenge_submissions')
+                .delete()
+                .eq('id', submissionId);
+
+            if (subErr) throw subErr;
+            return NextResponse.json({ status: 'success', message: 'Obra eliminada correctamente' });
+        }
+
+        // Caso 2: Eliminar un desafío completo
         if (!id) return NextResponse.json({ status: 'error', message: 'ID requerido' }, { status: 400 });
 
         const { error } = await supabaseAdmin
