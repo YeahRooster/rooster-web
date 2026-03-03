@@ -191,11 +191,11 @@ export default function DesafiosPage() {
                                             </div>
 
                                             <div className={styles.submissionsGrid}>
-                                                {c.submissions?.filter(s => s.student_dni !== user.dni).map(s => {
+                                                {c.submissions?.filter(s => s.alumno_dni !== user.dni).map(s => {
                                                     const voted = stats.myVotes.includes(s.id);
                                                     return (
                                                         <div key={s.id} className={styles.submissionItem}>
-                                                            <img src={s.image_url} alt="Obra" className={styles.submissionImg} />
+                                                            <img src={s.imagen_url} alt="Obra" className={styles.submissionImg} />
                                                             <button
                                                                 onClick={() => handleVote(c.id, s.id)}
                                                                 className={`${styles.voteOverlay} ${voted ? styles.voted : ''}`}
