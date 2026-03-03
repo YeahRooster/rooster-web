@@ -78,15 +78,25 @@ export async function GET(request) {
 
     try {
         if (challengeId) {
-            // Obtener todas las obras subidas para este reto
+            // Obtener todas las obras subidas para este reto con conteo de votos
             const { data, error } = await supabaseAdmin
                 .from('challenge_submissions')
-                .select('*')
+                .select(`
+                    *,
+                    votos:challenge_votes(count)
+                `)
                 .eq('challenge_id', challengeId)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            return NextResponse.json({ status: 'success', data });
+
+            // Aplanar el resultado del conteo
+            const processedData = data.map(s => ({
+                ...s,
+                votos: s.votos?.[0]?.count || 0
+            }));
+
+            return NextResponse.json({ status: 'success', data: processedData });
         }
 
         // Listar todos los retos

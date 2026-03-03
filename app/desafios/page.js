@@ -196,14 +196,20 @@ export default function DesafiosPage() {
                                                     const voted = stats.myVotes.includes(s.id);
                                                     return (
                                                         <div key={s.id} className={styles.submissionItem} onClick={() => setSelectedImage(s.imagen_url)} style={{ cursor: 'zoom-in' }}>
-                                                            <img src={s.imagen_url} alt="Obra" className={styles.submissionImg} />
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); handleVote(c.id, s.id); }}
-                                                                className={`${styles.voteOverlay} ${voted ? styles.voted : ''}`}
-                                                                title={voted ? "Quitar voto" : "Votar"}
-                                                            >
-                                                                {voted ? '★' : '☆'}
-                                                            </button>
+                                                            <div style={{ position: 'relative' }}>
+                                                                <img src={s.imagen_url} alt="Obra" className={styles.submissionImg} />
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); handleVote(c.id, s.id); }}
+                                                                    className={`${styles.voteOverlay} ${voted ? styles.voted : ''}`}
+                                                                    title={voted ? "Quitar voto" : "Votar"}
+                                                                >
+                                                                    {voted ? '★' : '☆'}
+                                                                </button>
+                                                            </div>
+                                                            <div className={styles.submissionInfo}>
+                                                                <span className={styles.authorName}>{s.alumno_nombre}</span>
+                                                                <p className={styles.submissionBio}>{s.bio || "Sin descripción"}</p>
+                                                            </div>
                                                         </div>
                                                     );
                                                 })}

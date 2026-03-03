@@ -1175,6 +1175,9 @@ export default function AdminDashboard() {
                                         <div style={{ padding: '10px' }}>
                                             <strong style={{ display: 'block', color: 'white', fontSize: '0.9rem' }}>{s.alumno_nombre}</strong>
                                             <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{s.alumno_dni}</span>
+                                            <span style={{ display: 'block', color: '#ffd700', fontWeight: 'bold', marginTop: '5px', fontSize: '0.85rem' }}>
+                                                ⭐ {s.votos || 0} {s.votos === 1 ? 'voto' : 'votos'}
+                                            </span>
                                             <p style={{ fontSize: '0.8rem', color: '#d1d5db', marginTop: '8px', fontStyle: 'italic' }}>"{s.bio}"</p>
 
                                             <button
