@@ -62,10 +62,10 @@ export async function GET(request) {
                 inicioCiclo = fechaIngreso;
             }
 
-            if (!inicioCiclo || isNaN(inicioCiclo.getTime()) || inicioCiclo.getFullYear() < 2000) {
-                // Si no hay fecha de inicio, asumimos enero del año actual
-                inicioCiclo = new Date(new Date().getFullYear(), 0, 1);
-            }
+            // REGLA: Forzamos que el ciclo empiece en Enero del año actual o del año de ingreso
+            // para que la 'Cuota 0' sea siempre Enero, 'Cuota 1' Febrero, etc.
+            const anioReferencia = inicioCiclo ? inicioCiclo.getFullYear() : new Date().getFullYear();
+            inicioCiclo = new Date(anioReferencia, 0, 1);
 
             // ¿En qué cuota deberíamos estar hoy?
             const anioHoy = fechaPagoActual.getFullYear();
@@ -119,31 +119,27 @@ export async function GET(request) {
             };
 
             // 1. Agregar todas las cuotas vencidas o actuales que no están pagadas
-            for (let c = 1; c <= currentCuotaTarget; c++) {
+            for (let c = 0; c < currentCuotaTarget; c++) {
                 if (!paidCuotas.has(c)) {
                     // Evitar sugerir cuotas previas al mes real de ingreso (indIngreso)
                     const indIngresoReal = fechaIngreso ? (fechaIngreso.getUTCFullYear() * 12 + fechaIngreso.getUTCMonth()) : 0;
-                    const indCuotaC = indInicio + (c - 1);
+                    const indCuotaC = indInicio + c;
 
-                    // REGLA: Ignorar el mes de ingreso si no está pago (para evitar deudas de fin de mes)
-                    // A menos que sea el mes actual y no haya otros pagos? No, mejor ser consistente con el sync.
-                    if (indCuotaC > indIngresoReal) {
-                        tallerSuggestions.push(getSuggestionForCuota(c));
+                    if (indCuotaC >= indIngresoReal) {
+                        tallerSuggestions.push(getSuggestionForCuota(c + 1));
                     }
                 }
             }
 
             // 2. IMPORTANTE: Siempre sugerimos la cuota actual y la SIGUIENTE 
             // para que el botón de pago adelantado esté disponible
-            const ultimaCuotaSync = paidCuotas.size > 0 ? Math.max(...Array.from(paidCuotas)) : 0;
-            const proximaCuota = Math.max(currentCuotaTarget, ultimaCuotaSync) + 1;
+            const ultimaCuotaSync = paidCuotas.size > 0 ? Math.max(...Array.from(paidCuotas)) : (currentCuotaTarget - 1);
 
-            // Siempre agregamos la sugerencia de la próxima cuota para pago adelantado
-            const sugerenciaFutura = getSuggestionForCuota(proximaCuota);
+            // Sugerimos el mes siguiente al último pagado o al actual
+            const proximaCuotaIdx = Math.max(currentCuotaTarget - 1, ultimaCuotaSync) + 1;
 
-            // Si la cuota futura ya está pagara (e.j. pagó todo el año), no la duplicamos
-            if (!paidCuotas.has(proximaCuota)) {
-                allSugerencias.push(sugerenciaFutura);
+            if (!paidCuotas.has(proximaCuotaIdx)) {
+                allSugerencias.push(getSuggestionForCuota(proximaCuotaIdx + 1));
             }
         }
 

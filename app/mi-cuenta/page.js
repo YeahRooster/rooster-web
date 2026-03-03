@@ -594,7 +594,17 @@ export default function MiCuentaPage() {
                 </div>
 
                 <div className={styles.profileCard} style={{ border: '1px solid #ffd700', gridColumn: '1 / -1' }}>
-                    <h2 className={styles.cardTitle}>💳 Pagar Cuota del Mes</h2>
+                    {(() => {
+                        const adelanto = suggestedPayment?.items?.find(i => i.is_adelantado);
+                        const hasDeuda = suggestedPayment?.items?.some(i => !i.is_adelantado);
+                        let paymentTitle = "💳 Pagar Cuota del Mes";
+                        if (adelanto && !hasDeuda) {
+                            paymentTitle = `💳 Si querés adelantar tu pago del mes que viene (${adelanto.mes_nombre}), podés hacerlo acá:`;
+                        } else if (hasDeuda && adelanto) {
+                            paymentTitle = "💳 Cuotas Pendientes y Adelanto";
+                        }
+                        return <h2 className={styles.cardTitle}>{paymentTitle}</h2>;
+                    })()}
                     {loadingPayment ? <p>Calculando monto actual...</p> : (
                         suggestedPayment && suggestedPayment.items && suggestedPayment.items.length > 0 ? (
                             <div>
