@@ -12,6 +12,7 @@ export default function DesafiosPage() {
     const [submissionData, setSubmissionData] = useState({ imageBase64: '', caption: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [voterStats, setVoterStats] = useState({});
+    const [selectedImage, setSelectedImage] = useState(null);
 
     useEffect(() => {
         if (user && user.role === 'student') {
@@ -194,10 +195,10 @@ export default function DesafiosPage() {
                                                 {c.submissions?.filter(s => s.alumno_dni !== user.dni).map(s => {
                                                     const voted = stats.myVotes.includes(s.id);
                                                     return (
-                                                        <div key={s.id} className={styles.submissionItem}>
+                                                        <div key={s.id} className={styles.submissionItem} onClick={() => setSelectedImage(s.imagen_url)} style={{ cursor: 'zoom-in' }}>
                                                             <img src={s.imagen_url} alt="Obra" className={styles.submissionImg} />
                                                             <button
-                                                                onClick={() => handleVote(c.id, s.id)}
+                                                                onClick={(e) => { e.stopPropagation(); handleVote(c.id, s.id); }}
                                                                 className={`${styles.voteOverlay} ${voted ? styles.voted : ''}`}
                                                                 title={voted ? "Quitar voto" : "Votar"}
                                                             >
@@ -289,6 +290,16 @@ export default function DesafiosPage() {
                                 {isSubmitting ? 'Subiendo...' : '🚀 Subir Obra'}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* LIGHTBOX MODAL (Igual que en Galeria) */}
+            {selectedImage && (
+                <div className={styles.lightboxOverlay} onClick={() => setSelectedImage(null)}>
+                    <button className={styles.closeLightbox} onClick={() => setSelectedImage(null)}>&times;</button>
+                    <div className={styles.lightboxContent} onClick={(e) => e.stopPropagation()}>
+                        <img src={selectedImage} className={styles.lightboxImage} alt="Zoom" />
                     </div>
                 </div>
             )}
