@@ -27,9 +27,82 @@ export async function GET(request) {
             return NextResponse.json({ status: 'success', data: [] });
         }
 
-        // 2. Si hay DNI, obtener informaciones del alumno para cada reto
-        const processedChallenges = await Promise.all(challenges.map(async (challenge) => {
-            // Obtener todas las submissions de este reto
+        // 2. Si hay DNI, procesar retos
+        const processedChallenges = await Promise.all(challenges.map(async (c) => {
+            const ahora = new Date();
+            const finVotacion = new Date(c.fecha_cierre_votacion);
+            let challenge = { ...c };
+
+            // --- LÓGICA DE CIERRE AUTOMÁTICO Y DESEMPATE ---
+            if (ahora >= finVotacion && !challenge.ganador_dni) {
+                // Obtener todas las submissions
+                const { data: subs } = await supabaseAdmin
+                    .from('challenge_submissions')
+                    .select('id, alumno_dni, alumno_nombre')
+                    .eq('challenge_id', challenge.id);
+
+                if (subs && subs.length > 0) {
+                    // Si estamos en una ronda de desempate, solo contamos los de tie_breaker_ids
+                    const targetSubs = (challenge.tie_breaker_ids && challenge.tie_breaker_ids.length > 0)
+                        ? subs.filter(s => challenge.tie_breaker_ids.includes(s.id))
+                        : subs;
+
+                    // Contar votos de la ronda actual
+                    // IMPORTANTE: Para la ronda 1, incluimos votos donde round sea 1 o NULL para retrocompatibilidad
+                    let voteQuery = supabaseAdmin
+                        .from('challenge_votes')
+                        .select('submission_id')
+                        .eq('challenge_id', challenge.id);
+
+                    if ((challenge.round || 1) === 1) {
+                        voteQuery = voteQuery.or('round.eq.1,round.is.null');
+                    } else {
+                        voteQuery = voteQuery.eq('round', challenge.round);
+                    }
+
+                    const { data: votes } = await voteQuery;
+
+                    const counts = {};
+                    targetSubs.forEach(s => counts[s.id] = 0);
+                    votes?.forEach(v => { if (counts[v.submission_id] !== undefined) counts[v.submission_id]++; });
+
+                    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+                    const maxVotes = sorted[0][1];
+                    const winners = sorted.filter(s => s[1] === maxVotes);
+
+                    if (winners.length === 1 || maxVotes === 0) {
+                        // GANADOR ÚNICO (o nadie votó, se queda el primero/random)
+                        const winnerSub = subs.find(s => s.id === winners[0][0]);
+                        const { data: updated } = await supabaseAdmin
+                            .from('challenges')
+                            .update({
+                                ganador_dni: winnerSub?.alumno_dni || 'Nadie',
+                                ganador_nombre: winnerSub?.alumno_nombre || 'Sin votos'
+                            })
+                            .eq('id', challenge.id)
+                            .select()
+                            .single();
+                        challenge = { ...updated };
+                    } else {
+                        // EMPATE: Nueva Ronda
+                        const newTieBreakerIds = winners.map(w => w[0]);
+                        const newDeadline = new Date(ahora.getTime() + 24 * 60 * 60 * 1000); // +24hs
+                        const { data: updated } = await supabaseAdmin
+                            .from('challenges')
+                            .update({
+                                round: (challenge.round || 1) + 1,
+                                tie_breaker_ids: newTieBreakerIds,
+                                fecha_cierre_votacion: newDeadline.toISOString()
+                            })
+                            .eq('id', challenge.id)
+                            .select()
+                            .single();
+                        challenge = { ...updated };
+                    }
+                }
+            }
+
+            // Obtener todas las submissions actualizadas para este reto
             const { data: submissions, error: sErr } = await supabaseAdmin
                 .from('challenge_submissions')
                 .select('*')
@@ -42,32 +115,50 @@ export async function GET(request) {
             let myVotes = [];
             let isLocked = false;
 
-            if (dni) {
-                // Mi obra
-                mySubmission = submissions.find(s => s.alumno_dni === dni) || null;
-                // Obras de otros (para votar)
-                otherSubmissions = submissions.filter(s => s.alumno_dni !== dni);
+            // Si el reto terminó, queremos ver los votos de todos
+            const isFinished = ahora >= new Date(challenge.fecha_cierre_votacion);
 
-                // Mis votos en este reto
+            const subsWithVotes = await Promise.all(submissions.map(async (s) => {
+                const { count } = await supabaseAdmin
+                    .from('challenge_votes')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('submission_id', s.id);
+                return { ...s, total_votos: count };
+            }));
+
+            if (dni) {
+                mySubmission = subsWithVotes.find(s => s.alumno_dni === dni) || null;
+                // Filtrar según ronda de desempate
+                otherSubmissions = subsWithVotes.filter(s => {
+                    const isNotMe = s.alumno_dni !== dni;
+                    const isInTieBreaker = (challenge.tie_breaker_ids && challenge.tie_breaker_ids.length > 0)
+                        ? challenge.tie_breaker_ids.includes(s.id)
+                        : true;
+                    return isNotMe && isInTieBreaker;
+                });
+
+                // Mis votos en este reto (MISMA RONDA)
                 const { data: votes } = await supabaseAdmin
                     .from('challenge_votes')
                     .select('submission_id')
                     .eq('challenge_id', challenge.id)
-                    .eq('voter_dni', dni);
+                    .eq('voter_dni', dni)
+                    .eq('round', challenge.round || 1);
 
                 myVotes = votes ? votes.map(v => v.submission_id) : [];
 
-                // Mi estado de bloqueo
+                // Mi estado de bloqueo (MISMA RONDA)
                 const { data: lock } = await supabaseAdmin
                     .from('challenge_vote_locks')
                     .select('is_locked')
                     .eq('challenge_id', challenge.id)
                     .eq('voter_dni', dni)
+                    .eq('round', challenge.round || 1)
                     .single();
 
                 if (lock?.is_locked) isLocked = true;
             } else {
-                otherSubmissions = submissions;
+                otherSubmissions = subsWithVotes;
             }
 
             return {
@@ -75,7 +166,8 @@ export async function GET(request) {
                 mySubmission,
                 submissions: otherSubmissions,
                 myVotes,
-                isLocked
+                isLocked,
+                isFinished // Flag útil para el front
             };
         }));
 

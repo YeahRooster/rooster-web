@@ -175,6 +175,16 @@ export default function GaleriaPage() {
 
     const isAdmin = user?.role === 'admin';
 
+    const formatDate = (dateString) => {
+        if (!dateString) return "";
+        const date = new Date(dateString);
+        return date.toLocaleDateString('es-ES', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+    };
+
     return (
         <div className="section-padding container">
             <h1 className="section-title text-center text-yellow" style={{ marginBottom: '1rem', fontSize: '3rem' }}>
@@ -240,6 +250,8 @@ export default function GaleriaPage() {
                         <div className={styles.postInfo}>
                             <h3 className={styles.postTitle}>{post.titulo}</h3>
                             <p className={styles.postAuthor}>Por {post.alumno_nombre}</p>
+                            <span className={styles.postDate}>{formatDate(post.fecha_creacion)}</span>
+
                             <div className={styles.interactionBar}>
                                 {viewMode === 'active' ? (
                                     <>

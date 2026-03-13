@@ -7,10 +7,10 @@ export async function POST(request) {
         const body = await request.json();
         const { challenge_id, submission_id, voter_dni } = body;
 
-        // 1. Verificar etapa de votación
+        // 1. Verificar etapa de votación y ronda actual
         const { data: challenge } = await supabaseAdmin
             .from('challenges')
-            .select('fecha_cierre_subida, fecha_cierre_votacion')
+            .select('fecha_cierre_subida, fecha_cierre_votacion, round, tie_breaker_ids')
             .eq('id', challenge_id)
             .single();
 
@@ -22,24 +22,34 @@ export async function POST(request) {
             return NextResponse.json({ status: 'error', message: 'La votación ha finalizado' }, { status: 403 });
         }
 
-        // 2. Verificar si el usuario está bloqueado (regla del 3er voto)
+        const currentRound = challenge.round || 1;
+        const isTieBreak = currentRound > 1;
+
+        // 2. Si es desempate, verificar que la obra sea parte del desempate
+        if (isTieBreak && !challenge.tie_breaker_ids?.includes(submission_id)) {
+            return NextResponse.json({ status: 'error', message: 'Solo podés votar por las obras en desempate' }, { status: 403 });
+        }
+
+        // 3. Verificar si el usuario está bloqueado (regla del 3er voto o 1er voto en desempate)
         const { data: lock } = await supabaseAdmin
             .from('challenge_vote_locks')
             .select('is_locked')
             .eq('challenge_id', challenge_id)
             .eq('voter_dni', voter_dni)
+            .eq('round', currentRound)
             .single();
 
         if (lock?.is_locked) {
             return NextResponse.json({ status: 'error', message: 'Tus votos son inamovibles' }, { status: 403 });
         }
 
-        // 3. Verificar si ya votó esta obra (Toggle logic)
+        // 4. Verificar si ya votó esta obra (Toggle logic)
         const { data: existingVote } = await supabaseAdmin
             .from('challenge_votes')
             .select('*')
             .eq('submission_id', submission_id)
             .eq('voter_dni', voter_dni)
+            .eq('round', currentRound)
             .single();
 
         if (existingVote) {
@@ -52,29 +62,33 @@ export async function POST(request) {
             return NextResponse.json({ status: 'success', action: 'removed' });
         } else {
             // AGREGAR VOTO
-            // Contar votos actuales
+            // Contar votos actuales en ESTA RONDA
             const { count: currentVotes } = await supabaseAdmin
                 .from('challenge_votes')
                 .select('*', { count: 'exact', head: true })
                 .eq('challenge_id', challenge_id)
-                .eq('voter_dni', voter_dni);
+                .eq('voter_dni', voter_dni)
+                .eq('round', currentRound);
 
-            if (currentVotes >= 3) {
-                return NextResponse.json({ status: 'error', message: 'Ya utilizaste tus 3 votos' }, { status: 403 });
+            // Límite: 3 en ronda 1, 1 en desempate
+            const limit = isTieBreak ? 1 : 3;
+
+            if (currentVotes >= limit) {
+                return NextResponse.json({ status: 'error', message: `Ya utilizaste tu${limit > 1 ? 's' : ''} ${limit} voto${limit > 1 ? 's' : ''}` }, { status: 403 });
             }
 
             await supabaseAdmin
                 .from('challenge_votes')
-                .insert([{ challenge_id, submission_id, voter_dni }]);
+                .insert([{ challenge_id, submission_id, voter_dni, round: currentRound }]);
 
-            // Si es el 3er voto, BLOQUEAR
-            if (currentVotes === 2) {
+            // Si alcanzó el límite, BLOQUEAR
+            if (currentVotes === limit - 1) {
                 await supabaseAdmin
                     .from('challenge_vote_locks')
-                    .upsert({ challenge_id, voter_dni, is_locked: true });
+                    .upsert({ challenge_id, voter_dni, round: currentRound, is_locked: true });
             }
 
-            return NextResponse.json({ status: 'success', action: 'added', isLocked: currentVotes === 2 });
+            return NextResponse.json({ status: 'success', action: 'added', isLocked: currentVotes === limit - 1 });
         }
 
     } catch (error) {

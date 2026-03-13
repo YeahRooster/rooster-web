@@ -13,6 +13,8 @@ export default function DesafiosPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [voterStats, setVoterStats] = useState({});
     const [selectedImage, setSelectedImage] = useState(null);
+    const [showWorksModal, setShowWorksModal] = useState(false);
+    const [worksChallenge, setWorksChallenge] = useState(null);
 
     useEffect(() => {
         if (user && user.role === 'student') {
@@ -143,6 +145,15 @@ export default function DesafiosPage() {
                             badgeColor = "#ef4444";
                         }
 
+                        const isTieBreak = c.round > 1;
+                        const isFinished = etapa === 'FINALIZADO';
+
+                        if (isTieBreak && etapa === 'VOTACION') {
+                            etapa = "🔥 DESEMPATE";
+                            etapaDesc = "¡Hay un empate técnico! Votá por tu favorito entre los finalistas (1 solo voto).";
+                            badgeColor = "#dc2626";
+                        }
+
                         const hasSubmitted = c.mySubmission;
                         const stats = voterStats[c.id] || { used: 0, locked: false, myVotes: [] };
 
@@ -155,9 +166,9 @@ export default function DesafiosPage() {
 
                                 <p style={{ fontSize: '0.95rem', color: '#d1d5db', lineHeight: '1.5', flex: 1 }}>{c.descripcion || etapaDesc}</p>
 
-                                {etapa !== 'PROXIMAMENTE' && (
+                                {(etapa !== 'PROXIMAMENTE' && !isFinished) && (
                                     <div style={{ padding: '10px 0', borderTop: '1px solid #1f2937', marginTop: '1rem', color: '#9ca3af', fontSize: '0.85rem' }}>
-                                        {etapa === 'SUBIDA' ? etapaDesc : etapaDesc}
+                                        {etapaDesc}
                                     </div>
                                 )}
 
@@ -184,11 +195,12 @@ export default function DesafiosPage() {
                                         )
                                     )}
 
-                                    {etapa === 'VOTACION' && (
+                                    {/* SECCIÓN DE OBRAS (VOTACIÓN O DESEMPATE ACTIVO) */}
+                                    {(etapa === 'VOTACION' || etapa === '🔥 DESEMPATE') && (
                                         <div style={{ background: '#1f2937', padding: '1rem', borderRadius: '12px' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '0.85rem', color: 'white' }}>
-                                                <span>Votos: <strong>{stats.used}/3</strong></span>
-                                                {stats.locked ? <span style={{ color: '#10b981' }}>🔒 Votación Cerrada</span> : <span style={{ color: '#f59e0b' }}>⚡ Votá 3 obras</span>}
+                                                <span>Votos: <strong>{stats.used}/{isTieBreak ? 1 : 3}</strong></span>
+                                                {stats.locked ? <span style={{ color: '#10b981' }}>🔒 Votación Cerrada</span> : <span style={{ color: '#f59e0b' }}>⚡ Votá tu favorito</span>}
                                             </div>
 
                                             <div className={styles.submissionsGrid}>
@@ -213,23 +225,73 @@ export default function DesafiosPage() {
                                                         </div>
                                                     );
                                                 })}
-                                                {(!c.submissions || c.submissions.length === 0) && (
-                                                    <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#6b7280', fontSize: '0.8rem', padding: '1rem' }}>No hay otras obras para votar aún.</p>
+                                                {(!c.submissions || c.submissions.filter(s => s.alumno_dni !== user.dni).length === 0) && (
+                                                    <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#6b7280', fontSize: '0.8rem', padding: '1rem' }}>No hay obras para mostrar.</p>
                                                 )}
                                             </div>
                                         </div>
                                     )}
 
-                                    {etapa === 'FINALIZADO' && (
-                                        <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(239, 68, 68, 0.05)', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
-                                            <p style={{ margin: 0, color: '#9ca3af', fontWeight: 'bold' }}>🏁 Desafío Concluido</p>
-                                            {c.ganador_nombre && <p style={{ color: 'gold', marginTop: '5px' }}>🏆 Ganador: {c.ganador_nombre}</p>}
+                                    {/* VISTA FINALIZADA (Solo Resumen y Botón) */}
+                                    {isFinished && (
+                                        <div style={{ background: '#1f2937', padding: '1.5rem', borderRadius: '12px', textAlign: 'center' }}>
+                                            <div style={{ marginBottom: '1rem', padding: '10px', background: 'rgba(234, 179, 8, 0.1)', borderRadius: '10px', border: '1px solid rgba(234, 179, 8, 0.2)' }}>
+                                                <p style={{ margin: 0, color: '#eab308', fontWeight: 'bold' }}>⭐ Desafío Concluido</p>
+                                                <p style={{ color: 'white', marginTop: '5px', fontSize: '1.2rem' }}>🏆 Ganador: <strong>{c.ganador_nombre}</strong></p>
+                                            </div>
+                                            <button
+                                                className="btn btn-outline"
+                                                style={{ width: '100%', padding: '10px' }}
+                                                onClick={() => { setWorksChallenge(c); setShowWorksModal(true); }}
+                                            >
+                                                🖼️ Ver Obras y Resultados
+                                            </button>
                                         </div>
                                     )}
                                 </div>
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {/* MODAL DE OBRAS HISTÓRICAS */}
+            {showWorksModal && worksChallenge && (
+                <div className={styles.modalOverlay} onClick={() => setShowWorksModal(false)}>
+                    <div className={styles.modalContent} style={{ maxWidth: '1000px', width: '95vw' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #1f2937', paddingBottom: '1rem' }}>
+                            <div>
+                                <h2 style={{ color: 'var(--rooster-yellow)', margin: 0 }}>{worksChallenge.titulo}</h2>
+                                <p style={{ color: '#9ca3af', margin: '5px 0 0 0', fontSize: '0.9rem' }}>Museo de Desafíos - Resultados Finales</p>
+                            </div>
+                            <button onClick={() => setShowWorksModal(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
+                        </div>
+
+                        <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(234, 179, 8, 0.1)', borderRadius: '12px', border: '1px solid rgba(234, 179, 8, 0.3)', marginBottom: '2rem' }}>
+                            <p style={{ margin: 0, color: '#eab308', fontWeight: 'bold', fontSize: '0.9rem' }}>GANADOR OFICIAL</p>
+                            <p style={{ color: 'white', marginTop: '5px', fontSize: '1.5rem' }}>🏆 <strong>{worksChallenge.ganador_nombre}</strong></p>
+                        </div>
+
+                        <div className={styles.submissionsGrid} style={{ maxHeight: '60vh', overflowY: 'auto', padding: '10px' }}>
+                            {worksChallenge.submissions?.map(s => (
+                                <div key={s.id} className={styles.submissionItem} onClick={() => setSelectedImage(s.imagen_url)} style={{ cursor: 'zoom-in' }}>
+                                    <div style={{ position: 'relative' }}>
+                                        <img src={s.imagen_url} alt="Obra" className={styles.submissionImg} />
+                                        <div className={styles.voteCountBadge}>
+                                            ⭐ {s.total_votos || 0}
+                                        </div>
+                                    </div>
+                                    <div className={styles.submissionInfo}>
+                                        <span className={styles.authorName}>{s.alumno_nombre} {s.alumno_dni === user.dni && "(Mi obra)"}</span>
+                                        <p className={styles.submissionBio}>{s.bio || "Sin descripción"}</p>
+                                    </div>
+                                </div>
+                            ))}
+                            {(!worksChallenge.submissions || worksChallenge.submissions.length === 0) && (
+                                <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#6b7280', fontSize: '0.8rem', padding: '1rem' }}>No hay obras para mostrar.</p>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
 
