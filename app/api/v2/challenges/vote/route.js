@@ -8,11 +8,16 @@ export async function POST(request) {
         const { challenge_id, submission_id, voter_dni } = body;
 
         // 1. Verificar etapa de votación y ronda actual
-        const { data: challenge } = await supabaseAdmin
+        const { data: challenge, error: challengeErr } = await supabaseAdmin
             .from('challenges')
-            .select('fecha_cierre_subida, fecha_cierre_votacion, round, tie_breaker_ids')
+            .select('id, fecha_cierre_subida, fecha_cierre_votacion, round, tie_breaker_ids')
             .eq('id', challenge_id)
             .single();
+
+        if (challengeErr || !challenge) {
+            console.error("VOTE API ERROR: Challenge no encontrado o error de DB. challenge_id recibido:", challenge_id, "Error interno:", challengeErr);
+            return NextResponse.json({ status: 'error', message: 'No se pudo verificar el desafío. Actualizá la página e intentá de nuevo.' }, { status: 404 });
+        }
 
         const ahora = new Date();
         if (ahora < new Date(challenge.fecha_cierre_subida)) {

@@ -197,38 +197,18 @@ export default function DesafiosPage() {
 
                                     {/* SECCIÓN DE OBRAS (VOTACIÓN O DESEMPATE ACTIVO) */}
                                     {(etapa === 'VOTACION' || etapa === '🔥 DESEMPATE') && (
-                                        <div style={{ background: '#1f2937', padding: '1rem', borderRadius: '12px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '0.85rem', color: 'white' }}>
-                                                <span>Votos: <strong>{stats.used}/{isTieBreak ? 1 : 3}</strong></span>
-                                                {stats.locked ? <span style={{ color: '#10b981' }}>🔒 Votación Cerrada</span> : <span style={{ color: '#f59e0b' }}>⚡ Votá tu favorito</span>}
+                                        <div style={{ background: '#1f2937', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', marginTop: '1rem' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontSize: '0.9rem', color: 'white', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
+                                                <span>Mis Votos: <strong>{stats.used}/{isTieBreak ? 1 : 3}</strong></span>
+                                                {stats.locked ? <span style={{ color: '#10b981', fontWeight: 'bold' }}>🔒 Votación Cerrada</span> : <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>⚡ ¡Votá ahora!</span>}
                                             </div>
-
-                                            <div className={styles.submissionsGrid}>
-                                                {c.submissions?.filter(s => s.alumno_dni !== user.dni).map(s => {
-                                                    const voted = stats.myVotes.includes(s.id);
-                                                    return (
-                                                        <div key={s.id} className={styles.submissionItem} onClick={() => setSelectedImage(s.imagen_url)} style={{ cursor: 'zoom-in' }}>
-                                                            <div style={{ position: 'relative' }}>
-                                                                <img src={s.imagen_url} alt="Obra" className={styles.submissionImg} />
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); handleVote(c.id, s.id); }}
-                                                                    className={`${styles.voteOverlay} ${voted ? styles.voted : ''}`}
-                                                                    title={voted ? "Quitar voto" : "Votar"}
-                                                                >
-                                                                    {voted ? '★' : '☆'}
-                                                                </button>
-                                                            </div>
-                                                            <div className={styles.submissionInfo}>
-                                                                <span className={styles.authorName}>{s.alumno_nombre}</span>
-                                                                <p className={styles.submissionBio}>{s.bio || "Sin descripción"}</p>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                                {(!c.submissions || c.submissions.filter(s => s.alumno_dni !== user.dni).length === 0) && (
-                                                    <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#6b7280', fontSize: '0.8rem', padding: '1rem' }}>No hay obras para mostrar.</p>
-                                                )}
-                                            </div>
+                                            <button
+                                                className="btn btn-outline"
+                                                style={{ width: '100%', padding: '12px', fontSize: '1rem', fontWeight: 'bold', border: '1px solid #f59e0b', color: '#f59e0b' }}
+                                                onClick={() => { setWorksChallenge(c); setShowWorksModal(true); }}
+                                            >
+                                                👁️ Abrir Galería y Votar
+                                            </button>
                                         </div>
                                     )}
 
@@ -255,45 +235,79 @@ export default function DesafiosPage() {
                 </div>
             )}
 
-            {/* MODAL DE OBRAS HISTÓRICAS */}
-            {showWorksModal && worksChallenge && (
-                <div className={styles.modalOverlay} onClick={() => setShowWorksModal(false)}>
-                    <div className={styles.modalContent} style={{ maxWidth: '1000px', width: '95vw' }} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #1f2937', paddingBottom: '1rem' }}>
-                            <div>
-                                <h2 style={{ color: 'var(--rooster-yellow)', margin: 0 }}>{worksChallenge.titulo}</h2>
-                                <p style={{ color: '#9ca3af', margin: '5px 0 0 0', fontSize: '0.9rem' }}>Museo de Desafíos - Resultados Finales</p>
-                            </div>
-                            <button onClick={() => setShowWorksModal(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
-                        </div>
+            {/* MODAL DE OBRAS (VOTACIÓN ACTIVA O RESULTADOS) */}
+            {showWorksModal && worksChallenge && (() => {
+                const ahora = new Date();
+                const isFinishedModal = ahora >= new Date(worksChallenge.fecha_cierre_votacion);
+                const isVoting = ahora >= new Date(worksChallenge.fecha_cierre_subida) && ahora < new Date(worksChallenge.fecha_cierre_votacion);
+                const isTieBreakModal = worksChallenge.round > 1;
+                const stats = voterStats[worksChallenge.id] || { used: 0, locked: false, myVotes: [] };
 
-                        <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(234, 179, 8, 0.1)', borderRadius: '12px', border: '1px solid rgba(234, 179, 8, 0.3)', marginBottom: '2rem' }}>
-                            <p style={{ margin: 0, color: '#eab308', fontWeight: 'bold', fontSize: '0.9rem' }}>GANADOR OFICIAL</p>
-                            <p style={{ color: 'white', marginTop: '5px', fontSize: '1.5rem' }}>🏆 <strong>{worksChallenge.ganador_nombre}</strong></p>
-                        </div>
-
-                        <div className={styles.submissionsGrid} style={{ maxHeight: '60vh', overflowY: 'auto', padding: '10px' }}>
-                            {worksChallenge.submissions?.map(s => (
-                                <div key={s.id} className={styles.submissionItem} onClick={() => setSelectedImage(s.imagen_url)} style={{ cursor: 'zoom-in' }}>
-                                    <div style={{ position: 'relative' }}>
-                                        <img src={s.imagen_url} alt="Obra" className={styles.submissionImg} />
-                                        <div className={styles.voteCountBadge}>
-                                            ⭐ {s.total_votos || 0}
-                                        </div>
-                                    </div>
-                                    <div className={styles.submissionInfo}>
-                                        <span className={styles.authorName}>{s.alumno_nombre} {s.alumno_dni === user.dni && "(Mi obra)"}</span>
-                                        <p className={styles.submissionBio}>{s.bio || "Sin descripción"}</p>
-                                    </div>
+                return (
+                    <div className={styles.modalOverlay} onClick={() => setShowWorksModal(false)}>
+                        <div className={styles.modalContent} style={{ maxWidth: '1000px', width: '95vw' }} onClick={e => e.stopPropagation()}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #1f2937', paddingBottom: '1rem' }}>
+                                <div>
+                                    <h2 style={{ color: 'var(--rooster-yellow)', margin: 0 }}>{worksChallenge.titulo}</h2>
+                                    <p style={{ color: '#9ca3af', margin: '5px 0 0 0', fontSize: '0.9rem' }}>
+                                        {isFinishedModal ? 'Museo de Desafíos - Resultados Finales' : 'Área de Selección y Votación'}
+                                    </p>
                                 </div>
-                            ))}
-                            {(!worksChallenge.submissions || worksChallenge.submissions.length === 0) && (
-                                <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#6b7280', fontSize: '0.8rem', padding: '1rem' }}>No hay obras para mostrar.</p>
+                                <button onClick={() => setShowWorksModal(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
+                            </div>
+
+                            {isFinishedModal && (
+                                <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(234, 179, 8, 0.1)', borderRadius: '12px', border: '1px solid rgba(234, 179, 8, 0.3)', marginBottom: '2rem' }}>
+                                    <p style={{ margin: 0, color: '#eab308', fontWeight: 'bold', fontSize: '0.9rem' }}>GANADOR OFICIAL</p>
+                                    <p style={{ color: 'white', marginTop: '5px', fontSize: '1.5rem' }}>🏆 <strong>{worksChallenge.ganador_nombre}</strong></p>
+                                </div>
                             )}
+
+                            {isVoting && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontSize: '1rem', color: 'white', background: '#1f2937', padding: '15px', borderRadius: '12px' }}>
+                                    <span>Votos emitidos: <strong>{stats.used}/{isTieBreakModal ? 1 : 3}</strong></span>
+                                    {stats.locked ? <span style={{ color: '#10b981', fontWeight: 'bold' }}>🔒 Tus votos fueron registrados exitosamente</span> : <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>⚡ Hacé click en la estrella debajo de tu obra favorita para votarla</span>}
+                                </div>
+                            )}
+
+                            <div className={styles.submissionsGrid} style={{ maxHeight: '60vh', overflowY: 'auto', padding: '10px' }}>
+                                {worksChallenge.submissions?.filter(s => isVoting ? s.alumno_dni !== user.dni : true).map(s => {
+                                    const voted = isVoting ? stats.myVotes.includes(s.id) : false;
+                                    return (
+                                        <div key={s.id} className={styles.submissionItem} onClick={() => setSelectedImage(s.imagen_url)} style={{ cursor: 'zoom-in' }}>
+                                            <div style={{ position: 'relative' }}>
+                                                <img src={s.imagen_url} alt="Obra" className={styles.submissionImg} />
+                                                
+                                                {isFinishedModal ? (
+                                                    <div className={styles.voteCountBadge}>
+                                                        ⭐ {s.total_votos || 0}
+                                                    </div>
+                                                ) : isVoting ? (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleVote(worksChallenge.id, s.id); }}
+                                                        className={`${styles.voteOverlay} ${voted ? styles.voted : ''}`}
+                                                        title={voted ? "Quitar voto" : "Votar"}
+                                                    >
+                                                        {voted ? '★' : '☆'}
+                                                    </button>
+                                                ) : null}
+
+                                            </div>
+                                            <div className={styles.submissionInfo}>
+                                                <span className={styles.authorName}>{s.alumno_nombre} {s.alumno_dni === user.dni && "(Mi obra)"}</span>
+                                                <p className={styles.submissionBio}>{s.bio || "Sin descripción"}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {(!worksChallenge.submissions || worksChallenge.submissions.filter(s => isVoting ? s.alumno_dni !== user.dni : true).length === 0) && (
+                                    <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#6b7280', fontSize: '0.8rem', padding: '1rem' }}>No hay obras para mostrar.</p>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             {showSubmitModal && (
                 <div className={styles.modalOverlay}>
