@@ -6,7 +6,7 @@ export async function GET() {
     try {
         const { data: talleres, error } = await supabaseAdmin
             .from('talleres')
-            .select('id, titulo, precio_base, precio_desc_dia10, precio_desc_efectivo, precio_por_hora, tipo_cobro')
+            .select('id, titulo, precio_base, precio_desc_dia10, precio_desc_efectivo, precio_por_hora, tipo_cobro, activo')
             .order('titulo');
 
         if (error) throw error;
@@ -18,19 +18,22 @@ export async function GET() {
     }
 }
 
-// PUT: Actualizar precios de un taller (Admin edita cada 2-3 meses)
+// PUT: Actualizar precios o visibilidad de un taller
 export async function PUT(request) {
     try {
-        const { taller_id, precio_base, precio_desc_dia10, precio_desc_efectivo, precio_por_hora } = await request.json();
+        const body = await request.json();
+        const { taller_id, precio_base, precio_desc_dia10, precio_desc_efectivo, precio_por_hora, activo } = body;
+
+        const updateData = {};
+        if (precio_base !== undefined) updateData.precio_base = precio_base;
+        if (precio_desc_dia10 !== undefined) updateData.precio_desc_dia10 = precio_desc_dia10;
+        if (precio_desc_efectivo !== undefined) updateData.precio_desc_efectivo = precio_desc_efectivo;
+        if (precio_por_hora !== undefined) updateData.precio_por_hora = precio_por_hora;
+        if (activo !== undefined) updateData.activo = activo;
 
         const { error } = await supabaseAdmin
             .from('talleres')
-            .update({
-                precio_base,
-                precio_desc_dia10,
-                precio_desc_efectivo,
-                precio_por_hora
-            })
+            .update(updateData)
             .eq('id', taller_id);
 
         if (error) throw error;

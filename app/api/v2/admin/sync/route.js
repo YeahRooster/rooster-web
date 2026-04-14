@@ -45,7 +45,7 @@ export async function POST(request) {
                 imagen_url: String(t[6]).trim(),
                 cupos_totales: parseInt(t[7]) || 15,
                 cupos_ocupados: parseInt(t[8]) || 0,
-                activo: String(t[9]).toLowerCase() === 'si'
+                activo: String(t[9]).trim().toLowerCase() === 'si'
             };
 
             if (existing) {

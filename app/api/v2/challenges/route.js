@@ -134,7 +134,8 @@ export async function GET(request) {
                     const isInTieBreaker = (challenge.tie_breaker_ids && challenge.tie_breaker_ids.length > 0)
                         ? challenge.tie_breaker_ids.includes(s.id)
                         : true;
-                    return isNotMe && isInTieBreaker;
+                    // Si el reto finalizó, mostramos la propia obra para poder ver sus votos
+                    return (isFinished ? true : isNotMe) && isInTieBreaker;
                 });
 
                 // Mis votos en este reto (MISMA RONDA)

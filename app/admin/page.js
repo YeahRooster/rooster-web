@@ -68,16 +68,33 @@ export default function AdminDashboard() {
                         talleresUnicos[nombreBase] = {
                             ...t,
                             titulo: nombreBase,
-                            ids: [t.id] // Array de IDs para actualizar todos los turnos
+                            ids: [t.id], // Array de IDs para actualizar todos los turnos
+                            activo_grupal: t.activo
                         };
                     } else {
                         // Si ya existe, agregar el ID al array
                         talleresUnicos[nombreBase].ids.push(t.id);
+                        if (t.activo) talleresUnicos[nombreBase].activo_grupal = true;
                     }
                 });
                 setTalleres(Object.values(talleresUnicos));
             }
         } catch (e) { console.error(e); }
+    };
+
+    const toggleWorkshop = async (tallerIds, currentStatus) => {
+        try {
+            const promises = tallerIds.map(id =>
+                fetch('/api/v2/talleres/prices', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ taller_id: id, activo: !currentStatus })
+                })
+            );
+            await Promise.all(promises);
+            // Actualizar el estado de manera optimista
+            setTalleres(prev => prev.map(t => t.ids[0] === tallerIds[0] ? { ...t, activo_grupal: !currentStatus } : t));
+        } catch (e) { alert('Error al actualizar visibilidad'); }
     };
 
     const loadPaymentsHistory = async () => {
@@ -831,7 +848,22 @@ export default function AdminDashboard() {
                                 <tbody>
                                     {talleres.map(t => (
                                         <tr key={t.ids[0]}>
-                                            <td>{t.titulo}</td>
+                                            <td>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                    <span style={{ fontWeight: 'bold' }}>{t.titulo}</span>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <span style={{ fontSize: '0.65rem', color: '#9ca3af' }}>VISIBLE EN WEB:</span>
+                                                        <label className={styles.switch} style={{ transform: 'scale(0.7)', margin: 0, height: '24px' }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={t.activo_grupal}
+                                                                onChange={() => toggleWorkshop(t.ids, t.activo_grupal)}
+                                                            />
+                                                            <span className={styles.slider}></span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </td>
                                             <td>
                                                 <input
                                                     type="number"
