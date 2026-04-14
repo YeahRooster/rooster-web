@@ -520,9 +520,9 @@ export default function AdminDashboard() {
                         <span>Basado en cuotas pagadas y comisiones</span>
                     </div>
                     <div className={styles.statCard}>
-                        <h3>Alumnos Totales</h3>
+                        <h3>Alumnos Activos</h3>
                         <p className={styles.bigNumber}>{stats?.totalAlumnos || 0}</p>
-                        <span>En todos los talleres</span>
+                        <span>Cursa actualmente</span>
                     </div>
                     <div className={styles.statCard}>
                         <h3>Profesores</h3>

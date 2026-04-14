@@ -23,7 +23,8 @@ export async function GET() {
         // 2. Total Alumnos (Conteo físico en tabla alumnos)
         const { count: totalAlumnos, error: aErr } = await supabase
             .from('alumnos')
-            .select('*', { count: 'exact', head: true });
+            .select('*', { count: 'exact', head: true })
+            .eq('activo', true);
 
         if (aErr) throw aErr;
 

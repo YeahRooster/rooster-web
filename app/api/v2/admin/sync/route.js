@@ -86,7 +86,7 @@ export async function POST(request) {
                 email: email === "" ? null : email,
                 password: passwordMapAlumnos[dni] || String(a[3] || dni),
                 fecha_ingreso: new Date(a[4] || new Date()), // Columna 5 (index 4)
-                activo: String(a[5]).toUpperCase() === 'ACTIVO' // Columna 6 (index 5)
+                activo: String(a[5]).trim().toUpperCase() === 'ACTIVO' // Columna 6 (index 5)
             });
         });
 
@@ -105,6 +105,16 @@ export async function POST(request) {
         const alumnosRobustosFinal = listaAlumnosRobustos;
         const { error: errA } = await supabaseAdmin.from('alumnos').upsert(alumnosRobustosFinal, { onConflict: 'dni' });
         if (errA) console.error("❌ Error upserting alumnos:", errA.message);
+
+        // Desactivar alumnos que ya no existan en el excel (inactivos reales)
+        const activeAlumnosDnis = Array.from(validAlumnosMap.keys());
+        const { data: dbAlumnosData } = await supabaseAdmin.from('alumnos').select('dni');
+        const allDbAlumnosDnis = dbAlumnosData?.map(a => String(a.dni)) || [];
+        const alumnosToDeactivate = allDbAlumnosDnis.filter(dni => !activeAlumnosDnis.includes(dni));
+        if (alumnosToDeactivate.length > 0) {
+            console.log(`⚠️ Desactivando ${alumnosToDeactivate.length} alumnos huérfanos`);
+            await supabaseAdmin.from('alumnos').update({ activo: false }).in('dni', alumnosToDeactivate);
+        }
 
         // Obtener la lista real de DNIs existentes en Supabase (para filtrar huerfanos)
         const { data: dbAlumnos, error: dbAErr } = await supabaseAdmin.from('alumnos').select('dni');
@@ -129,6 +139,16 @@ export async function POST(request) {
         });
         const { error: errP } = await supabaseAdmin.from('profesores').upsert(Array.from(validProfesMap.values()), { onConflict: 'dni' });
         if (errP) console.error("❌ Error upserting profesores:", errP.message);
+
+        // Eliminar profesores que ya no existan en el excel
+        const activeProfesDnis = Array.from(validProfesMap.keys());
+        const { data: dbProfesData } = await supabaseAdmin.from('profesores').select('dni');
+        const allDbProfesDnis = dbProfesData?.map(p => String(p.dni)) || [];
+        const profesToDelete = allDbProfesDnis.filter(dni => !activeProfesDnis.includes(dni));
+        if (profesToDelete.length > 0) {
+            console.log(`🗑️ Eliminando ${profesToDelete.length} profesores obsoletos`);
+            await supabaseAdmin.from('profesores').delete().in('dni', profesToDelete);
+        }
 
         const uniqueInscMap = new Map();
         inscripciones.forEach(i => {
