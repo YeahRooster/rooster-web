@@ -851,6 +851,10 @@ export default function AdminDashboard() {
                                             <td>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                                     <span style={{ fontWeight: 'bold' }}>{t.titulo}</span>
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <span style={{ fontSize: '0.65rem', color: '#9ca3af' }}>COMISIÓN: {t.comision || '1.0'}</span>
+                                                        <span style={{ fontSize: '0.65rem', color: '#fbbf24', fontWeight: 'bold' }}>MODALIDAD: {t.tipo_cobro || 'MENSUAL'}</span>
+                                                    </div>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                         <span style={{ fontSize: '0.65rem', color: '#9ca3af' }}>VISIBLE EN WEB:</span>
                                                         <label className={styles.switch} style={{ transform: 'scale(0.7)', margin: 0, height: '24px' }}>

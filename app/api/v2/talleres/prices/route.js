@@ -6,7 +6,7 @@ export async function GET() {
     try {
         const { data: talleres, error } = await supabaseAdmin
             .from('talleres')
-            .select('id, titulo, precio_base, precio_desc_dia10, precio_desc_efectivo, precio_por_hora, tipo_cobro, activo')
+            .select('id, titulo, precio_base, precio_desc_dia10, precio_desc_efectivo, precio_por_hora, tipo_cobro, comision, activo')
             .order('titulo');
 
         if (error) throw error;

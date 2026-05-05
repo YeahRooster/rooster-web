@@ -11,14 +11,27 @@ export async function GET() {
 
         const { data: pagos, error: pErr } = await supabase
             .from('pagos')
-            .select('monto')
+            .select('monto, taller')
             .eq('mes', String(mesActual))
             .eq('anio', anioActual)
             .eq('estado', 'pagado');
 
         if (pErr) throw pErr;
 
-        const netoMensual = pagos.reduce((sum, p) => sum + (parseFloat(p.monto) || 0), 0);
+        // 1.1 Obtener comisiones de talleres
+        const { data: talleresInfo } = await supabase
+            .from('talleres')
+            .select('titulo, comision');
+        
+        const comisionMap = {};
+        talleresInfo?.forEach(t => {
+            comisionMap[t.titulo.toLowerCase().trim()] = parseFloat(t.comision) || 1.0;
+        });
+
+        const netoMensual = pagos.reduce((sum, p) => {
+            const comision = comisionMap[p.taller.toLowerCase().trim()] ?? 1.0;
+            return sum + ((parseFloat(p.monto) || 0) * comision);
+        }, 0);
 
         // 2. Total Alumnos (Conteo físico en tabla alumnos)
         const { count: totalAlumnos, error: aErr } = await supabase

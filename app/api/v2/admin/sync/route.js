@@ -45,8 +45,12 @@ export async function POST(request) {
                 imagen_url: String(t[6]).trim(),
                 cupos_totales: parseInt(t[7]) || 15,
                 cupos_ocupados: parseInt(t[8]) || 0,
-                activo: String(t[9]).trim().toLowerCase() === 'si'
+                activo: String(t[9]).trim().toLowerCase() === 'si',
+                comision: parseFloat(t[10]) || 1.0,
+                tipo_cobro: String(t[11] || "MENSUAL").trim().toUpperCase()
             };
+
+            console.log(`[SYNC TALLER] ${titulo} -> Comisión: ${tallerData.comision}, Tipo: ${tallerData.tipo_cobro}`);
 
             if (existing) {
                 await supabaseAdmin.from('talleres').update(tallerData).eq('id', existing.id);
