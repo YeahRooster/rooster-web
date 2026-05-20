@@ -3,10 +3,15 @@ import { supabaseAdmin } from '@/config/supabaseAdmin';
 
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
-    const tallerNombre = searchParams.get('taller');
+    let tallerNombre = searchParams.get('taller');
 
     if (!tallerNombre) {
         return NextResponse.json({ status: 'error', message: 'Taller requerido' }, { status: 400 });
+    }
+
+    // Normalizar taller de guion para Jorge Roldan (mismatch con el nombre del taller en la base de datos)
+    if (tallerNombre.trim().toUpperCase() === 'TALLER DE GUION') {
+        tallerNombre = 'TALLER DE GUION DE HISTORIETAS';
     }
 
     try {

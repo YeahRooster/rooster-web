@@ -12,7 +12,12 @@ cloudinary.config({
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { action, filename, data, taller, teacher, filetype, teacher_dni } = body;
+        let { action, filename, data, taller, teacher, filetype, teacher_dni } = body;
+
+        // Normalizar taller de guion para Jorge Roldan (mismatch con el nombre del taller en la base de datos)
+        if (taller && taller.trim().toUpperCase() === 'TALLER DE GUION') {
+            taller = 'TALLER DE GUION DE HISTORIETAS';
+        }
 
         console.log(`☁️ Procesando recurso para el taller: ${taller} (Acción: ${action || 'upload'})`);
 

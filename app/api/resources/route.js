@@ -5,7 +5,12 @@ import { supabaseAdmin } from '@/config/supabaseAdmin';
 // GET: Listar recursos de un taller
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
-    const taller = searchParams.get('taller');
+    let taller = searchParams.get('taller');
+
+    // Normalizar taller de guion para Jorge Roldan (mismatch con el nombre del taller en la base de datos)
+    if (taller && taller.trim().toUpperCase() === 'TALLER DE GUION') {
+        taller = 'TALLER DE GUION DE HISTORIETAS';
+    }
 
     // Si NO hay taller, asumimos que es una petición GLOBAL (Admin)
     // Si HAY taller, filtramos por él (Profesor/Alumno)
