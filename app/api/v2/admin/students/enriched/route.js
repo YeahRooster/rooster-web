@@ -52,9 +52,12 @@ export async function GET(request) {
                 return acc + (ins.monto_personalizado || ins.talleres?.precio_base || 0);
             }, 0);
 
+            const talleresNombres = alInsc.map(i => i.talleres?.titulo || i.taller_nombre).filter(Boolean);
+
             return {
                 ...al,
-                talleres: alInsc.map(i => i.talleres?.titulo || i.taller_nombre),
+                talleres: talleresNombres,
+                talleresInscriptos: talleresNombres,
                 paga_este_mes: estaAlDia,
                 cuota_total: cuotaTotal,
                 inscripciones: alInsc.map(i => ({
