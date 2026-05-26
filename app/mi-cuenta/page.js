@@ -20,6 +20,8 @@ export default function MiCuentaPage() {
     // Estados para pagos
     const [suggestedPayment, setSuggestedPayment] = useState(null);
     const [loadingPayment, setLoadingPayment] = useState(false);
+    const [loadingCheckout, setLoadingCheckout] = useState(false);
+    const [paymentStatus, setPaymentStatus] = useState(null);
 
     // Estado para taller seleccionado (Profes que dan varios)
     const [selectedTaller, setSelectedTaller] = useState('');
@@ -32,6 +34,19 @@ export default function MiCuentaPage() {
     const [submissionData, setSubmissionData] = useState({ imageBase64: '', caption: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [voterStats, setVoterStats] = useState({}); // { challengeId: { used: 0, locked: false, myVotes: [] } }
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const status = params.get('payment');
+            if (status) {
+                setPaymentStatus(status);
+                // Limpiar parámetros para evitar repetir notificaciones
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+        }
+    }, []);
 
     useEffect(() => {
         if (user && user.role === 'student') {
@@ -298,6 +313,29 @@ export default function MiCuentaPage() {
         }
     };
 
+    const handleMercadoPagoCheckout = async () => {
+        if (!user?.dni) return;
+        setLoadingCheckout(true);
+        try {
+            const res = await fetch('/api/v2/payments/mercadopago/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dni: user.dni })
+            });
+            const data = await res.json();
+            if (data.status === 'success' && data.init_point) {
+                window.location.href = data.init_point;
+            } else {
+                alert("❌ Error: " + (data.message || 'No se pudo generar la orden de pago. Reintentá.'));
+            }
+        } catch (error) {
+            console.error("Error al procesar pago con MP:", error);
+            alert("❌ Hubo un problema al conectar con el servidor.");
+        } finally {
+            setLoadingCheckout(false);
+        }
+    };
+
     const closeAlert = () => {
         setShowAlert(false);
         localStorage.setItem('dismiss_discount_alert', 'true');
@@ -514,6 +552,36 @@ export default function MiCuentaPage() {
                     <button onClick={closeAlert} className={styles.closeAlert}>✕</button>
                 </div>
             )}
+            {paymentStatus === 'success' && (
+                <div className={styles.discountAlert} style={{ borderColor: '#4ade80', background: '#064e3b' }}>
+                    <div className={styles.alertIcon}>✅</div>
+                    <div className={styles.alertContent}>
+                        <strong>¡Pago recibido con éxito!</strong>
+                        <p>Tu pago ha sido acreditado de forma automática y el sistema registrará los cambios en unos momentos. ¡Muchas gracias!</p>
+                    </div>
+                    <button onClick={() => setPaymentStatus(null)} className={styles.closeAlert}>✕</button>
+                </div>
+            )}
+            {paymentStatus === 'pending' && (
+                <div className={styles.discountAlert} style={{ borderColor: '#f59e0b', background: '#78350f' }}>
+                    <div className={styles.alertIcon}>⏳</div>
+                    <div className={styles.alertContent}>
+                        <strong>Pago en proceso</strong>
+                        <p>El pago está siendo procesado por MercadoPago. En cuanto se acredite, tu estado se actualizará de forma automática.</p>
+                    </div>
+                    <button onClick={() => setPaymentStatus(null)} className={styles.closeAlert}>✕</button>
+                </div>
+            )}
+            {paymentStatus === 'failure' && (
+                <div className={styles.discountAlert} style={{ borderColor: '#ef4444', background: '#7f1d1d' }}>
+                    <div className={styles.alertIcon}>❌</div>
+                    <div className={styles.alertContent}>
+                        <strong>Error al procesar el pago</strong>
+                        <p>Hubo un problema al procesar tu pago con MercadoPago. Por favor, intenta de nuevo o realiza una transferencia manual.</p>
+                    </div>
+                    <button onClick={() => setPaymentStatus(null)} className={styles.closeAlert}>✕</button>
+                </div>
+            )}
             <h1 className="section-title text-yellow" style={{ marginBottom: '2rem' }}>Mi Cuenta</h1>
 
             <div className={styles.dashboard}>
@@ -656,20 +724,50 @@ export default function MiCuentaPage() {
                                                 <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.8rem' }}>Titular:</p>
                                                 <p style={{ margin: 0, fontSize: '0.9rem' }}>Emiliano Gallo</p>
                                             </div>
-                                        </div>
+                                            <button
+                                                className="btn btn-primary"
+                                                style={{
+                                                    width: '100%',
+                                                    fontSize: '1.15rem',
+                                                    padding: '14px',
+                                                    marginBottom: '15px',
+                                                    background: 'linear-gradient(135deg, #009ee3 0%, #007eb5 100%)',
+                                                    border: 'none',
+                                                    fontWeight: 'bold',
+                                                    color: 'white',
+                                                    boxShadow: '0 4px 15px rgba(0, 158, 227, 0.3)',
+                                                    transition: 'transform 0.2s, box-shadow 0.2s'
+                                                }}
+                                                onClick={handleMercadoPagoCheckout}
+                                                disabled={loadingCheckout}
+                                            >
+                                                {loadingCheckout ? '⏳ Generando orden de pago...' : '💳 Pagar Online con MercadoPago'}
+                                            </button>
 
-                                        <button
-                                            className="btn btn-primary"
-                                            style={{ width: '100%', fontSize: '1.1rem', padding: '12px' }}
-                                            onClick={() => {
-                                                const total = suggestedPayment.items.reduce((acc, curr) => acc + curr.monto_sugerido, 0);
-                                                const detalle = suggestedPayment.items.map(i => `${i.taller} (C${i.cuota_numero})`).join(', ');
-                                                const msg = `Hola! Realicé la transferencia de $${total} por: ${detalle}. Alumno: ${user.nombre}. Adjunto comprobante!`;
-                                                window.open(`https://wa.me/5493416417649?text=${encodeURIComponent(msg)}`, '_blank');
-                                            }}
-                                        >
-                                            📲 Informar Pago por WhatsApp
-                                        </button>
+                                            <div style={{ textAlign: 'center', margin: '15px 0', color: '#9ca3af', fontSize: '0.9rem' }}>
+                                                — o si ya realizaste una transferencia —
+                                            </div>
+
+                                            <button
+                                                className="btn btn-outline"
+                                                style={{
+                                                    width: '100%',
+                                                    fontSize: '1rem',
+                                                    padding: '10px',
+                                                    borderColor: '#25d366',
+                                                    color: '#25d366',
+                                                    background: 'transparent'
+                                                }}
+                                                onClick={() => {
+                                                    const total = suggestedPayment.items.reduce((acc, curr) => acc + curr.monto_sugerido, 0);
+                                                    const detalle = suggestedPayment.items.map(i => `${i.taller} (C${i.cuota_numero})`).join(', ');
+                                                    const msg = `Hola! Realicé la transferencia de $${total} por: ${detalle}. Alumno: ${user.nombre}. Adjunto comprobante!`;
+                                                    window.open(`https://wa.me/5493425263036?text=${encodeURIComponent(msg)}`, '_blank');
+                                                }}
+                                            >
+                                                📲 Informar Pago por WhatsApp
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

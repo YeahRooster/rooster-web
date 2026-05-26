@@ -207,7 +207,18 @@ export async function POST(request) {
             return NextResponse.json({ status: 'error', message: 'Falta DNI o ID del reto' }, { status: 400 });
         }
 
-        // 1. Verificar si el reto está en etapa de subida
+        // 1. Verificar si el alumno tiene acceso restringido
+        const { data: studentCheck } = await supabaseAdmin
+            .from('alumnos')
+            .select('acceso_restringido')
+            .eq('dni', final_dni)
+            .single();
+
+        if (studentCheck?.acceso_restringido) {
+            return NextResponse.json({ status: 'error', message: 'Tu cuenta tiene el acceso restringido. Por favor, comunícate con administración para regularizar tu situación.' }, { status: 403 });
+        }
+
+        // 2. Verificar si el reto está en etapa de subida
         const { data: challenge, error: cErr } = await supabaseAdmin
             .from('challenges')
             .select('fecha_cierre_subida')

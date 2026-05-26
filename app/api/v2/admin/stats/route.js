@@ -1,40 +1,47 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/config/supabase';
+import { supabaseAdmin } from '@/config/supabaseAdmin';
 
 export async function GET() {
     try {
         console.log("--- SUPABASE ADMIN STATS v2 ---");
 
-        // 1. Neto Mensual (Suma de pagos del mes actual)
-        const mesActual = new Date().getMonth() + 1;
-        const anioActual = new Date().getFullYear();
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
 
-        const { data: pagos, error: pErr } = await supabase
+        const { data: todosPagos, error: pErr } = await supabaseAdmin
             .from('pagos')
-            .select('monto, taller')
-            .eq('mes', String(mesActual))
-            .eq('anio', anioActual)
+            .select('monto, monto_final, taller, fecha_pago, fecha_real_pago')
             .eq('estado', 'pagado');
 
         if (pErr) throw pErr;
 
+        // Filtrar los pagos cuya fecha REAL de cobro cae en el mes actual
+        const pagos = (todosPagos || []).filter(p => {
+            const fechaStr = p.fecha_real_pago || p.fecha_pago;
+            if (!fechaStr) return false;
+            const fecha = new Date(fechaStr);
+            return fecha.getFullYear() === currentYear && (fecha.getMonth() + 1) === currentMonth;
+        });
+
         // 1.1 Obtener comisiones de talleres
-        const { data: talleresInfo } = await supabase
+        const { data: talleresInfo } = await supabaseAdmin
             .from('talleres')
             .select('titulo, comision');
         
         const comisionMap = {};
         talleresInfo?.forEach(t => {
-            comisionMap[t.titulo.toLowerCase().trim()] = parseFloat(t.comision) || 1.0;
+            comisionMap[t.titulo.toLowerCase().trim()] = t.comision || 1.0;
         });
 
         const netoMensual = pagos.reduce((sum, p) => {
-            const comision = comisionMap[p.taller.toLowerCase().trim()] ?? 1.0;
-            return sum + ((parseFloat(p.monto) || 0) * comision);
+            const comision = comisionMap[(p.taller || '').toLowerCase().trim()] || 1.0;
+            const montoUsado = parseFloat(p.monto_final || p.monto || 0);
+            return sum + (montoUsado * comision);
         }, 0);
 
         // 2. Total Alumnos (Conteo físico en tabla alumnos)
-        const { count: totalAlumnos, error: aErr } = await supabase
+        const { count: totalAlumnos, error: aErr } = await supabaseAdmin
             .from('alumnos')
             .select('*', { count: 'exact', head: true })
             .eq('activo', true);
@@ -42,7 +49,7 @@ export async function GET() {
         if (aErr) throw aErr;
 
         // 3. Total Profesores
-        const { count: totalProfesores, error: prErr } = await supabase
+        const { count: totalProfesores, error: prErr } = await supabaseAdmin
             .from('profesores')
             .select('*', { count: 'exact', head: true });
 

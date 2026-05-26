@@ -7,6 +7,17 @@ export async function POST(request) {
 
         if (!post_id || !usuario_dni) throw new Error("Faltan datos de like");
 
+        // 0. Verificar si el usuario tiene acceso restringido
+        const { data: studentCheck } = await supabase
+            .from('alumnos')
+            .select('acceso_restringido')
+            .eq('dni', usuario_dni)
+            .single();
+
+        if (studentCheck?.acceso_restringido) {
+            return NextResponse.json({ status: 'error', message: 'Tu cuenta tiene el acceso restringido.' }, { status: 403 });
+        }
+
         // 1. Verificar si ya existe el like
         const { data: existingLike } = await supabase
             .from('social_likes')

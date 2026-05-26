@@ -19,6 +19,17 @@ export async function POST(request) {
             return NextResponse.json({ status: 'error', message: 'No se pudo verificar el desafío. Actualizá la página e intentá de nuevo.' }, { status: 404 });
         }
 
+        // 1.5 Verificar si el alumno tiene acceso restringido
+        const { data: studentCheck } = await supabaseAdmin
+            .from('alumnos')
+            .select('acceso_restringido')
+            .eq('dni', voter_dni)
+            .single();
+
+        if (studentCheck?.acceso_restringido) {
+            return NextResponse.json({ status: 'error', message: 'Tu cuenta tiene el acceso restringido. Por favor, comunícate con administración para regularizar tu situación.' }, { status: 403 });
+        }
+
         const ahora = new Date();
         if (ahora < new Date(challenge.fecha_cierre_subida)) {
             return NextResponse.json({ status: 'error', message: 'La votación aún no ha comenzado' }, { status: 403 });

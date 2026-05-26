@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
+import WorkshopsTab from './WorkshopsTab';
+import ReportsTab from './ReportsTab';
 
 export default function AdminDashboard() {
     const { user, loading: authLoading } = useAuth();
@@ -11,9 +13,10 @@ export default function AdminDashboard() {
     const [allResources, setAllResources] = useState([]);
     const [talleres, setTalleres] = useState([]); // Para editor de precios
     const [paymentsHistory, setPaymentsHistory] = useState([]);
-    const [view, setView] = useState('stats'); // 'stats', 'students', 'resources', 'payments', 'gallery'
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [view, setView] = useState('stats'); // 'stats', 'students', 'resources', 'payments', 'gallery', 'workshops', 'reports'
     const [filter, setFilter] = useState('all');
-    const [isSyncing, setIsSyncing] = useState(false);
+    const [showInactive, setShowInactive] = useState(false);
     const [galleryPosts, setGalleryPosts] = useState([]);
     const [challenges, setChallenges] = useState([]);
     const [showChallengeModal, setShowChallengeModal] = useState(false);
@@ -42,6 +45,11 @@ export default function AdminDashboard() {
     const [showAddStudentModal, setShowAddStudentModal] = useState(false);
     const [newStudent, setNewStudent] = useState({ dni: '', nombre: '', email: '', telefono: '', talleres: [] });
     const [isAddingStudent, setIsAddingStudent] = useState(false);
+    
+    // ESTADOS PARA EDICIÓN DE ALUMNOS
+    const [showEditStudentModal, setShowEditStudentModal] = useState(false);
+    const [editingStudent, setEditingStudent] = useState(null);
+    const [isSavingStudent, setIsSavingStudent] = useState(false);
 
     useEffect(() => {
         if (user && user.role === 'admin') {
@@ -97,9 +105,10 @@ export default function AdminDashboard() {
         } catch (e) { alert('Error al actualizar visibilidad'); }
     };
 
-    const loadPaymentsHistory = async () => {
+    const loadPaymentsHistory = async (year) => {
         try {
-            const res = await fetch('/api/v2/payments/history');
+            const targetYear = year !== undefined ? year : selectedYear;
+            const res = await fetch(`/api/v2/payments/history?anio=${targetYear}`);
             const data = await res.json();
             if (data.status === 'success') setPaymentsHistory(data.alumnos);
         } catch (e) { console.error(e); }
@@ -324,6 +333,48 @@ export default function AdminDashboard() {
         finally { setProcessingDni(null); }
     };
 
+    const toggleAccesoRestringido = async (dni, currentStatus) => {
+        if (!confirm(`¿Estás seguro que quieres ${currentStatus ? 'desbloquear' : 'bloquear'} la plataforma para este alumno?`)) return;
+        setProcessingDni(dni);
+        try {
+            const res = await fetch('/api/v2/admin/students', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dni, acceso_restringido: !currentStatus })
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                await loadStudents(filter === 'all' ? '' : filter);
+            } else {
+                alert("Error al actualizar acceso: " + result.message);
+            }
+        } catch (err) { alert("Error de conexión al cambiar acceso"); }
+        finally { setProcessingDni(null); }
+    };
+
+    const markManualPayment = async (dni, taller, mes, anio, monto) => {
+        const confirmMonto = prompt(`Efectivo: Confirmar monto pagado para el mes ${mes}:`, monto || 0);
+        if (!confirmMonto || isNaN(confirmMonto)) return;
+        
+        try {
+            const res = await fetch('/api/v2/admin/payments/manual', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dni, taller, mes, anio, monto: parseFloat(confirmMonto) })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert('✅ Pago registrado en caja');
+                loadPaymentsHistory();
+                loadStats();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (e) {
+            alert('Error de conexión al registrar pago');
+        }
+    };
+
     const toggleNotifications = async (dni, currentStatus) => {
         // Actualización optimista para feedback instantáneo
         setStudents(prev => prev.map(s => s.dni === dni ? { ...s, notificaciones_activas: !currentStatus } : s));
@@ -408,6 +459,36 @@ export default function AdminDashboard() {
             }
         } catch (e) { alert("Error al registrar alumno"); }
         finally { setIsAddingStudent(false); }
+    };
+
+    const handleEditStudent = async () => {
+        if (!editingStudent.nombre) return alert("El nombre es obligatorio");
+        setIsSavingStudent(true);
+        try {
+            const res = await fetch('/api/v2/admin/students', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    dni: editingStudent.dni,
+                    nombre: editingStudent.nombre,
+                    email: editingStudent.email || null,
+                    telefono: editingStudent.telefono || null
+                })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert("✅ Datos del alumno actualizados con éxito.");
+                setShowEditStudentModal(false);
+                setEditingStudent(null);
+                loadStudents();
+            } else {
+                alert("❌ Error: " + data.message);
+            }
+        } catch (e) {
+            alert("Error al actualizar datos del alumno");
+        } finally {
+            setIsSavingStudent(false);
+        }
     };
 
     const sendIndividualReminder = async (dni, nombre) => {
@@ -504,10 +585,12 @@ export default function AdminDashboard() {
 
             <div className={styles.tabs}>
                 <button className={`${styles.tab} ${view === 'stats' ? styles.tabActive : ''}`} onClick={() => setView('stats')}>📈 Estadísticas</button>
-                <button className={`${styles.tab} ${view === 'students' ? styles.tabActive : ''}`} onClick={() => setView('students')}>👤 Gestión de Alumnos</button>
+                <button className={`${styles.tab} ${view === 'students' ? styles.tabActive : ''}`} onClick={() => setView('students')}>👤 Alumnos</button>
+                <button className={`${styles.tab} ${view === 'workshops' ? styles.tabActive : ''}`} onClick={() => { setView('workshops'); loadTalleres(); }}>🏢 Talleres</button>
                 <button className={`${styles.tab} ${view === 'resources' ? styles.tabActive : ''}`} onClick={() => setView('resources')}>📚 Materiales</button>
                 <button className={`${styles.tab} ${view === 'gallery' ? styles.tabActive : ''}`} onClick={() => { setView('gallery'); loadGalleryPosts(); }}>🎨 Galería</button>
                 <button className={`${styles.tab} ${view === 'payments' ? styles.tabActive : ''}`} onClick={() => { setView('payments'); loadPaymentsHistory(); loadTalleres(); }}>💳 Pagos</button>
+                <button className={`${styles.tab} ${view === 'reports' ? styles.tabActive : ''}`} onClick={() => { setView('reports'); loadPaymentsHistory(); }}>📊 Reportes</button>
                 <button className={`${styles.tab} ${view === 'challenges' ? styles.tabActive : ''}`} onClick={() => { setView('challenges'); loadChallenges(); loadTalleres(); }}>🏆 Desafíos</button>
                 <button className={`${styles.tab}`} onClick={() => window.location.href = '/cronograma'}>📅 Ver Cronograma</button>
             </div>
@@ -557,6 +640,11 @@ export default function AdminDashboard() {
                         <button onClick={() => { setFilter('all'); loadStudents(); }} className={filter === 'all' ? styles.btnFilterActive : ''}>Todos</button>
                         <button onClick={() => { setFilter('pending'); loadStudents('pending'); }} className={filter === 'pending' ? styles.btnFilterActive : ''}>Pendientes 🟡</button>
                         <button onClick={() => { setFilter('active'); loadStudents('active'); }} className={filter === 'active' ? styles.btnFilterActive : ''}>Activos 🟢</button>
+                        
+                        <label style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px', color: '#9ca3af', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
+                            Mostrar Inactivos (Bajas)
+                        </label>
                     </div>
 
                     <div className={styles.cardsGrid}>
@@ -566,11 +654,18 @@ export default function AdminDashboard() {
                                 return s.nombre.toLowerCase().includes(q) || s.dni.includes(q) || (s.email && s.email.toLowerCase().includes(q));
                             })
                             .filter(s => {
-                                if (filter === 'all') return true;
+                                if (filter === 'all') {
+                                    if (!showInactive && !s.activo) return false;
+                                    return true;
+                                }
                                 return filter === 'active' ? s.activo : !s.activo;
                             })
+                            .sort((a, b) => {
+                                if (a.activo === b.activo) return a.nombre.localeCompare(b.nombre);
+                                return a.activo ? -1 : 1;
+                            })
                             .map((s) => (
-                                <div key={s.dni} className={styles.studentCard}>
+                                <div key={s.dni} className={styles.studentCard} style={{ opacity: s.activo ? 1 : 0.6, filter: s.activo ? 'none' : 'grayscale(80%)' }}>
                                     <div className={styles.cardHeader}>
                                         <div className={styles.avatar}>
                                             {s.nombre.charAt(0).toUpperCase()}
@@ -578,9 +673,22 @@ export default function AdminDashboard() {
                                         <div className={styles.headerInfo}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                                 <div>
-                                                    <h4>{s.nombre}</h4>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                                        <h4 style={{ margin: 0 }}>{s.nombre}</h4>
+                                                        <button
+                                                            onClick={() => {
+                                                                setEditingStudent({ dni: s.dni, nombre: s.nombre, email: s.email || '', telefono: s.telefono || '' });
+                                                                setShowEditStudentModal(true);
+                                                            }}
+                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '2px', display: 'inline-flex', alignSelf: 'center' }}
+                                                            title="Editar datos de contacto"
+                                                        >
+                                                            ✏️
+                                                        </button>
+                                                    </div>
                                                     <p>{s.email || 'Sin email'}</p>
                                                     <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>{s.dni}</p>
+                                                    <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>{s.telefono || 'Sin teléfono'}</p>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'flex-start' }}>
                                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
@@ -634,12 +742,18 @@ export default function AdminDashboard() {
                                     </div>
 
                                     <div className={styles.cardFooter}>
-                                        <button onClick={() => showPassword(s.dni)} className={styles.footerBtn}>🔑 Ver Pass</button>
+                                        <button onClick={() => showPassword(s.dni)} className={styles.footerBtn}>🔑 Pass</button>
+                                        <button
+                                            onClick={() => toggleAccesoRestringido(s.dni, s.acceso_restringido)}
+                                            className={`${styles.footerBtn} ${s.acceso_restringido ? styles.textRed : styles.textGreen}`}
+                                        >
+                                            {s.acceso_restringido ? '🚫 Desbloquear' : '🔓 Bloquear'}
+                                        </button>
                                         <button
                                             onClick={() => toggleStudentStatus(s.dni, s.activo)}
                                             className={`${styles.footerBtn} ${s.activo ? styles.textRed : styles.textGreen}`}
                                         >
-                                            {s.activo ? '🛑 Dar de Baja' : '✅ Dar de Alta'}
+                                            {s.activo ? '🛑 Baja' : '✅ Alta'}
                                         </button>
                                     </div>
                                 </div>
@@ -828,6 +942,10 @@ export default function AdminDashboard() {
                 </div>
             )}
 
+            {view === 'workshops' && <WorkshopsTab />}
+            
+            {view === 'reports' && <ReportsTab />}
+
             {view === 'payments' && (
                 <div className={styles.studentsSection}>
                     {/* Editor de Precios */}
@@ -915,16 +1033,55 @@ export default function AdminDashboard() {
 
                     {/* Vista Horizontal de Pagos */}
                     <div>
-                        <h2>📊 Historial de Pagos (Vista Horizontal)</h2>
-                        <p style={{ color: '#888', marginBottom: '1rem' }}>Cada celda = cuota del ciclo anual del alumno</p>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+                            <div>
+                                <h2 style={{ margin: 0 }}>📊 Historial de Pagos (Vista Horizontal)</h2>
+                                <p style={{ color: '#888', margin: '4px 0 0 0' }}>Cada celda representa el mes de pago calendario para el año seleccionado</p>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e1e1e', padding: '4px 8px', borderRadius: '8px', border: '1px solid #333' }}>
+                                <span style={{ fontSize: '0.85rem', color: '#9ca3af', fontWeight: 'bold' }}>AÑO:</span>
+                                <select
+                                    value={selectedYear}
+                                    onChange={(e) => {
+                                        const yr = parseInt(e.target.value);
+                                        setSelectedYear(yr);
+                                        loadPaymentsHistory(yr);
+                                    }}
+                                    style={{
+                                        background: '#121212',
+                                        border: '1px solid #444',
+                                        color: 'white',
+                                        padding: '6px 12px',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        fontSize: '0.85rem',
+                                        fontWeight: 'bold',
+                                        outline: 'none',
+                                        transition: 'all 0.2s ease',
+                                        fontFamily: 'inherit'
+                                    }}
+                                >
+                                    {Array.from({ length: 2040 - 2025 + 1 }, (_, i) => 2025 + i).map(year => (
+                                        <option key={year} value={year} style={{ background: '#1e1e1e', color: 'white' }}>
+                                            {year} {year === new Date().getFullYear() ? '(Actual)' : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
                         <div className={styles.tableWrapper} style={{ overflowX: 'auto' }}>
                             <table className={styles.table} style={{ minWidth: '1200px' }}>
                                 <thead>
                                     <tr>
                                         <th>Alumno</th>
                                         <th>Taller</th>
-                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
-                                            <th key={n} style={{ textAlign: 'center' }}>C{n}</th>
+                                        {['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SET', 'OCT', 'NOV', 'DIC'].map((mes, idx) => (
+                                            <th key={idx} style={{ textAlign: 'center', minWidth: '85px' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                    <span style={{ fontWeight: 'bold' }}>{mes}</span>
+                                                    <span style={{ fontSize: '0.65rem', color: '#9ca3af', marginTop: '2px' }}>{String(selectedYear).substring(2)}</span>
+                                                </div>
+                                            </th>
                                         ))}
                                         <th>Inscr.</th>
                                     </tr>
@@ -967,22 +1124,28 @@ export default function AdminDashboard() {
                                                     border: pago.pagado ? 'none' : '1px solid #444',
                                                     color: 'white',
                                                     fontSize: '0.9em',
-                                                    cursor: !pago.pagado ? 'pointer' : 'default',
                                                     position: 'relative'
-                                                }}
-                                                    title={!pago.pagado ? "Clic para generar cupón de pago" : "Pagado"}
-                                                    onClick={() => !pago.pagado && generateCoupon(alumno, pidx, pago.monto)}
-                                                >
+                                                }}>
                                                     {pago.pagado ? (
                                                         <>
                                                             ✅<br />
                                                             <small>${Math.round(pago.monto)}</small>
                                                         </>
                                                     ) : (
-                                                        <span style={{ opacity: 0.5 }}>
-                                                            🔗<br />
-                                                            <small>Generar</small>
-                                                        </span>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '4px' }}>
+                                                            <button 
+                                                                onClick={() => generateCoupon(alumno, pidx, pago.monto)}
+                                                                style={{ background: 'transparent', border: '1px solid #60a5fa', color: '#60a5fa', borderRadius: '4px', cursor: 'pointer', fontSize: '0.7em' }}
+                                                            >
+                                                                🔗 Enviar Link
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => markManualPayment(alumno.alumno_dni, alumno.taller, pidx + 1, selectedYear, pago.monto)}
+                                                                style={{ background: '#059669', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '0.7em' }}
+                                                            >
+                                                                💵 Efectivo
+                                                            </button>
+                                                        </div>
                                                     )}
                                                 </td>
                                             ))}
@@ -1191,6 +1354,74 @@ export default function AdminDashboard() {
                 </div>
             )}
 
+            {showEditStudentModal && editingStudent && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modal}>
+                        <h2>✏️ Editar Datos de Alumno</h2>
+                        <p className={styles.modalSubtitle}>Modificá los datos de contacto de {editingStudent.nombre}. Los cambios se guardarán en la base de datos.</p>
+
+                        <div className={styles.formGroup} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                                <label>DNI (No editable):</label>
+                                <input
+                                    type="text"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem', opacity: 0.6, background: '#111827' }}
+                                    value={editingStudent.dni}
+                                    disabled
+                                />
+                            </div>
+                            <div>
+                                <label>Nombre Completo:</label>
+                                <input
+                                    type="text"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    value={editingStudent.nombre}
+                                    onChange={(e) => setEditingStudent({ ...editingStudent, nombre: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className={styles.formGroup} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                                <label>Email:</label>
+                                <input
+                                    type="email"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    value={editingStudent.email}
+                                    onChange={(e) => setEditingStudent({ ...editingStudent, email: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label>Teléfono (WhatsApp):</label>
+                                <input
+                                    type="text"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    placeholder="Ej: 549342..."
+                                    value={editingStudent.telefono}
+                                    onChange={(e) => setEditingStudent({ ...editingStudent, telefono: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className={styles.modalActions}>
+                            <button className="btn" onClick={() => setShowEditStudentModal(false)}>Cancelar</button>
+                            <button
+                                className="btn btn-primary"
+                                disabled={isSavingStudent}
+                                onClick={handleEditStudent}
+                                style={{ background: '#10b981', borderColor: '#10b981' }}
+                            >
+                                {isSavingStudent ? 'Guardando...' : 'Guardar Cambios'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {showSubmissionsModal && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent} style={{ maxWidth: '900px', width: '900px' }}>
@@ -1341,19 +1572,8 @@ export default function AdminDashboard() {
             <div className={styles.adminActions}>
                 <h2>Gestión Rápida</h2>
                 <div className={styles.buttonGroup}>
-                    <a href="https://docs.google.com/spreadsheets/d/1X562v1K8Y0oP70zI1yWlVlA-pX-L9X9E-8X9L9X9E-8X" target="_blank" className="btn btn-primary" style={{ textDecoration: 'none' }}>
-                        Abrir Google Sheets
-                    </a>
                     <button className="btn btn-outline" onClick={() => window.location.href = '/mi-cuenta'}>
                         👤 Mi Perfil / Seguridad
-                    </button>
-                    <button
-                        className="btn btn-primary"
-                        onClick={handleSync}
-                        disabled={isSyncing}
-                        style={{ background: isSyncing ? '#4b5563' : '#10b981', border: 'none' }}
-                    >
-                        {isSyncing ? '⏳ Sincronizando...' : '📥 Sincronizar desde Sheets'}
                     </button>
                     <button className="btn btn-outline" onClick={() => window.location.reload()}>
                         🔄 Refrescar Vista

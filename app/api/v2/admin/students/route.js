@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/config/supabase';
 import { supabaseAdmin } from '@/config/supabaseAdmin';
-import { GOOGLE_SCRIPT_URL } from '@/config/google_script';
 
 export async function GET(request) {
     try {
@@ -28,12 +27,34 @@ export async function GET(request) {
 export async function PUT(request) {
     try {
         const body = await request.json();
-        const { dni, activo, notificaciones_activas } = body;
+        const { dni, activo, notificaciones_activas, acceso_restringido, nombre, email, telefono } = body;
         const cleanDni = String(dni).trim();
+
+        // 1. Validar Email Duplicado si se está modificando el correo
+        if (email && email.trim() !== "") {
+            const cleanEmail = email.trim();
+            const { data: existingEmail } = await supabaseAdmin
+                .from('alumnos')
+                .select('dni, nombre')
+                .eq('email', cleanEmail)
+                .neq('dni', cleanDni)
+                .maybeSingle();
+
+            if (existingEmail) {
+                return NextResponse.json({
+                    status: 'error',
+                    message: `El email ${cleanEmail} ya está registrado para otro alumno (DNI: ${existingEmail.dni}, Nombre: ${existingEmail.nombre || 'Sin nombre'}).`
+                }, { status: 400 });
+            }
+        }
 
         const updateData = {};
         if (activo !== undefined) updateData.activo = activo;
         if (notificaciones_activas !== undefined) updateData.notificaciones_activas = notificaciones_activas;
+        if (acceso_restringido !== undefined) updateData.acceso_restringido = acceso_restringido;
+        if (nombre !== undefined) updateData.nombre = nombre.trim();
+        if (email !== undefined) updateData.email = email ? email.trim() : null;
+        if (telefono !== undefined) updateData.telefono = telefono ? telefono.trim() : null;
 
         const { error } = await supabaseAdmin
             .from('alumnos')
@@ -41,25 +62,6 @@ export async function PUT(request) {
             .eq('dni', cleanDni);
 
         if (error) throw error;
-
-        // --- SINCRONIZACIÓN CON EXCEL (Solo si cambia el estado activo) ---
-        if (activo !== undefined) {
-            try {
-                const syncRes = await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'updateStatus',
-                        dni: cleanDni,
-                        status: activo ? 'ACTIVO' : 'INACTIVO'
-                    })
-                });
-                const syncData = await syncRes.json();
-                console.log("✅ Sync Excel Result:", syncData);
-            } catch (errExcel) {
-                console.error("❌ Error sincronizando con Excel:", errExcel);
-            }
-        }
 
         return NextResponse.json({ status: 'success' });
     } catch (error) {
@@ -136,24 +138,6 @@ export async function POST(request) {
                 .insert(inscripciones);
 
             if (insErr) console.error("⚠️ Error insertando inscripciones:", insErr);
-        }
-
-        // 3. Sincronizar con Excel
-        try {
-            await fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'addStudent',
-                    dni: cleanDni,
-                    nombre,
-                    email,
-                    telefono,
-                    activo: 'ACTIVO'
-                })
-            });
-        } catch (errExcel) {
-            console.error("❌ Error sincronizando nuevo alumno con Excel:", errExcel);
         }
 
         return NextResponse.json({ status: 'success', message: 'Alumno registrado con éxito' });

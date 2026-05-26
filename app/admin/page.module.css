@@ -107,6 +107,27 @@
 
 .tableWrapper {
     overflow-x: auto;
+    padding-bottom: 10px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.tableWrapper::-webkit-scrollbar {
+    height: 12px;
+}
+
+.tableWrapper::-webkit-scrollbar-track {
+    background: #1f2937;
+    border-radius: 8px;
+}
+
+.tableWrapper::-webkit-scrollbar-thumb {
+    background-color: var(--rooster-yellow);
+    border-radius: 8px;
+    border: 3px solid #1f2937;
+}
+
+.tableWrapper::-webkit-scrollbar-thumb:hover {
+    background-color: #e5c000;
 }
 
 .table {

@@ -63,6 +63,26 @@ export default function RecursosPage() {
         );
     }
 
+    if (user.acceso_restringido) {
+        return (
+            <div className="section-padding container">
+                <div className={styles.restrictedCard}>
+                    <div className={styles.lockIcon}>⛔</div>
+                    <h1 className="section-title text-center text-yellow">Acceso Suspendido</h1>
+                    <p className="text-center" style={{ marginBottom: '2rem', color: 'var(--white)' }}>
+                        Hola <strong>{user.nombre}</strong>. Tu cuenta tiene el acceso restringido temporalmente.
+                        Por favor, comunícate con administración para regularizar tu situación y recuperar el acceso a los recursos.
+                    </p>
+                    <div className="text-center">
+                        <a href="https://wa.me/5493425263036" target="_blank" rel="noopener noreferrer" className="btn btn-primary">
+                            Contactar a Administración
+                        </a>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     const hasActivePayment = user.pagos && user.pagos.some(p => p.estado?.toLowerCase() === 'pagado');
 
     if (!hasActivePayment && user.pagos?.length > 0) {

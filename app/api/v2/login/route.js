@@ -65,6 +65,7 @@ export async function POST(request) {
                 pagos: student.pagos || [],
                 avatar_id: student.avatar_id || 'gallo',
                 avatar_url: student.avatar_url,
+                acceso_restringido: student.acceso_restringido || false
             });
         }
 
