@@ -461,6 +461,28 @@ export default function AdminDashboard() {
         finally { setIsAddingStudent(false); }
     };
 
+    const handleUnenroll = async (dni, taller) => {
+        if (!confirm(`¿Seguro que querés dar de baja a este alumno del taller: ${taller}?`)) return;
+        try {
+            const res = await fetch(`/api/v2/admin/enrollment?dni=${dni}&taller=${encodeURIComponent(taller)}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert("✅ Dado de baja correctamente.");
+                setEditingStudent(prev => ({
+                    ...prev,
+                    talleresInscriptos: prev.talleresInscriptos.filter(t => t !== taller)
+                }));
+                loadStudents();
+                if (view === 'payments') loadPaymentsHistory(selectedYear);
+            } else {
+                alert("❌ Error: " + data.message);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("❌ Error al procesar la baja.");
+        }
+    };
+
     const handleEditStudent = async () => {
         if (!editingStudent.nombre) return alert("El nombre es obligatorio");
         setIsSavingStudent(true);
@@ -677,7 +699,7 @@ export default function AdminDashboard() {
                                                         <h4 style={{ margin: 0 }}>{s.nombre}</h4>
                                                         <button
                                                             onClick={() => {
-                                                                setEditingStudent({ dni: s.dni, nombre: s.nombre, email: s.email || '', telefono: s.telefono || '' });
+                                                                setEditingStudent({ dni: s.dni, nombre: s.nombre, email: s.email || '', telefono: s.telefono || '', talleresInscriptos: s.talleresInscriptos || [] });
                                                                 setShowEditStudentModal(true);
                                                             }}
                                                             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '2px', display: 'inline-flex', alignSelf: 'center' }}
@@ -1406,6 +1428,29 @@ export default function AdminDashboard() {
                                 />
                             </div>
                         </div>
+
+                        {editingStudent.talleresInscriptos && editingStudent.talleresInscriptos.length > 0 && (
+                            <div className={styles.formGroup} style={{ marginTop: '1rem' }}>
+                                <label style={{ marginBottom: '0.5rem', display: 'block' }}>Talleres Activos:</label>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {editingStudent.talleresInscriptos.map((taller, idx) => (
+                                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#374151', padding: '10px 15px', borderRadius: '8px' }}>
+                                            <span style={{ color: 'white', fontSize: '0.95rem' }}>🎨 {taller}</span>
+                                            <button 
+                                                className="btn btn-outline" 
+                                                style={{ padding: '6px 12px', fontSize: '0.8rem', borderColor: '#ef4444', color: '#ef4444' }}
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    handleUnenroll(editingStudent.dni, taller);
+                                                }}
+                                            >
+                                                🗑️ Dar de baja
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <div className={styles.modalActions}>
                             <button className="btn" onClick={() => setShowEditStudentModal(false)}>Cancelar</button>
