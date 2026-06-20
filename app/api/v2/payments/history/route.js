@@ -19,14 +19,15 @@ export async function GET(request) {
         const anio_filter = parseInt(searchParams.get('anio') || new Date().getFullYear());
         const hoy = new Date();
 
-        // Obtener todas las inscripciones con sus alumnos Y precios del taller
+        // Obtener todas las inscripciones con sus alumnos (SOLO ACTIVOS) Y precios del taller
         let query = supabaseAdmin
             .from('inscripciones')
             .select(`
                 *,
-                alumnos(dni, nombre, email, pais),
+                alumnos!inner(dni, nombre, email, pais, activo),
                 talleres(id, titulo, precio_base, precio_desc_dia10, precio_desc_efectivo, tipo_cobro)
-            `);
+            `)
+            .eq('alumnos.activo', true);
 
         if (taller_filter) {
             query = query.eq('taller', taller_filter);

@@ -46,6 +46,14 @@ export async function GET() {
             .select('*', { count: 'exact', head: true })
             .eq('activo', true);
 
+        // 3. Alumnos Pendientes (activo=false Y NO dados de baja - son nuevas inscripciones desde la web)
+        const { count: alumnosPendientes, error: pendErr } = await supabaseAdmin
+            .from('alumnos')
+            .select('*', { count: 'exact', head: true })
+            .eq('activo', false)
+            .eq('dado_de_baja', false);
+
+
         if (aErr) throw aErr;
 
         // 3. Total Profesores
@@ -59,6 +67,7 @@ export async function GET() {
             status: 'success',
             netoMensual: Math.round(netoMensual),
             totalAlumnos: totalAlumnos || 0,
+            alumnosPendientes: alumnosPendientes || 0,
             totalProfesores: totalProfesores || 0
         });
 

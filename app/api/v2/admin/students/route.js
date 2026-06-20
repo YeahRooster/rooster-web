@@ -49,7 +49,11 @@ export async function PUT(request) {
         }
 
         const updateData = {};
-        if (activo !== undefined) updateData.activo = activo;
+        if (activo !== undefined) {
+            updateData.activo = activo;
+            // Si se da de baja, marcar dado_de_baja=true. Si se da de alta, limpiar la marca.
+            updateData.dado_de_baja = activo === false ? true : false;
+        }
         if (notificaciones_activas !== undefined) updateData.notificaciones_activas = notificaciones_activas;
         if (acceso_restringido !== undefined) updateData.acceso_restringido = acceso_restringido;
         if (nombre !== undefined) updateData.nombre = nombre.trim();
@@ -74,7 +78,7 @@ export async function PUT(request) {
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { dni, nombre, email, telefono, talleres } = body;
+        const { dni, nombre, email, telefono, talleres, direccion, ciudad, pais, tutor_nombre } = body;
 
         if (!dni || !nombre) {
             return NextResponse.json({ status: 'error', message: 'DNI y Nombre son obligatorios' }, { status: 400 });
@@ -112,12 +116,16 @@ export async function POST(request) {
             nombre,
             email,
             telefono,
+            direccion,
+            ciudad,
+            pais,
+            tutor_nombre,
             activo: true
         };
 
         if (!existingStudent) {
-            // Es nuevo alumno: ponemos el DNI como password por defecto
-            studentData.password = cleanDni;
+            // Es nuevo alumno: ponemos la contraseña por defecto
+            studentData.password = 'alu1';
         }
 
         const { error: alErr } = await supabaseAdmin

@@ -43,8 +43,10 @@ export default function AdminDashboard() {
     // NUEVOS ESTADOS: Búsqueda y Modal de Alumno
     const [searchQuery, setSearchQuery] = useState('');
     const [showAddStudentModal, setShowAddStudentModal] = useState(false);
-    const [newStudent, setNewStudent] = useState({ dni: '', nombre: '', email: '', telefono: '', talleres: [] });
+    const [newStudent, setNewStudent] = useState({ dni: '', nombre: '', email: '', telefono: '', direccion: '', ciudad: '', pais: '', tutor_nombre: '', talleres: [] });
     const [isAddingStudent, setIsAddingStudent] = useState(false);
+    const [studentViewMode, setStudentViewMode] = useState('grid'); // 'grid' | 'list'
+
     
     // ESTADOS PARA EDICIÓN DE ALUMNOS
     const [showEditStudentModal, setShowEditStudentModal] = useState(false);
@@ -375,6 +377,26 @@ export default function AdminDashboard() {
         }
     };
 
+    const undoPayment = async (dni, taller, mes, anio) => {
+        if (!confirm(`¿Estás seguro de deshacer el pago del mes ${mes}?`)) return;
+        
+        try {
+            const res = await fetch(`/api/v2/admin/payments/manual?dni=${dni}&taller=${encodeURIComponent(taller)}&mes=${mes}&anio=${anio}`, {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert('✅ Pago deshecho');
+                loadPaymentsHistory();
+                loadStats();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (e) {
+            alert('Error de conexión al deshacer pago');
+        }
+    };
+
     const toggleNotifications = async (dni, currentStatus) => {
         // Actualización optimista para feedback instantáneo
         setStudents(prev => prev.map(s => s.dni === dni ? { ...s, notificaciones_activas: !currentStatus } : s));
@@ -452,7 +474,7 @@ export default function AdminDashboard() {
             if (data.status === 'success') {
                 alert("✅ Alumno registrado y sincronizado con éxito.");
                 setShowAddStudentModal(false);
-                setNewStudent({ dni: '', nombre: '', email: '', telefono: '', talleres: [] });
+                setNewStudent({ dni: '', nombre: '', email: '', telefono: '', direccion: '', ciudad: '', pais: '', tutor_nombre: '', talleres: [] });
                 loadStudents();
             } else {
                 alert("❌ Error: " + data.message);
@@ -607,7 +629,14 @@ export default function AdminDashboard() {
 
             <div className={styles.tabs}>
                 <button className={`${styles.tab} ${view === 'stats' ? styles.tabActive : ''}`} onClick={() => setView('stats')}>📈 Estadísticas</button>
-                <button className={`${styles.tab} ${view === 'students' ? styles.tabActive : ''}`} onClick={() => setView('students')}>👤 Alumnos</button>
+                <button className={`${styles.tab} ${view === 'students' ? styles.tabActive : ''}`} onClick={() => setView('students')}>
+                    👨‍🎓 Alumnos
+                    {stats?.alumnosPendientes > 0 && (
+                        <span style={{ background: '#ef4444', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.7rem', marginLeft: '6px' }}>
+                            {stats.alumnosPendientes}
+                        </span>
+                    )}
+                </button>
                 <button className={`${styles.tab} ${view === 'workshops' ? styles.tabActive : ''}`} onClick={() => { setView('workshops'); loadTalleres(); }}>🏢 Talleres</button>
                 <button className={`${styles.tab} ${view === 'resources' ? styles.tabActive : ''}`} onClick={() => setView('resources')}>📚 Materiales</button>
                 <button className={`${styles.tab} ${view === 'gallery' ? styles.tabActive : ''}`} onClick={() => { setView('gallery'); loadGalleryPosts(); }}>🎨 Galería</button>
@@ -658,6 +687,25 @@ export default function AdminDashboard() {
                         </button>
                     </div>
 
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px', gap: '5px' }}>
+                        <button 
+                            onClick={() => setStudentViewMode('grid')}
+                            className={`btn ${studentViewMode === 'grid' ? 'btn-primary' : 'btn-outline'}`}
+                            style={{ padding: '4px 10px', fontSize: '0.8rem', borderRadius: '4px', border: studentViewMode !== 'grid' ? '1px solid #444' : 'none' }}
+                            title="Vista Cuadrícula"
+                        >
+                            🔲 Cuadrícula
+                        </button>
+                        <button 
+                            onClick={() => setStudentViewMode('list')}
+                            className={`btn ${studentViewMode === 'list' ? 'btn-primary' : 'btn-outline'}`}
+                            style={{ padding: '4px 10px', fontSize: '0.8rem', borderRadius: '4px', border: studentViewMode !== 'list' ? '1px solid #444' : 'none' }}
+                            title="Vista Lista"
+                        >
+                            📄 Lista
+                        </button>
+                    </div>
+
                     <div className={styles.filterBar}>
                         <button onClick={() => { setFilter('all'); loadStudents(); }} className={filter === 'all' ? styles.btnFilterActive : ''}>Todos</button>
                         <button onClick={() => { setFilter('pending'); loadStudents('pending'); }} className={filter === 'pending' ? styles.btnFilterActive : ''}>Pendientes 🟡</button>
@@ -669,7 +717,8 @@ export default function AdminDashboard() {
                         </label>
                     </div>
 
-                    <div className={styles.cardsGrid}>
+                    {studentViewMode === 'grid' ? (
+                        <div className={styles.cardsGrid}>
                         {students
                             .filter(s => {
                                 const q = searchQuery.toLowerCase();
@@ -781,7 +830,68 @@ export default function AdminDashboard() {
                                 </div>
                             ))
                         }
-                    </div>
+                        </div>
+                    ) : (
+                        <div className={styles.tableWrapper} style={{ overflowX: 'auto' }}>
+                            <table className={styles.table}>
+                                <thead>
+                                    <tr>
+                                        <th>Alumno</th>
+                                        <th>Email</th>
+                                        <th>Teléfono</th>
+                                        <th>Talleres</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {students
+                                        .filter(s => {
+                                            const q = searchQuery.toLowerCase();
+                                            return s.nombre.toLowerCase().includes(q) || s.dni.includes(q) || (s.email && s.email.toLowerCase().includes(q));
+                                        })
+                                        .filter(s => {
+                                            if (filter === 'all') {
+                                                if (!showInactive && !s.activo) return false;
+                                                return true;
+                                            }
+                                            return filter === 'active' ? s.activo : !s.activo;
+                                        })
+                                        .sort((a, b) => {
+                                            if (a.activo === b.activo) return a.nombre.localeCompare(b.nombre);
+                                            return a.activo ? -1 : 1;
+                                        })
+                                        .map((s) => (
+                                            <tr key={s.dni} style={{ opacity: s.activo ? 1 : 0.6, background: s.activo ? 'transparent' : '#2d3748' }}>
+                                                <td>
+                                                    <strong>{s.nombre}</strong><br/>
+                                                    <small style={{ color: '#9ca3af' }}>{s.dni}</small>
+                                                </td>
+                                                <td>{s.email || '-'}</td>
+                                                <td>{s.telefono || '-'}</td>
+                                                <td>
+                                                    {s.talleres && s.talleres.length > 0 
+                                                        ? s.talleres.map(t => <span key={t} style={{ fontSize: '0.8rem', background: '#374151', padding: '2px 4px', borderRadius: '4px', marginRight: '4px' }}>{t}</span>)
+                                                        : <span style={{ color: '#9ca3af', fontSize: '0.8rem' }}>Sin talleres</span>}
+                                                </td>
+                                                <td>
+                                                    <div style={{ display: 'flex', gap: '5px' }}>
+                                                        <button onClick={() => toggleStudentStatus(s.dni, s.activo)} className={`btn ${s.activo ? 'btn-danger' : 'btn-primary'}`} style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
+                                                            {s.activo ? 'Baja' : 'Alta'}
+                                                        </button>
+                                                        <button onClick={() => {
+                                                            setEditingStudent({ dni: s.dni, nombre: s.nombre, email: s.email || '', telefono: s.telefono || '', talleresInscriptos: s.talleresInscriptos || [] });
+                                                            setShowEditStudentModal(true);
+                                                        }} className="btn btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
+                                                            ✏️ Editar
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -1152,6 +1262,14 @@ export default function AdminDashboard() {
                                                         <>
                                                             ✅<br />
                                                             <small>${Math.round(pago.monto)}</small>
+                                                            <br />
+                                                            <button 
+                                                                onClick={() => undoPayment(alumno.alumno_dni, alumno.taller, pidx + 1, selectedYear)}
+                                                                style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8em', marginTop: '2px' }}
+                                                                title="Deshacer pago"
+                                                            >
+                                                                ✖️
+                                                            </button>
                                                         </>
                                                     ) : (
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '4px' }}>
@@ -1341,7 +1459,56 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
+                        <div className={styles.formGroup} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                                <label>Domicilio:</label>
+                                <input
+                                    type="text"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    value={newStudent.direccion}
+                                    onChange={(e) => setNewStudent({ ...newStudent, direccion: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label>Ciudad:</label>
+                                <input
+                                    type="text"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    value={newStudent.ciudad}
+                                    onChange={(e) => setNewStudent({ ...newStudent, ciudad: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className={styles.formGroup} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                                <label>País:</label>
+                                <input
+                                    type="text"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    value={newStudent.pais}
+                                    onChange={(e) => setNewStudent({ ...newStudent, pais: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label>Tutor (si es menor):</label>
+                                <input
+                                    type="text"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    value={newStudent.tutor_nombre}
+                                    onChange={(e) => setNewStudent({ ...newStudent, tutor_nombre: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
                         <div className={styles.formGroup}>
+                            <p style={{ fontSize: '0.85rem', color: '#fbbf24', marginTop: '-10px', marginBottom: '15px' }}>
+                                ⚠️ <strong>Nota:</strong> La contraseña por defecto para este nuevo alumno será <strong>alu1</strong>.
+                            </p>
                             <label>Inscribir a Talleres:</label>
                             <div className={styles.selectorGrid} style={{ maxHeight: '200px', overflowY: 'auto' }}>
                                 {talleres.map(t => (

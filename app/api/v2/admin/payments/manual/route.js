@@ -61,3 +61,35 @@ export async function POST(request) {
         return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
     }
 }
+
+export async function DELETE(request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const dni = searchParams.get('dni');
+        const taller = searchParams.get('taller');
+        const mes = searchParams.get('mes');
+        const anio = searchParams.get('anio');
+
+        if (!dni || !taller || !mes || !anio) {
+            return NextResponse.json({ status: 'error', message: 'Faltan parámetros requeridos' }, { status: 400 });
+        }
+
+        const cleanDni = String(dni).trim();
+
+        // Eliminar el pago o pasarlo a estado 'pendiente' (aquí lo borramos de la DB para deshacerlo completamente)
+        const { error: delErr } = await supabaseAdmin
+            .from('pagos')
+            .delete()
+            .eq('alumno_dni', cleanDni)
+            .eq('taller', taller)
+            .eq('mes', String(mes))
+            .eq('anio', parseInt(anio));
+
+        if (delErr) throw delErr;
+
+        return NextResponse.json({ status: 'success', message: 'Pago deshecho correctamente' });
+    } catch (error) {
+        console.error("❌ Error en DELETE /api/v2/admin/payments/manual:", error);
+        return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
+    }
+}
