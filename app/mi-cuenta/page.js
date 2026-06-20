@@ -620,7 +620,7 @@ export default function MiCuentaPage() {
                         <div className={styles.tableWrapper}>
                             <table className={styles.table}>
                                 <thead>
-                                    <tr><th>Taller</th><th>Mes</th><th>Estado</th><th>Monto</th></tr>
+                                    <tr><th>Taller</th><th>Mes</th><th>Estado</th><th>Fecha</th><th>Monto</th></tr>
                                 </thead>
                                 <tbody>
                                     {pagos.filter(p => p.mes && p.anio && p.mes !== '-').map((p, i) => (
@@ -635,6 +635,11 @@ export default function MiCuentaPage() {
                                                 }>
                                                     {p.estado?.toLowerCase() === 'excluido' ? 'Vacaciones' : p.estado}
                                                 </span>
+                                            </td>
+                                            <td>
+                                                <small style={{ color: '#9ca3af' }}>
+                                                    {(p.fecha_real_pago || p.fecha_pago) ? new Date(p.fecha_real_pago || p.fecha_pago).toLocaleDateString('es-AR') : '-'}
+                                                </small>
                                             </td>
                                             <td>{p.estado?.toLowerCase() === 'excluido' ? 'N/A' : `$${p.monto}`}</td>
                                         </tr>

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { GOOGLE_SCRIPT_URL } from '@/config/google_script';
-import { supabase } from '@/config/supabase';
+import { supabaseAdmin } from '@/config/supabaseAdmin'; // Admin client bypasses RLS
 import { sendEnrollmentEmails } from '@/lib/email';
 
 export const maxDuration = 30; // Aumentamos el tiempo de espera para que los mails salgan
@@ -45,7 +45,7 @@ export async function POST(request) {
             // --- INSCRIPCIÓN EN SUPABASE ---
             try {
                 console.log("🗄️ Guardando en base de datos Supabase...");
-                await supabase.from('alumnos').upsert({
+                const { error: upsertErr } = await supabaseAdmin.from('alumnos').upsert({
                     dni: String(body.dni).trim(),
                     nombre: body.name,
                     email: body.email,
@@ -58,16 +58,18 @@ export async function POST(request) {
                     tutor_telefono: body.parentPhone,
                     es_menor: body.isMinor,
                     fecha_ingreso: new Date(),
-                    activo: false
+                    activo: false,
+                    dado_de_baja: false
                 });
+                if (upsertErr) throw new Error('Error upsert alumno: ' + upsertErr.message);
 
-                const { data: tData } = await supabase
+                const { data: tData } = await supabaseAdmin
                     .from('talleres')
                     .select('id')
                     .ilike('titulo', `%${body.originalTaller || body.workshopTitle}%`)
                     .single();
 
-                await supabase.from('inscripciones').insert({
+                await supabaseAdmin.from('inscripciones').insert({
                     alumno_dni: String(body.dni).trim(),
                     taller_nombre: body.workshopTitle,
                     taller_id: tData?.id || null,

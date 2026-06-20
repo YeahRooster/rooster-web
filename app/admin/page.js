@@ -28,6 +28,11 @@ export default function AdminDashboard() {
         fecha_cierre_subida: '',
         fecha_cierre_votacion: ''
     });
+
+    const [profesores, setProfesores] = useState([]);
+    const [showProfesorModal, setShowProfesorModal] = useState(false);
+    const [editingProfesor, setEditingProfesor] = useState(null);
+    const [newProfesor, setNewProfesor] = useState({ dni: '', nombre: '', email: '', password: '', taller_asignado: '' });
     const [isSavingChallenge, setIsSavingChallenge] = useState(false);
     const [showSubmissionsModal, setShowSubmissionsModal] = useState(false);
     const [currentSubmissions, setCurrentSubmissions] = useState([]);
@@ -181,6 +186,62 @@ export default function AdminDashboard() {
                 alert('Error al eliminar');
             }
         } catch (e) { alert('Error de conexión'); }
+    };
+
+    const loadProfesores = async () => {
+        try {
+            const res = await fetch('/api/v2/admin/profesores');
+            const data = await res.json();
+            if (data.status === 'success') {
+                setProfesores(data.data || []);
+            }
+        } catch (e) {
+            console.error("Error al cargar profesores", e);
+        }
+    };
+
+    const saveProfesor = async (e) => {
+        e.preventDefault();
+        const url = '/api/v2/admin/profesores';
+        const method = editingProfesor ? 'PUT' : 'POST';
+        const body = editingProfesor ? { ...editingProfesor } : { ...newProfesor };
+
+        try {
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert(editingProfesor ? 'Profesor actualizado' : 'Profesor creado');
+                setShowProfesorModal(false);
+                setEditingProfesor(null);
+                setNewProfesor({ dni: '', nombre: '', email: '', password: '', taller_asignado: '' });
+                loadProfesores();
+                loadStats();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (err) {
+            alert('Error de conexión');
+        }
+    };
+
+    const deleteProfesor = async (dni) => {
+        if (!confirm('¿Seguro que deseas eliminar este profesor?')) return;
+        try {
+            const res = await fetch(`/api/v2/admin/profesores?dni=${dni}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.status === 'success') {
+                loadProfesores();
+                loadStats();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (e) {
+            alert('Error al eliminar profesor');
+        }
     };
 
     const loadStats = async () => {
@@ -627,41 +688,160 @@ export default function AdminDashboard() {
         <div className="section-padding container">
             <h1 className="section-title text-yellow">Panel de Administración</h1>
 
-            <div className={styles.tabs}>
-                <button className={`${styles.tab} ${view === 'stats' ? styles.tabActive : ''}`} onClick={() => setView('stats')}>📈 Estadísticas</button>
-                <button className={`${styles.tab} ${view === 'students' ? styles.tabActive : ''}`} onClick={() => setView('students')}>
-                    👨‍🎓 Alumnos
-                    {stats?.alumnosPendientes > 0 && (
-                        <span style={{ background: '#ef4444', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.7rem', marginLeft: '6px' }}>
-                            {stats.alumnosPendientes}
-                        </span>
-                    )}
-                </button>
-                <button className={`${styles.tab} ${view === 'workshops' ? styles.tabActive : ''}`} onClick={() => { setView('workshops'); loadTalleres(); }}>🏢 Talleres</button>
-                <button className={`${styles.tab} ${view === 'resources' ? styles.tabActive : ''}`} onClick={() => setView('resources')}>📚 Materiales</button>
-                <button className={`${styles.tab} ${view === 'gallery' ? styles.tabActive : ''}`} onClick={() => { setView('gallery'); loadGalleryPosts(); }}>🎨 Galería</button>
-                <button className={`${styles.tab} ${view === 'payments' ? styles.tabActive : ''}`} onClick={() => { setView('payments'); loadPaymentsHistory(); loadTalleres(); }}>💳 Pagos</button>
-                <button className={`${styles.tab} ${view === 'reports' ? styles.tabActive : ''}`} onClick={() => { setView('reports'); loadPaymentsHistory(); }}>📊 Reportes</button>
-                <button className={`${styles.tab} ${view === 'challenges' ? styles.tabActive : ''}`} onClick={() => { setView('challenges'); loadChallenges(); loadTalleres(); }}>🏆 Desafíos</button>
-                <button className={`${styles.tab}`} onClick={() => window.location.href = '/cronograma'}>📅 Ver Cronograma</button>
-            </div>
+            <div className={styles.adminLayout}>
+                <div className={styles.sidebar}>
+                    <div className={styles.tabs}>
+                        <button className={`${styles.tab} ${view === 'stats' ? styles.tabActive : ''}`} onClick={() => setView('stats')}>📊 Estadísticas</button>
+                        <button className={`${styles.tab} ${view === 'students' ? styles.tabActive : ''}`} onClick={() => setView('students')}>
+                            👥 Alumnos
+                            {stats?.alumnosPendientes > 0 && (
+                                <span style={{ background: '#ef4444', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.7rem', marginLeft: '6px' }}>
+                                    {stats.alumnosPendientes}
+                                </span>
+                            )}
+                        </button>
+                        <button className={`${styles.tab} ${view === 'profesores' ? styles.tabActive : ''}`} onClick={() => { setView('profesores'); loadProfesores(); }}>👨‍🏫 Profesores</button>
+                        <button className={`${styles.tab} ${view === 'workshops' ? styles.tabActive : ''}`} onClick={() => { setView('workshops'); loadTalleres(); }}>🏢 Talleres</button>
+                        <button className={`${styles.tab} ${view === 'resources' ? styles.tabActive : ''}`} onClick={() => setView('resources')}>📚 Materiales</button>
+                        <button className={`${styles.tab} ${view === 'gallery' ? styles.tabActive : ''}`} onClick={() => { setView('gallery'); loadGalleryPosts(); }}>🎨 Galería</button>
+                        <button className={`${styles.tab} ${view === 'payments' ? styles.tabActive : ''}`} onClick={() => { setView('payments'); loadPaymentsHistory(); loadTalleres(); }}>💰 Pagos</button>
+                        <button className={`${styles.tab} ${view === 'reports' ? styles.tabActive : ''}`} onClick={() => { setView('reports'); loadPaymentsHistory(); }}>📈 Reportes</button>
+                        <button className={`${styles.tab} ${view === 'challenges' ? styles.tabActive : ''}`} onClick={() => { setView('challenges'); loadChallenges(); loadTalleres(); }}>🏆 Desafíos</button>
+                        <button className={`${styles.tab}`} onClick={() => window.location.href = '/cronograma'}>📅 Ver Cronograma</button>
+                    </div>
+                </div>
 
-            {view === 'stats' && (
-                <div className={styles.statsGrid}>
-                    <div className={styles.statCard}>
-                        <h3>Neto Mensual (Estimado)</h3>
-                        <p className={styles.bigNumber}>${stats?.netoMensual || 0}</p>
-                        <span>Basado en cuotas pagadas y comisiones</span>
+                <div className={styles.mainContent}>
+                    {view === 'stats' && (
+                        <div className={styles.statsGrid}>
+                            <div className={styles.statCard}>
+                                <h3>Neto Mensual (Estimado)</h3>
+                                <p className={styles.bigNumber}>${stats?.netoMensual || 0}</p>
+                                <span>Basado en cuotas pagadas y comisiones</span>
+                            </div>
+                            <div className={styles.statCard}>
+                                <h3>Alumnos Activos</h3>
+                                <p className={styles.bigNumber}>{stats?.totalAlumnos || 0}</p>
+                                <span>Cursa actualmente</span>
+                            </div>
+                            <div className={styles.statCard}>
+                                <h3>Profesores</h3>
+                                <p className={styles.bigNumber}>{stats?.totalProfesores || 0}</p>
+                                <span>Docentes activos</span>
+                            </div>
+                        </div>
+                    )}
+
+            {view === 'profesores' && (
+                <div className={styles.studentsSection}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+                        <h2>Lista de Profesores</h2>
+                        <button onClick={() => {
+                            setEditingProfesor(null);
+                            setNewProfesor({ dni: '', nombre: '', email: '', password: '', taller_asignado: '' });
+                            setShowProfesorModal(true);
+                        }} className="btn btn-primary">➕ Nuevo Profesor</button>
                     </div>
-                    <div className={styles.statCard}>
-                        <h3>Alumnos Activos</h3>
-                        <p className={styles.bigNumber}>{stats?.totalAlumnos || 0}</p>
-                        <span>Cursa actualmente</span>
+                    
+                    <div className={styles.tableWrapper} style={{ overflowX: 'auto' }}>
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th>DNI</th>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Taller</th>
+                                    <th>Contraseña</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {profesores.length === 0 ? (
+                                    <tr><td colSpan="6" style={{ textAlign: 'center' }}>No hay profesores registrados</td></tr>
+                                ) : (
+                                    profesores.map((p, i) => (
+                                        <tr key={i}>
+                                            <td>{p.dni}</td>
+                                            <td>{p.nombre}</td>
+                                            <td>{p.email || '-'}</td>
+                                            <td>{p.taller_asignado || '-'}</td>
+                                            <td>
+                                                <span style={{ fontFamily: 'monospace', background: '#374151', padding: '2px 6px', borderRadius: '4px' }}>
+                                                    {p.password}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div style={{ display: 'flex', gap: '5px' }}>
+                                                    <button onClick={() => {
+                                                        setEditingProfesor({ ...p });
+                                                        setShowProfesorModal(true);
+                                                    }} className="btn btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
+                                                        ✏️ Editar
+                                                    </button>
+                                                    <button onClick={() => deleteProfesor(p.dni)} className="btn btn-danger" style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
+                                                        🗑️ Eliminar
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                     </div>
-                    <div className={styles.statCard}>
-                        <h3>Profesores</h3>
-                        <p className={styles.bigNumber}>{stats?.totalProfesores || 0}</p>
-                        <span>Docentes activos</span>
+                </div>
+            )}
+
+            {showProfesorModal && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalContent}>
+                        <h2>{editingProfesor ? 'Editar Profesor' : 'Nuevo Profesor'}</h2>
+                        <form onSubmit={saveProfesor} className={styles.formContainer}>
+                            <input 
+                                type="text" 
+                                placeholder="DNI (Ej: 12345678)" 
+                                value={editingProfesor ? editingProfesor.dni : newProfesor.dni} 
+                                onChange={(e) => editingProfesor ? setEditingProfesor({ ...editingProfesor, dni: e.target.value }) : setNewProfesor({ ...newProfesor, dni: e.target.value })}
+                                required 
+                                disabled={!!editingProfesor}
+                                className={styles.inputField} 
+                            />
+                            <input 
+                                type="text" 
+                                placeholder="Nombre completo" 
+                                value={editingProfesor ? editingProfesor.nombre : newProfesor.nombre} 
+                                onChange={(e) => editingProfesor ? setEditingProfesor({ ...editingProfesor, nombre: e.target.value }) : setNewProfesor({ ...newProfesor, nombre: e.target.value })}
+                                required 
+                                className={styles.inputField} 
+                            />
+                            <input 
+                                type="email" 
+                                placeholder="Email (opcional)" 
+                                value={editingProfesor ? (editingProfesor.email || '') : (newProfesor.email || '')} 
+                                onChange={(e) => editingProfesor ? setEditingProfesor({ ...editingProfesor, email: e.target.value }) : setNewProfesor({ ...newProfesor, email: e.target.value })}
+                                className={styles.inputField} 
+                            />
+                            <input 
+                                type="text" 
+                                placeholder="Taller / Especialidad (opcional)" 
+                                value={editingProfesor ? (editingProfesor.taller_asignado || '') : (newProfesor.taller_asignado || '')} 
+                                onChange={(e) => editingProfesor ? setEditingProfesor({ ...editingProfesor, taller_asignado: e.target.value }) : setNewProfesor({ ...newProfesor, taller_asignado: e.target.value })}
+                                className={styles.inputField} 
+                            />
+                            <input 
+                                type="text" 
+                                placeholder="Contraseña" 
+                                value={editingProfesor ? editingProfesor.password : newProfesor.password} 
+                                onChange={(e) => editingProfesor ? setEditingProfesor({ ...editingProfesor, password: e.target.value }) : setNewProfesor({ ...newProfesor, password: e.target.value })}
+                                required 
+                                className={styles.inputField} 
+                            />
+                            
+                            <div className={styles.modalActions}>
+                                <button type="submit" className="btn btn-primary">{editingProfesor ? 'Actualizar' : 'Guardar'}</button>
+                                <button type="button" onClick={() => setShowProfesorModal(false)} className="btn btn-outline">Cancelar</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
@@ -1263,6 +1443,12 @@ export default function AdminDashboard() {
                                                             ✅<br />
                                                             <small>${Math.round(pago.monto)}</small>
                                                             <br />
+                                                            {pago.fecha && (
+                                                                <small style={{ fontSize: '0.65em', color: '#cbd5e1' }}>
+                                                                    {new Date(pago.fecha).toLocaleDateString('es-AR')}
+                                                                </small>
+                                                            )}
+                                                            <br />
                                                             <button 
                                                                 onClick={() => undoPayment(alumno.alumno_dni, alumno.taller, pidx + 1, selectedYear)}
                                                                 style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8em', marginTop: '2px' }}
@@ -1795,6 +1981,8 @@ export default function AdminDashboard() {
 
             <div className={styles.infoBox}>
                 <p>💡 <strong>Tip:</strong> Para que el cálculo del Neto sea exacto, asegúrate de que cada taller en la pestaña <code>TALLERES</code> tenga su porcentaje de comisión asignado (1.0 para vos, 0.3 para otros profes).</p>
+            </div>
+                </div>
             </div>
         </div>
     );
