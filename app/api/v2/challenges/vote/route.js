@@ -46,18 +46,8 @@ export async function POST(request) {
             return NextResponse.json({ status: 'error', message: 'Solo podés votar por las obras en desempate' }, { status: 403 });
         }
 
-        // 3. Verificar si el usuario está bloqueado (regla del 3er voto o 1er voto en desempate)
-        const { data: lock } = await supabaseAdmin
-            .from('challenge_vote_locks')
-            .select('is_locked')
-            .eq('challenge_id', challenge_id)
-            .eq('voter_dni', voter_dni)
-            .eq('round', currentRound)
-            .single();
-
-        if (lock?.is_locked) {
-            return NextResponse.json({ status: 'error', message: 'Tus votos son inamovibles' }, { status: 403 });
-        }
+        // 3. Removemos la lógica antigua de bloqueo (lock) para permitir editar los votos
+        // ya que ahora hay múltiples categorías y es más fácil dejar que administren sus 3 votos libremente.
 
         // 4. Verificar si ya votó esta obra (Toggle logic)
         const { data: existingVote } = await supabaseAdmin
@@ -78,33 +68,47 @@ export async function POST(request) {
             return NextResponse.json({ status: 'success', action: 'removed' });
         } else {
             // AGREGAR VOTO
-            // Contar votos actuales en ESTA RONDA
-            const { count: currentVotes } = await supabaseAdmin
+            // Obtener la categoría de la obra que se está votando
+            const { data: submissionTarget } = await supabaseAdmin
+                .from('challenge_submissions')
+                .select('categoria')
+                .eq('id', submission_id)
+                .single();
+            const targetCategory = submissionTarget?.categoria || 'adultos';
+
+            // Obtener todos los votos actuales en esta ronda
+            const { data: currentVotesData } = await supabaseAdmin
                 .from('challenge_votes')
-                .select('*', { count: 'exact', head: true })
+                .select('submission_id')
                 .eq('challenge_id', challenge_id)
                 .eq('voter_dni', voter_dni)
                 .eq('round', currentRound);
 
-            // Límite: 3 en ronda 1, 1 en desempate
+            let currentCategoryVotesCount = 0;
+            if (currentVotesData && currentVotesData.length > 0) {
+                const votedIds = currentVotesData.map(v => v.submission_id);
+                const { data: votedSubs } = await supabaseAdmin
+                    .from('challenge_submissions')
+                    .select('categoria')
+                    .in('id', votedIds);
+                
+                if (votedSubs) {
+                    currentCategoryVotesCount = votedSubs.filter(s => (s.categoria || 'adultos') === targetCategory).length;
+                }
+            }
+
+            // Límite: 3 en ronda 1, 1 en desempate (POR CATEGORÍA)
             const limit = isTieBreak ? 1 : 3;
 
-            if (currentVotes >= limit) {
-                return NextResponse.json({ status: 'error', message: `Ya utilizaste tu${limit > 1 ? 's' : ''} ${limit} voto${limit > 1 ? 's' : ''}` }, { status: 403 });
+            if (currentCategoryVotesCount >= limit) {
+                return NextResponse.json({ status: 'error', message: `Ya utilizaste tu${limit > 1 ? 's' : ''} ${limit} voto${limit > 1 ? 's' : ''} en la categoría ${targetCategory}` }, { status: 403 });
             }
 
             await supabaseAdmin
                 .from('challenge_votes')
                 .insert([{ challenge_id, submission_id, voter_dni, round: currentRound }]);
 
-            // Si alcanzó el límite, BLOQUEAR
-            if (currentVotes === limit - 1) {
-                await supabaseAdmin
-                    .from('challenge_vote_locks')
-                    .upsert({ challenge_id, voter_dni, round: currentRound, is_locked: true });
-            }
-
-            return NextResponse.json({ status: 'success', action: 'added', isLocked: currentVotes === limit - 1 });
+            return NextResponse.json({ status: 'success', action: 'added', isLocked: false });
         }
 
     } catch (error) {

@@ -37,6 +37,7 @@ export default function AdminDashboard() {
     const [showSubmissionsModal, setShowSubmissionsModal] = useState(false);
     const [currentSubmissions, setCurrentSubmissions] = useState([]);
     const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
+    const [submissionsCategoryFilter, setSubmissionsCategoryFilter] = useState('todos');
 
     // Estados para Centro de Comunicación
     const [showBroadcastModal, setShowBroadcastModal] = useState(false);
@@ -264,6 +265,7 @@ export default function AdminDashboard() {
     const loadChallengeSubmissions = async (challengeId) => {
         setIsLoadingSubmissions(true);
         setShowSubmissionsModal(true);
+        setSubmissionsCategoryFilter('todos');
         try {
             const res = await fetch(`/api/v2/admin/challenges?challenge_id=${challengeId}`);
             const data = await res.json();
@@ -577,7 +579,8 @@ export default function AdminDashboard() {
                     dni: editingStudent.dni,
                     nombre: editingStudent.nombre,
                     email: editingStudent.email || null,
-                    telefono: editingStudent.telefono || null
+                    telefono: editingStudent.telefono || null,
+                    es_menor: editingStudent.es_menor
                 })
             });
             const data = await res.json();
@@ -928,7 +931,7 @@ export default function AdminDashboard() {
                                                         <h4 style={{ margin: 0 }}>{s.nombre}</h4>
                                                         <button
                                                             onClick={() => {
-                                                                setEditingStudent({ dni: s.dni, nombre: s.nombre, email: s.email || '', telefono: s.telefono || '', talleresInscriptos: s.talleresInscriptos || [] });
+                                                                setEditingStudent({ dni: s.dni, nombre: s.nombre, email: s.email || '', telefono: s.telefono || '', talleresInscriptos: s.talleresInscriptos || [], es_menor: !!s.es_menor });
                                                                 setShowEditStudentModal(true);
                                                             }}
                                                             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '2px', display: 'inline-flex', alignSelf: 'center' }}
@@ -1059,7 +1062,7 @@ export default function AdminDashboard() {
                                                             {s.activo ? 'Baja' : 'Alta'}
                                                         </button>
                                                         <button onClick={() => {
-                                                            setEditingStudent({ dni: s.dni, nombre: s.nombre, email: s.email || '', telefono: s.telefono || '', talleresInscriptos: s.talleresInscriptos || [] });
+                                                            setEditingStudent({ dni: s.dni, nombre: s.nombre, email: s.email || '', telefono: s.telefono || '', talleresInscriptos: s.talleresInscriptos || [], es_menor: !!s.es_menor });
                                                             setShowEditStudentModal(true);
                                                         }} className="btn btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
                                                             ✏️ Editar
@@ -1241,6 +1244,14 @@ export default function AdminDashboard() {
                                             <strong style={{ color: 'white' }}>{finVotacion.toLocaleDateString()}</strong>
                                         </div>
                                     </div>
+
+                                    {ahora >= finVotacion && (c.ganador_nombre || c.ganador_menores_nombre) && (
+                                        <div style={{ marginTop: '10px', padding: '10px', background: 'rgba(234,179,8,0.1)', borderRadius: '10px', border: '1px solid rgba(234,179,8,0.3)', fontSize: '0.85rem' }}>
+                                            <p style={{ margin: '0 0 4px 0', color: '#eab308', fontWeight: 'bold' }}>🏆 Ganadores</p>
+                                            {c.ganador_nombre && <p style={{ margin: 0, color: 'white' }}>Adultos: <strong>{c.ganador_nombre}</strong></p>}
+                                            {c.ganador_menores_nombre && <p style={{ margin: 0, color: 'white' }}>Menores: <strong>{c.ganador_menores_nombre}</strong></p>}
+                                        </div>
+                                    )}
 
                                     <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                                         {c.talleres_participantes?.map(t => (
@@ -1782,6 +1793,18 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
+                        <div className={styles.formGroup} style={{ marginTop: '1rem' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={editingStudent.es_menor || false}
+                                    onChange={(e) => setEditingStudent({ ...editingStudent, es_menor: e.target.checked })}
+                                    style={{ width: '20px', height: '20px' }}
+                                />
+                                <span>Es menor de edad (Categoría Niños para Desafíos)</span>
+                            </label>
+                        </div>
+
                         {editingStudent.talleresInscriptos && editingStudent.talleresInscriptos.length > 0 && (
                             <div className={styles.formGroup} style={{ marginTop: '1rem' }}>
                                 <label style={{ marginBottom: '0.5rem', display: 'block' }}>Talleres Activos:</label>
@@ -1828,14 +1851,36 @@ export default function AdminDashboard() {
                             <button className="btn" onClick={() => setShowSubmissionsModal(false)}>Cerrar</button>
                         </div>
 
+                        {/* Filtro de categoría */}
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '1.5rem' }}>
+                            {['todos', 'adultos', 'menores'].map(cat => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setSubmissionsCategoryFilter(cat)}
+                                    className={`btn ${submissionsCategoryFilter === cat ? 'btn-primary' : 'btn-outline'}`}
+                                    style={{ fontSize: '0.85rem', padding: '6px 16px' }}
+                                >
+                                    {cat === 'todos' ? 'Todas las Obras' : cat === 'adultos' ? '👤 Adultos' : '👶 Menores'}
+                                </button>
+                            ))}
+                            <span style={{ marginLeft: 'auto', color: '#9ca3af', fontSize: '0.8rem', alignSelf: 'center' }}>
+                                {currentSubmissions.filter(s => submissionsCategoryFilter === 'todos' || (s.categoria || 'adultos') === submissionsCategoryFilter).length} obras
+                            </span>
+                        </div>
+
                         {isLoadingSubmissions ? (
                             <p className="text-center">Cargando obras...</p>
                         ) : (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1.5rem', maxHeight: '70vh', overflowY: 'auto', padding: '10px' }}>
-                                {currentSubmissions.map(s => (
+                                {currentSubmissions
+                                    .filter(s => submissionsCategoryFilter === 'todos' || (s.categoria || 'adultos') === submissionsCategoryFilter)
+                                    .map(s => (
                                     <div key={s.id} style={{ background: '#111827', borderRadius: '12px', overflow: 'hidden', border: '1px solid #374151' }}>
-                                        <div style={{ height: '180px' }}>
+                                        <div style={{ position: 'relative', height: '180px' }}>
                                             <img src={s.imagen_url} alt="Obra" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            <span style={{ position: 'absolute', top: '8px', right: '8px', background: (s.categoria || 'adultos') === 'menores' ? '#8b5cf6' : '#3b82f6', color: 'white', fontSize: '0.65rem', fontWeight: 'bold', padding: '2px 7px', borderRadius: '8px' }}>
+                                                {(s.categoria || 'adultos') === 'menores' ? '👶 Menores' : '👤 Adultos'}
+                                            </span>
                                         </div>
                                         <div style={{ padding: '10px' }}>
                                             <strong style={{ display: 'block', color: 'white', fontSize: '0.9rem' }}>{s.alumno_nombre}</strong>
@@ -1862,7 +1907,7 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
                                 ))}
-                                {currentSubmissions.length === 0 && <p style={{ gridColumn: '1/-1', textAlign: 'center', padding: '2rem', opacity: 0.5 }}>Aún no se han subido obras para este desafío.</p>}
+                                {currentSubmissions.filter(s => submissionsCategoryFilter === 'todos' || (s.categoria || 'adultos') === submissionsCategoryFilter).length === 0 && <p style={{ gridColumn: '1/-1', textAlign: 'center', padding: '2rem', opacity: 0.5 }}>No hay obras en esta categoría todavía.</p>}
                             </div>
                         )}
                     </div>

@@ -15,6 +15,7 @@ export default function WorkshopsTab() {
         descripcion_larga: '',
         imagen_url: '',
         cupos_totales: 15,
+        cupos_ocupados: 0,
         activo: true,
         tipo_cobro: 'MENSUAL',
         comision: 1
@@ -92,7 +93,7 @@ export default function WorkshopsTab() {
                     style={{ background: '#f59e0b', border: 'none', fontWeight: 'bold' }}
                     onClick={() => {
                         setEditingId(null);
-                        setFormData({ titulo: '', dia: '', horario: '', descripcion_corta: '', descripcion_larga: '', imagen_url: '', cupos_totales: 15, activo: true, tipo_cobro: 'MENSUAL', comision: 1 });
+                        setFormData({ titulo: '', dia: '', horario: '', descripcion_corta: '', descripcion_larga: '', imagen_url: '', cupos_totales: 15, cupos_ocupados: 0, activo: true, tipo_cobro: 'MENSUAL', comision: 1 });
                         setShowModal(true);
                     }}
                 >
@@ -144,11 +145,21 @@ export default function WorkshopsTab() {
                             <textarea placeholder="Descripción Larga" value={formData.descripcion_larga} onChange={e => setFormData({ ...formData, descripcion_larga: e.target.value })} rows={4} className={styles.formInput} />
                             <input type="text" placeholder="URL de Imagen (ej: https://...)" value={formData.imagen_url} onChange={e => setFormData({ ...formData, imagen_url: e.target.value })} className={styles.formInput} />
                             <div style={{ display: 'flex', gap: '10px' }}>
-                                <input type="number" placeholder="Cupos Totales" value={formData.cupos_totales} onChange={e => setFormData({ ...formData, cupos_totales: parseInt(e.target.value) })} required className={styles.formInput} />
-                                <select value={formData.activo ? "1" : "0"} onChange={e => setFormData({ ...formData, activo: e.target.value === "1" })} className={styles.formInput}>
-                                    <option value="1">Activo (Visible en web)</option>
-                                    <option value="0">Oculto</option>
-                                </select>
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '4px' }}>Cupos Totales</label>
+                                    <input type="number" placeholder="Cupos Totales" value={formData.cupos_totales} onChange={e => setFormData({ ...formData, cupos_totales: parseInt(e.target.value) })} required className={styles.formInput} />
+                                </div>
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '4px' }}>Cupos Ocupados</label>
+                                    <input type="number" placeholder="Cupos Ocupados" value={formData.cupos_ocupados} onChange={e => setFormData({ ...formData, cupos_ocupados: parseInt(e.target.value) })} required className={styles.formInput} />
+                                </div>
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '4px' }}>Visibilidad</label>
+                                    <select value={formData.activo ? "1" : "0"} onChange={e => setFormData({ ...formData, activo: e.target.value === "1" })} className={styles.formInput}>
+                                        <option value="1">Activo (Visible en web)</option>
+                                        <option value="0">Oculto</option>
+                                    </select>
+                                </div>
                             </div>
                             <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
                                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>

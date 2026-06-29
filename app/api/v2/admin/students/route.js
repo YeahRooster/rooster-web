@@ -27,7 +27,7 @@ export async function GET(request) {
 export async function PUT(request) {
     try {
         const body = await request.json();
-        const { dni, activo, notificaciones_activas, acceso_restringido, nombre, email, telefono } = body;
+        const { dni, activo, notificaciones_activas, acceso_restringido, nombre, email, telefono, es_menor } = body;
         const cleanDni = String(dni).trim();
 
         // 1. Validar Email Duplicado si se está modificando el correo
@@ -49,7 +49,24 @@ export async function PUT(request) {
         }
 
         const updateData = {};
+        let statusChanged = false;
+        let isActivating = false;
+        let isDeactivating = false;
+
         if (activo !== undefined) {
+            // Check current status before changing
+            const { data: currentStudent } = await supabaseAdmin
+                .from('alumnos')
+                .select('activo')
+                .eq('dni', cleanDni)
+                .single();
+                
+            if (currentStudent && currentStudent.activo !== activo) {
+                statusChanged = true;
+                if (activo === true) isActivating = true;
+                if (activo === false) isDeactivating = true;
+            }
+
             updateData.activo = activo;
             // Si se da de baja, marcar dado_de_baja=true. Si se da de alta, limpiar la marca.
             updateData.dado_de_baja = activo === false ? true : false;
@@ -59,6 +76,7 @@ export async function PUT(request) {
         if (nombre !== undefined) updateData.nombre = nombre.trim();
         if (email !== undefined) updateData.email = email ? email.trim() : null;
         if (telefono !== undefined) updateData.telefono = telefono ? telefono.trim() : null;
+        if (es_menor !== undefined) updateData.es_menor = es_menor;
 
         const { error } = await supabaseAdmin
             .from('alumnos')
@@ -66,6 +84,37 @@ export async function PUT(request) {
             .eq('dni', cleanDni);
 
         if (error) throw error;
+
+        // Gestion de cupos automatica
+        if (statusChanged) {
+            const { data: inscripciones } = await supabaseAdmin
+                .from('inscripciones')
+                .select('taller_id')
+                .eq('alumno_dni', cleanDni);
+            
+            if (inscripciones && inscripciones.length > 0) {
+                for (const ins of inscripciones) {
+                    if (!ins.taller_id) continue;
+                    
+                    const { data: taller } = await supabaseAdmin
+                        .from('talleres')
+                        .select('cupos_ocupados')
+                        .eq('id', ins.taller_id)
+                        .single();
+                        
+                    if (taller) {
+                        let nuevosCupos = taller.cupos_ocupados || 0;
+                        if (isActivating) nuevosCupos += 1;
+                        if (isDeactivating) nuevosCupos = Math.max(0, nuevosCupos - 1);
+                        
+                        await supabaseAdmin
+                            .from('talleres')
+                            .update({ cupos_ocupados: nuevosCupos })
+                            .eq('id', ins.taller_id);
+                    }
+                }
+            }
+        }
 
         return NextResponse.json({ status: 'success' });
     } catch (error) {

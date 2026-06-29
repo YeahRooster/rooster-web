@@ -34,11 +34,12 @@ export async function GET(request) {
             let challenge = { ...c };
 
             // --- LÓGICA DE CIERRE AUTOMÁTICO Y DESEMPATE ---
-            if (ahora >= finVotacion && !challenge.ganador_dni) {
+            // Revisamos que no se hayan asignado ya ambos ganadores
+            if (ahora >= finVotacion && (!challenge.ganador_dni || (challenge.ganador_menores_dni === null && challenge.ganador_menores_nombre === null))) {
                 // Obtener todas las submissions
                 const { data: subs } = await supabaseAdmin
                     .from('challenge_submissions')
-                    .select('id, alumno_dni, alumno_nombre')
+                    .select('id, alumno_dni, alumno_nombre, categoria')
                     .eq('challenge_id', challenge.id);
 
                 if (subs && subs.length > 0) {
@@ -48,7 +49,6 @@ export async function GET(request) {
                         : subs;
 
                     // Contar votos de la ronda actual
-                    // IMPORTANTE: Para la ronda 1, incluimos votos donde round sea 1 o NULL para retrocompatibilidad
                     let voteQuery = supabaseAdmin
                         .from('challenge_votes')
                         .select('submission_id')
@@ -66,38 +66,87 @@ export async function GET(request) {
                     targetSubs.forEach(s => counts[s.id] = 0);
                     votes?.forEach(v => { if (counts[v.submission_id] !== undefined) counts[v.submission_id]++; });
 
-                    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-                    const maxVotes = sorted[0][1];
-                    const winners = sorted.filter(s => s[1] === maxVotes);
+                    const subsAdultos = targetSubs.filter(s => (s.categoria || 'adultos') === 'adultos');
+                    const subsMenores = targetSubs.filter(s => s.categoria === 'menores');
 
-                    if (winners.length === 1 || maxVotes === 0) {
-                        // GANADOR ÚNICO (o nadie votó, se queda el primero/random)
-                        const winnerSub = subs.find(s => s.id === winners[0][0]);
+                    const getWinners = (subsCat) => {
+                        if (subsCat.length === 0) return { winners: [], maxVotes: 0 };
+                        const sorted = subsCat.map(s => [s.id, counts[s.id]]).sort((a, b) => b[1] - a[1]);
+                        const maxVotes = sorted[0][1];
+                        return { winners: sorted.filter(s => s[1] === maxVotes), maxVotes };
+                    };
+
+                    const { winners: winnersAdultos, maxVotes: maxAdultos } = getWinners(subsAdultos);
+                    const { winners: winnersMenores, maxVotes: maxMenores } = getWinners(subsMenores);
+
+                    const tieAdultos = winnersAdultos.length > 1 && maxAdultos > 0;
+                    const tieMenores = winnersMenores.length > 1 && maxMenores > 0;
+
+                    if (tieAdultos || tieMenores) {
+                        // EMPATE: Nueva Ronda
+                        let newTieBreakerIds = [];
+                        if (tieAdultos) newTieBreakerIds = newTieBreakerIds.concat(winnersAdultos.map(w => w[0]));
+                        if (tieMenores) newTieBreakerIds = newTieBreakerIds.concat(winnersMenores.map(w => w[0]));
+                        
+                        const updatePayload = {
+                            round: (challenge.round || 1) + 1,
+                            tie_breaker_ids: newTieBreakerIds,
+                            fecha_cierre_votacion: new Date(ahora.getTime() + 24 * 60 * 60 * 1000).toISOString()
+                        };
+                        
+                        if (!tieAdultos && winnersAdultos.length > 0 && !challenge.ganador_dni) {
+                             const wId = winnersAdultos[0][0];
+                             const wSub = subsAdultos.find(s => s.id === wId);
+                             updatePayload.ganador_dni = wSub?.alumno_dni || 'Nadie';
+                             updatePayload.ganador_nombre = wSub?.alumno_nombre || 'Sin votos';
+                        }
+                        
+                        if (!tieMenores && winnersMenores.length > 0 && !challenge.ganador_menores_dni) {
+                             const wId = winnersMenores[0][0];
+                             const wSub = subsMenores.find(s => s.id === wId);
+                             updatePayload.ganador_menores_dni = wSub?.alumno_dni || 'Nadie';
+                             updatePayload.ganador_menores_nombre = wSub?.alumno_nombre || 'Sin votos';
+                        }
+                        
                         const { data: updated } = await supabaseAdmin
                             .from('challenges')
-                            .update({
-                                ganador_dni: winnerSub?.alumno_dni || 'Nadie',
-                                ganador_nombre: winnerSub?.alumno_nombre || 'Sin votos'
-                            })
+                            .update(updatePayload)
                             .eq('id', challenge.id)
                             .select()
                             .single();
                         challenge = { ...updated };
                     } else {
-                        // EMPATE: Nueva Ronda
-                        const newTieBreakerIds = winners.map(w => w[0]);
-                        const newDeadline = new Date(ahora.getTime() + 24 * 60 * 60 * 1000); // +24hs
-                        const { data: updated } = await supabaseAdmin
-                            .from('challenges')
-                            .update({
-                                round: (challenge.round || 1) + 1,
-                                tie_breaker_ids: newTieBreakerIds,
-                                fecha_cierre_votacion: newDeadline.toISOString()
-                            })
-                            .eq('id', challenge.id)
-                            .select()
-                            .single();
-                        challenge = { ...updated };
+                        // GANADORES ÚNICOS
+                        const updatePayload = {};
+                        if (winnersAdultos.length > 0 && !challenge.ganador_dni) {
+                            const wId = winnersAdultos[0][0];
+                            const wSub = subsAdultos.find(s => s.id === wId);
+                            updatePayload.ganador_dni = wSub?.alumno_dni || 'Nadie';
+                            updatePayload.ganador_nombre = wSub?.alumno_nombre || 'Sin votos';
+                        } else if (!challenge.ganador_dni) {
+                            updatePayload.ganador_dni = 'Nadie';
+                            updatePayload.ganador_nombre = 'Sin participantes';
+                        }
+                        
+                        if (winnersMenores.length > 0 && !challenge.ganador_menores_dni) {
+                            const wId = winnersMenores[0][0];
+                            const wSub = subsMenores.find(s => s.id === wId);
+                            updatePayload.ganador_menores_dni = wSub?.alumno_dni || 'Nadie';
+                            updatePayload.ganador_menores_nombre = wSub?.alumno_nombre || 'Sin votos';
+                        } else if (!challenge.ganador_menores_dni) {
+                            updatePayload.ganador_menores_dni = 'Nadie';
+                            updatePayload.ganador_menores_nombre = 'Sin participantes';
+                        }
+                        
+                        if (Object.keys(updatePayload).length > 0) {
+                            const { data: updated } = await supabaseAdmin
+                                .from('challenges')
+                                .update(updatePayload)
+                                .eq('id', challenge.id)
+                                .select()
+                                .single();
+                            challenge = { ...updated };
+                        }
                     }
                 }
             }
@@ -207,12 +256,13 @@ export async function POST(request) {
             return NextResponse.json({ status: 'error', message: 'Falta DNI o ID del reto' }, { status: 400 });
         }
 
-        // 1. Verificar si el alumno tiene acceso restringido
+        // 1. Verificar si el alumno tiene acceso restringido y obtener es_menor
         const { data: studentCheck } = await supabaseAdmin
             .from('alumnos')
-            .select('acceso_restringido')
+            .select('acceso_restringido, es_menor')
             .eq('dni', final_dni)
             .single();
+
 
         if (studentCheck?.acceso_restringido) {
             return NextResponse.json({ status: 'error', message: 'Tu cuenta tiene el acceso restringido. Por favor, comunícate con administración para regularizar tu situación.' }, { status: 403 });
@@ -257,15 +307,18 @@ export async function POST(request) {
         }
 
         // 3. Insertar o actualizar la obra
+        const categoria = studentCheck?.es_menor ? 'menores' : 'adultos';
+
         const { data, error } = await supabaseAdmin
             .from('challenge_submissions')
-            .upsert([{
-                challenge_id,
+            .upsert({
+                challenge_id: challenge_id,
                 alumno_dni: final_dni,
                 alumno_nombre: final_nombre,
                 imagen_url: final_url,
-                bio: final_bio
-            }])
+                bio: final_bio,
+                categoria: categoria
+            }, { onConflict: 'challenge_id, alumno_dni' })
             .select()
             .single();
 

@@ -15,6 +15,7 @@ export default function DesafiosPage() {
     const [selectedImage, setSelectedImage] = useState(null);
     const [showWorksModal, setShowWorksModal] = useState(false);
     const [worksChallenge, setWorksChallenge] = useState(null);
+    const [selectedCategory, setSelectedCategory] = useState('adultos');
 
     useEffect(() => {
         if (user && user.role === 'student') {
@@ -199,8 +200,7 @@ export default function DesafiosPage() {
                                     {(etapa === 'VOTACION' || etapa === '🔥 DESEMPATE') && (
                                         <div style={{ background: '#1f2937', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', marginTop: '1rem' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontSize: '0.9rem', color: 'white', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
-                                                <span>Mis Votos: <strong>{stats.used}/{isTieBreak ? 1 : 3}</strong></span>
-                                                {stats.locked ? <span style={{ color: '#10b981', fontWeight: 'bold' }}>🔒 Votación Cerrada</span> : <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>⚡ ¡Votá ahora!</span>}
+                                                <span><span style={{ color: '#f59e0b', fontWeight: 'bold' }}>⚡ ¡Votá en ambas categorías!</span></span>
                                             </div>
                                             <button
                                                 className="btn btn-outline"
@@ -217,7 +217,8 @@ export default function DesafiosPage() {
                                         <div style={{ background: '#1f2937', padding: '1.5rem', borderRadius: '12px', textAlign: 'center' }}>
                                             <div style={{ marginBottom: '1rem', padding: '10px', background: 'rgba(234, 179, 8, 0.1)', borderRadius: '10px', border: '1px solid rgba(234, 179, 8, 0.2)' }}>
                                                 <p style={{ margin: 0, color: '#eab308', fontWeight: 'bold' }}>⭐ Desafío Concluido</p>
-                                                <p style={{ color: 'white', marginTop: '5px', fontSize: '1.2rem' }}>🏆 Ganador: <strong>{c.ganador_nombre}</strong></p>
+                                                {c.ganador_nombre && <p style={{ color: 'white', marginTop: '5px', fontSize: '1.2rem' }}>🏆 Adultos: <strong>{c.ganador_nombre}</strong></p>}
+                                                {c.ganador_menores_nombre && <p style={{ color: 'white', marginTop: '5px', fontSize: '1.2rem' }}>🏆 Niños: <strong>{c.ganador_menores_nombre}</strong></p>}
                                             </div>
                                             <button
                                                 className="btn btn-outline"
@@ -256,22 +257,43 @@ export default function DesafiosPage() {
                                 <button onClick={() => setShowWorksModal(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
                             </div>
 
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '1.5rem', justifyContent: 'center' }}>
+                                <button 
+                                    className={`btn ${selectedCategory === 'adultos' ? 'btn-primary' : 'btn-outline'}`} 
+                                    style={{ flex: 1, padding: '10px' }}
+                                    onClick={() => setSelectedCategory('adultos')}
+                                >
+                                    Categoría Adultos
+                                </button>
+                                <button 
+                                    className={`btn ${selectedCategory === 'menores' ? 'btn-primary' : 'btn-outline'}`} 
+                                    style={{ flex: 1, padding: '10px' }}
+                                    onClick={() => setSelectedCategory('menores')}
+                                >
+                                    Categoría Menores
+                                </button>
+                            </div>
+
                             {isFinishedModal && (
                                 <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(234, 179, 8, 0.1)', borderRadius: '12px', border: '1px solid rgba(234, 179, 8, 0.3)', marginBottom: '2rem' }}>
-                                    <p style={{ margin: 0, color: '#eab308', fontWeight: 'bold', fontSize: '0.9rem' }}>GANADOR OFICIAL</p>
-                                    <p style={{ color: 'white', marginTop: '5px', fontSize: '1.5rem' }}>🏆 <strong>{worksChallenge.ganador_nombre}</strong></p>
+                                    <p style={{ margin: 0, color: '#eab308', fontWeight: 'bold', fontSize: '0.9rem' }}>GANADORES OFICIALES</p>
+                                    {worksChallenge.ganador_nombre && <p style={{ color: 'white', marginTop: '5px', fontSize: '1.2rem' }}>🏆 Categoría Adultos: <strong>{worksChallenge.ganador_nombre}</strong></p>}
+                                    {worksChallenge.ganador_menores_nombre && <p style={{ color: 'white', marginTop: '5px', fontSize: '1.2rem' }}>🏆 Categoría Menores: <strong>{worksChallenge.ganador_menores_nombre}</strong></p>}
                                 </div>
                             )}
 
-                            {isVoting && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontSize: '1rem', color: 'white', background: '#1f2937', padding: '15px', borderRadius: '12px' }}>
-                                    <span>Votos emitidos: <strong>{stats.used}/{isTieBreakModal ? 1 : 3}</strong></span>
-                                    {stats.locked ? <span style={{ color: '#10b981', fontWeight: 'bold' }}>🔒 Tus votos fueron registrados exitosamente</span> : <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>⚡ Hacé click en la estrella debajo de tu obra favorita para votarla</span>}
-                                </div>
-                            )}
+                            {isVoting && (() => {
+                                const categoryVotesUsed = worksChallenge.submissions?.filter(s => (s.categoria || 'adultos') === selectedCategory && stats.myVotes.includes(s.id)).length || 0;
+                                return (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontSize: '1rem', color: 'white', background: '#1f2937', padding: '15px', borderRadius: '12px' }}>
+                                        <span>Votos en esta categoría: <strong>{categoryVotesUsed}/{isTieBreakModal ? 1 : 3}</strong></span>
+                                        <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>⚡ Hacé click en la estrella debajo de tu obra favorita para votarla</span>
+                                    </div>
+                                );
+                            })()}
 
                             <div className={styles.submissionsGrid} style={{ maxHeight: '60vh', overflowY: 'auto', padding: '10px' }}>
-                                {worksChallenge.submissions?.filter(s => isVoting ? s.alumno_dni !== user.dni : true).map(s => {
+                                {worksChallenge.submissions?.filter(s => (s.categoria || 'adultos') === selectedCategory).filter(s => isVoting ? s.alumno_dni !== user.dni : true).map(s => {
                                     const voted = isVoting ? stats.myVotes.includes(s.id) : false;
                                     return (
                                         <div key={s.id} className={styles.submissionItem} onClick={() => setSelectedImage(s.imagen_url)} style={{ cursor: 'zoom-in' }}>
@@ -300,8 +322,8 @@ export default function DesafiosPage() {
                                         </div>
                                     );
                                 })}
-                                {(!worksChallenge.submissions || worksChallenge.submissions.filter(s => isVoting ? s.alumno_dni !== user.dni : true).length === 0) && (
-                                    <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#6b7280', fontSize: '0.8rem', padding: '1rem' }}>No hay obras para mostrar.</p>
+                                {(!worksChallenge.submissions || worksChallenge.submissions.filter(s => (s.categoria || 'adultos') === selectedCategory).filter(s => isVoting ? s.alumno_dni !== user.dni : true).length === 0) && (
+                                    <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#6b7280', fontSize: '0.8rem', padding: '1rem' }}>No hay obras en esta categoría para mostrar.</p>
                                 )}
                             </div>
                         </div>
