@@ -1,5 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
@@ -30,9 +31,23 @@ export default function GaleriaPage() {
     const [loadingComments, setLoadingComments] = useState(false);
     const [newCommentText, setNewCommentText] = useState('');
 
+    // URL params para abrir post desde notificación
+    const searchParams = useSearchParams();
+
     useEffect(() => {
         loadPosts();
     }, [viewMode]); // Recargar cuando cambia el modo de vista
+
+    // Si viene ?post=ID desde una notificación, abrir ese post automáticamente
+    useEffect(() => {
+        const postIdFromUrl = searchParams.get('post');
+        if (postIdFromUrl && posts.length > 0) {
+            const targetPost = posts.find(p => String(p.id) === String(postIdFromUrl));
+            if (targetPost) {
+                openComments(targetPost);
+            }
+        }
+    }, [posts, searchParams]);
 
     const loadPosts = async () => {
         setLoading(true);

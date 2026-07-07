@@ -115,7 +115,7 @@ export default function Navbar() {
                                             <p className={styles.emptyNotif}>No tienes notificaciones aún.</p>
                                         ) : (
                                             notifications.map((n) => (
-                                                <div key={n.id} className={`${styles.notificationItem} ${!n.leida ? styles.unreadLine : ''}`}>
+                                                 <div key={n.id} className={`${styles.notificationItem} ${!n.leida ? styles.unreadLine : ''}`}>
                                                     {(() => {
                                                         const tipo = n.tipo?.toUpperCase().trim();
                                                         if (tipo === 'GALLERY_PROMO') return <p>🎨 {n.mensaje || '¡No te olvides de compartir tu obra en la galería!'}</p>;
@@ -123,12 +123,44 @@ export default function Navbar() {
                                                         if (tipo === 'RECURSO') return <p>📚 {n.mensaje}</p>;
                                                         if (tipo === 'DESAFIO') return <p>🏆 {n.mensaje}</p>;
 
-                                                        // Fallback para likes u otros
+                                                        // Notificación de COMENTARIO en una obra
+                                                        if (tipo === 'COMENTARIO') {
+                                                            const link = n.post_id ? `/galeria?post=${n.post_id}` : '/galeria';
+                                                            return (
+                                                                <p>
+                                                                    💬 <strong>{n.actor_nombre}</strong> ha comentado tu dibujo.{' '}
+                                                                    <a href={link} style={{ color: 'var(--rooster-yellow)', fontSize: '0.82rem' }}>Ver obra →</a>
+                                                                </p>
+                                                            );
+                                                        }
+
+                                                        // Notificación de LIKE en un comentario
+                                                        if (tipo === 'LIKE_COMENTARIO') {
+                                                            const link = n.post_id ? `/galeria?post=${n.post_id}` : '/galeria';
+                                                            return (
+                                                                <p>
+                                                                    ❤️ <strong>{n.actor_nombre}</strong> le dio me gusta a tu comentario.{' '}
+                                                                    <a href={link} style={{ color: 'var(--rooster-yellow)', fontSize: '0.82rem' }}>Ver obra →</a>
+                                                                </p>
+                                                            );
+                                                        }
+
+                                                        // Notificación de LIKE en una foto
+                                                        if (tipo === 'LIKE') {
+                                                            const link = n.post_id ? `/galeria?post=${n.post_id}` : '/galeria';
+                                                            return (
+                                                                <p>
+                                                                    ❤️ <strong>{n.actor_nombre}</strong> le dio me gusta a tu obra.{' '}
+                                                                    <a href={link} style={{ color: 'var(--rooster-yellow)', fontSize: '0.82rem' }}>Ver obra →</a>
+                                                                </p>
+                                                            );
+                                                        }
+
+                                                        // Fallback genérico
                                                         return (
                                                             <p>
-                                                                {tipo === 'LIKE' ? '❤️ ' : '🔔 '}
-                                                                {n.actor_nombre && <strong>{n.actor_nombre} </strong>}
-                                                                {n.mensaje || 'le dio me gusta a tu obra.'}
+                                                                🔔 {n.actor_nombre && <strong>{n.actor_nombre} </strong>}
+                                                                {n.mensaje || 'tiene una nueva notificación.'}
                                                             </p>
                                                         );
                                                     })()}
