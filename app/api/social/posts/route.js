@@ -21,7 +21,8 @@ export async function GET(request) {
             .from('social_posts')
             .select(`
                 *,
-                social_likes (usuario_dni)
+                social_likes (usuario_dni),
+                gallery_comments (id)
             `);
 
         // Si status es 'all' (para admin), no filtramos por status
@@ -33,10 +34,11 @@ export async function GET(request) {
 
         if (error) throw error;
 
-        // Formatear para el front (añadir contador de likes)
+        // Formatear para el front (añadir contador de likes y comentarios)
         const posts = data.map(post => ({
             ...post,
             likesCount: post.social_likes?.length || 0,
+            commentsCount: post.gallery_comments?.length || 0,
             likedByUser: false // Se calculará en el front según el DNI logueado
         }));
 
@@ -52,6 +54,19 @@ export async function POST(request) {
         const { dni, nombre, image, titulo, descripcion, taller_id } = body;
 
         if (!image || !dni) throw new Error("Imagen y DNI requeridos");
+
+        // Verificar palabras censuradas en título y descripción
+        const { data: bannedWords } = await supabaseAdmin.from('banned_words').select('word');
+        if (bannedWords && bannedWords.length > 0) {
+            const textToCheck = `${titulo || ''} ${descripcion || ''}`.toLowerCase();
+            const found = bannedWords.find(bw => textToCheck.includes(bw.word.toLowerCase()));
+            if (found) {
+                return NextResponse.json({
+                    status: 'error',
+                    message: 'Tu publicación contiene palabras no permitidas. Por favor revisá el título o la descripción.'
+                }, { status: 400 });
+            }
+        }
 
         console.log(`📸 Subiendo obra de arte de ${nombre} (DNI: ${dni}) a Cloudinary...`);
 

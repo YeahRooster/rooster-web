@@ -24,6 +24,12 @@ export default function GaleriaPage() {
         image: null
     });
 
+    // COMENTARIOS
+    const [selectedPostForComments, setSelectedPostForComments] = useState(null);
+    const [comments, setComments] = useState([]);
+    const [loadingComments, setLoadingComments] = useState(false);
+    const [newCommentText, setNewCommentText] = useState('');
+
     useEffect(() => {
         loadPosts();
     }, [viewMode]); // Recargar cuando cambia el modo de vista
@@ -41,6 +47,91 @@ export default function GaleriaPage() {
             console.error("Error al cargar galería:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const openComments = async (post) => {
+        if (!user) {
+            alert("¡Ingresá con tu cuenta para ver y escribir comentarios!");
+            return;
+        }
+        setSelectedPostForComments(post);
+        setComments([]);
+        setLoadingComments(true);
+        try {
+            const res = await fetch(`/api/social/comments?post_id=${post.id}`);
+            const result = await res.json();
+            if (result.status === 'success') {
+                setComments(result.data);
+            }
+        } catch (error) {
+            console.error("Error al cargar comentarios", error);
+        } finally {
+            setLoadingComments(false);
+        }
+    };
+
+    const handlePostComment = async () => {
+        if (!newCommentText.trim() || !selectedPostForComments) return;
+        try {
+            const res = await fetch('/api/social/comments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    post_id: selectedPostForComments.id,
+                    autor_dni: user.dni,
+                    autor_nombre: user.nombre,
+                    texto: newCommentText
+                })
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                setComments(prev => [...prev, result.data]);
+                setNewCommentText('');
+                // Actualizar el contador en la lista de posts local
+                setPosts(prevPosts => prevPosts.map(p => 
+                    p.id === selectedPostForComments.id 
+                    ? { ...p, commentsCount: (p.commentsCount || 0) + 1 }
+                    : p
+                ));
+            } else {
+                alert(result.message);
+            }
+        } catch (error) {
+            console.error("Error al publicar comentario:", error);
+        }
+    };
+
+    const handleCommentLike = async (commentId) => {
+        if (!user) return;
+        try {
+            const res = await fetch('/api/social/comments/like', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    comment_id: commentId,
+                    usuario_dni: user.dni,
+                    usuario_nombre: user.nombre,
+                    autor_dni: comments.find(c => c.id === commentId)?.autor_dni,
+                    post_id: selectedPostForComments.id
+                })
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                setComments(prev => prev.map(c => {
+                    if (c.id === commentId) {
+                        const isLiked = c.likedBy?.includes(user.dni);
+                        return {
+                            ...c,
+                            likedBy: isLiked ? (c.likedBy || []).filter(dni => dni !== user.dni) : [...(c.likedBy || []), user.dni],
+                            likesCount: isLiked ? Math.max(0, (c.likesCount || 0) - 1) : (c.likesCount || 0) + 1
+                        };
+                    }
+                    return c;
+                }));
+            }
+        } catch (error) {
+            console.error("Error al dar like al comentario:", error);
         }
     };
 
@@ -255,12 +346,21 @@ export default function GaleriaPage() {
                             <div className={styles.interactionBar}>
                                 {viewMode === 'active' ? (
                                     <>
-                                        <button
-                                            className={`${styles.likeButton} ${post.social_likes?.some(l => l.usuario_dni === user?.dni) ? styles.liked : ''}`}
-                                            onClick={(e) => { e.stopPropagation(); handleLike(post.id, post.alumno_dni); }}
-                                        >
-                                            ❤️ {post.likesCount}
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '1rem' }}>
+                                            <button
+                                                className={`${styles.likeButton} ${post.social_likes?.some(l => l.usuario_dni === user?.dni) ? styles.liked : ''}`}
+                                                onClick={(e) => { e.stopPropagation(); handleLike(post.id, post.alumno_dni); }}
+                                            >
+                                                ❤️ {post.likesCount}
+                                            </button>
+                                            
+                                            <button
+                                                className={styles.likeButton}
+                                                onClick={(e) => { e.stopPropagation(); openComments(post); }}
+                                            >
+                                                💬 {post.commentsCount || 0}
+                                            </button>
+                                        </div>
 
                                         {isAdmin && (
                                             <>
@@ -370,6 +470,89 @@ export default function GaleriaPage() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL DE COMENTARIOS */}
+            {selectedPostForComments && (
+                <div className={styles.modalOverlay} onClick={() => setSelectedPostForComments(null)}>
+                    <div 
+                        className={styles.commentsModal} 
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className={styles.commentsHeader}>
+                            <h3>Comentarios en la obra de {selectedPostForComments.alumno_nombre}</h3>
+                            <button className={styles.closeBtn} onClick={() => setSelectedPostForComments(null)}>✖</button>
+                        </div>
+                        
+                        <div className={styles.commentsList}>
+                            {loadingComments ? (
+                                <p style={{ textAlign: 'center', padding: '2rem' }}>Cargando comentarios...</p>
+                            ) : comments.length === 0 ? (
+                                <p style={{ textAlign: 'center', padding: '2rem', color: '#9ca3af' }}>Aún no hay comentarios. ¡Sé el primero en comentar!</p>
+                            ) : (
+                                comments.map(comment => (
+                                    <div key={comment.id} className={styles.commentItem}>
+                                        <div className={styles.commentHeader}>
+                                            <strong>{comment.autor_nombre}</strong>
+                                            <span className={styles.commentDate}>
+                                                {new Date(comment.created_at).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                        <p className={styles.commentText}>{comment.texto}</p>
+                                    <div className={styles.commentActions}>
+                                            <button 
+                                                className={`${styles.likeButton} ${comment.likedBy?.includes(user?.dni) ? styles.liked : ''}`}
+                                                onClick={() => handleCommentLike(comment.id)}
+                                            >
+                                                ❤️ {comment.likesCount || 0}
+                                            </button>
+                                            {/* Botón borrar: visible para el admin o para el autor del comentario */}
+                                            {(user?.dni === '999' || user?.dni === comment.autor_dni) && (
+                                                <button
+                                                    onClick={async () => {
+                                                        if (!confirm('¿Seguro que querés eliminar este comentario?')) return;
+                                                        const res = await fetch(`/api/social/comments?id=${comment.id}&dni=${user.dni}`, { method: 'DELETE' });
+                                                        const result = await res.json();
+                                                        if (result.status === 'success') {
+                                                            setComments(prev => prev.filter(c => c.id !== comment.id));
+                                                            setPosts(prevPosts => prevPosts.map(p =>
+                                                                p.id === selectedPostForComments.id
+                                                                ? { ...p, commentsCount: Math.max(0, (p.commentsCount || 0) - 1) }
+                                                                : p
+                                                            ));
+                                                        }
+                                                    }}
+                                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem' }}
+                                                    title="Eliminar comentario"
+                                                >
+                                                    🗑️
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        <div className={styles.commentInputContainer}>
+                            <textarea
+                                className={styles.commentInput}
+                                placeholder="Escribe un comentario..."
+                                rows="2"
+                                value={newCommentText}
+                                onChange={(e) => setNewCommentText(e.target.value)}
+                                maxLength={500}
+                            />
+                            <button 
+                                className={styles.sendCommentBtn}
+                                onClick={handlePostComment}
+                                disabled={!newCommentText.trim()}
+                            >
+                                Enviar
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

@@ -18,6 +18,11 @@ export default function AdminDashboard() {
     const [filter, setFilter] = useState('all');
     const [showInactive, setShowInactive] = useState(false);
     const [galleryPosts, setGalleryPosts] = useState([]);
+    
+    // Filtro de palabras
+    const [bannedWords, setBannedWords] = useState([]);
+    const [newBannedWord, setNewBannedWord] = useState('');
+
     const [challenges, setChallenges] = useState([]);
     const [showChallengeModal, setShowChallengeModal] = useState(false);
     const [newChallenge, setNewChallenge] = useState({
@@ -156,6 +161,55 @@ export default function AdminDashboard() {
             if (data.status === 'success') setGalleryPosts(data.data); // Nota: api/social/posts devuelve { data: posts }
         } catch (e) {
             console.error("Error al cargar galería:", e);
+        }
+    };
+
+    const loadBannedWords = async () => {
+        try {
+            const res = await fetch('/api/v2/admin/banned-words');
+            const data = await res.json();
+            if (data.status === 'success') {
+                setBannedWords(data.data);
+            }
+        } catch (e) {
+            console.error("Error al cargar palabras censuradas:", e);
+        }
+    };
+
+    const handleAddBannedWord = async () => {
+        if (!newBannedWord.trim()) return;
+        try {
+            const res = await fetch('/api/v2/admin/banned-words', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ word: newBannedWord, admin_dni: user.dni })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                setNewBannedWord('');
+                loadBannedWords();
+            } else {
+                alert("Error al agregar palabra: " + data.message);
+            }
+        } catch (e) {
+            alert("Error de conexión");
+        }
+    };
+
+    const handleDeleteBannedWord = async (id) => {
+        if (!confirm("¿Seguro que querés quitar esta palabra de la lista?")) return;
+        try {
+            const res = await fetch(`/api/v2/admin/banned-words?id=${id}&admin_dni=${user.dni}`, {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                loadBannedWords();
+            } else {
+                alert("Error al quitar palabra: " + data.message);
+            }
+        } catch (e) {
+            alert("Error de conexión");
         }
     };
 
@@ -552,19 +606,43 @@ export default function AdminDashboard() {
             const res = await fetch(`/api/v2/admin/enrollment?dni=${dni}&taller=${encodeURIComponent(taller)}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.status === 'success') {
-                alert("✅ Dado de baja correctamente.");
+                alert('Alumno dado de baja del taller correctamente.');
                 setEditingStudent(prev => ({
                     ...prev,
                     talleresInscriptos: prev.talleresInscriptos.filter(t => t !== taller)
                 }));
                 loadStudents();
-                if (view === 'payments') loadPaymentsHistory(selectedYear);
             } else {
                 alert("❌ Error: " + data.message);
             }
         } catch (err) {
             console.error(err);
             alert("❌ Error al procesar la baja.");
+        }
+    };
+
+    const handleEnroll = async (dni, tallerId, tallerNombre) => {
+        if (!tallerId) return;
+        try {
+            const res = await fetch(`/api/v2/admin/enrollment`, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dni, taller_id: tallerId })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert('✅ Alumno inscripto correctamente al taller.');
+                setEditingStudent(prev => ({
+                    ...prev,
+                    talleresInscriptos: [...(prev.talleresInscriptos || []), tallerNombre]
+                }));
+                loadStudents();
+                loadStats();
+            } else {
+                alert('❌ Error al inscribir: ' + data.message);
+            }
+        } catch (e) {
+            alert('❌ Error al inscribir al alumno');
         }
     };
 
@@ -580,6 +658,10 @@ export default function AdminDashboard() {
                     nombre: editingStudent.nombre,
                     email: editingStudent.email || null,
                     telefono: editingStudent.telefono || null,
+                    direccion: editingStudent.direccion || null,
+                    ciudad: editingStudent.ciudad || null,
+                    pais: editingStudent.pais || null,
+                    tutor_nombre: editingStudent.tutor_nombre || null,
                     es_menor: editingStudent.es_menor
                 })
             });
@@ -706,7 +788,7 @@ export default function AdminDashboard() {
                         <button className={`${styles.tab} ${view === 'profesores' ? styles.tabActive : ''}`} onClick={() => { setView('profesores'); loadProfesores(); }}>👨‍🏫 Profesores</button>
                         <button className={`${styles.tab} ${view === 'workshops' ? styles.tabActive : ''}`} onClick={() => { setView('workshops'); loadTalleres(); }}>🏢 Talleres</button>
                         <button className={`${styles.tab} ${view === 'resources' ? styles.tabActive : ''}`} onClick={() => setView('resources')}>📚 Materiales</button>
-                        <button className={`${styles.tab} ${view === 'gallery' ? styles.tabActive : ''}`} onClick={() => { setView('gallery'); loadGalleryPosts(); }}>🎨 Galería</button>
+                        <button className={`${styles.tab} ${view === 'gallery' ? styles.tabActive : ''}`} onClick={() => { setView('gallery'); loadGalleryPosts(); loadBannedWords(); }}>🖼️ Galería</button>
                         <button className={`${styles.tab} ${view === 'payments' ? styles.tabActive : ''}`} onClick={() => { setView('payments'); loadPaymentsHistory(); loadTalleres(); }}>💰 Pagos</button>
                         <button className={`${styles.tab} ${view === 'reports' ? styles.tabActive : ''}`} onClick={() => { setView('reports'); loadPaymentsHistory(); }}>📈 Reportes</button>
                         <button className={`${styles.tab} ${view === 'challenges' ? styles.tabActive : ''}`} onClick={() => { setView('challenges'); loadChallenges(); loadTalleres(); }}>🏆 Desafíos</button>
@@ -1123,9 +1205,49 @@ export default function AdminDashboard() {
 
             {view === 'gallery' && (
                 <div className={styles.studentsSection}>
-                    <div className={styles.topActions} style={{ marginBottom: '1rem' }}>
-                        <p style={{ color: '#aaa' }}>Marcá con la estrella (⭐) las obras que querés que aparezcan en el Muro de Honor de la Home.</p>
-                        <button className="btn btn-outline" onClick={loadGalleryPosts}>🔄 Actualizar</button>
+                    <div className={styles.topActions} style={{ marginBottom: '1rem', flexDirection: 'column', alignItems: 'flex-start', gap: '1rem' }}>
+                        
+                        {/* SECCIÓN DE PALABRAS CENSURADAS */}
+                        <div style={{ width: '100%', background: '#1f2937', padding: '1.5rem', borderRadius: '12px', border: '1px solid #374151' }}>
+                            <h3 style={{ margin: '0 0 1rem 0', color: 'var(--rooster-yellow)' }}>Filtro de Palabras Censuradas</h3>
+                            <p style={{ color: '#aaa', marginBottom: '1rem', fontSize: '0.9rem' }}>
+                                Las publicaciones o comentarios que contengan estas palabras serán bloqueados automáticamente.
+                            </p>
+                            
+                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                                <input 
+                                    type="text" 
+                                    className="form-control" 
+                                    placeholder="Nueva palabra a bloquear..." 
+                                    value={newBannedWord}
+                                    onChange={(e) => setNewBannedWord(e.target.value)}
+                                    style={{ maxWidth: '300px' }}
+                                />
+                                <button className="btn btn-primary" onClick={handleAddBannedWord}>+ Agregar Palabra</button>
+                            </div>
+
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                {bannedWords.length === 0 ? (
+                                    <span style={{ color: '#6b7280', fontStyle: 'italic' }}>No hay palabras censuradas.</span>
+                                ) : (
+                                    bannedWords.map(bw => (
+                                        <div key={bw.id} style={{ display: 'flex', alignItems: 'center', background: '#374151', padding: '0.4rem 0.8rem', borderRadius: '20px', gap: '0.5rem' }}>
+                                            <span>{bw.word}</span>
+                                            <button 
+                                                onClick={() => handleDeleteBannedWord(bw.id)}
+                                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}
+                                                title="Eliminar filtro"
+                                            >✖</button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                            <p style={{ color: '#aaa' }}>Marcá con la estrella (⭐) las obras que querés que aparezcan en el Muro de Honor de la Home.</p>
+                            <button className="btn btn-outline" onClick={() => { loadGalleryPosts(); loadBannedWords(); }}>🔄 Actualizar Galería</button>
+                        </div>
                     </div>
                     <div className={styles.cardsGrid} style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
                         {galleryPosts.map(post => (
@@ -1793,6 +1915,29 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
+                        <div className={styles.formGroup} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                                <label>Domicilio (opcional):</label>
+                                <input
+                                    type="text"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    value={editingStudent.direccion || ''}
+                                    onChange={(e) => setEditingStudent({ ...editingStudent, direccion: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label>Nombre del Tutor (si es menor):</label>
+                                <input
+                                    type="text"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    value={editingStudent.tutor_nombre || ''}
+                                    onChange={(e) => setEditingStudent({ ...editingStudent, tutor_nombre: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
                         <div className={styles.formGroup} style={{ marginTop: '1rem' }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                                 <input
@@ -1827,6 +1972,36 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
                         )}
+
+                        <div className={styles.formGroup} style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                            <label style={{ marginBottom: '0.5rem', display: 'block' }}>➕ Asignar nuevo taller:</label>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <select 
+                                    id="new_workshop_select" 
+                                    className={styles.textarea} 
+                                    style={{ minHeight: 'auto', padding: '0.8rem', flex: 1 }}
+                                >
+                                    <option value="">Seleccione un taller...</option>
+                                    {talleres.map(t => (
+                                        <option key={t.ids[0]} value={t.ids[0]}>{t.titulo}</option>
+                                    ))}
+                                </select>
+                                <button
+                                    className="btn btn-outline"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        const select = document.getElementById('new_workshop_select');
+                                        const tallerId = select.value;
+                                        if (tallerId) {
+                                            const tallerTitle = select.options[select.selectedIndex].text;
+                                            handleEnroll(editingStudent.dni, tallerId, tallerTitle);
+                                        }
+                                    }}
+                                >
+                                    Agregar
+                                </button>
+                            </div>
+                        </div>
 
                         <div className={styles.modalActions}>
                             <button className="btn" onClick={() => setShowEditStudentModal(false)}>Cancelar</button>

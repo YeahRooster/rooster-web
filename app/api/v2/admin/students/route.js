@@ -27,7 +27,7 @@ export async function GET(request) {
 export async function PUT(request) {
     try {
         const body = await request.json();
-        const { dni, activo, notificaciones_activas, acceso_restringido, nombre, email, telefono, es_menor } = body;
+        const { dni, activo, notificaciones_activas, acceso_restringido, nombre, email, telefono, es_menor, direccion, ciudad, pais, tutor_nombre } = body;
         const cleanDni = String(dni).trim();
 
         // 1. Validar Email Duplicado si se está modificando el correo
@@ -77,6 +77,10 @@ export async function PUT(request) {
         if (email !== undefined) updateData.email = email ? email.trim() : null;
         if (telefono !== undefined) updateData.telefono = telefono ? telefono.trim() : null;
         if (es_menor !== undefined) updateData.es_menor = es_menor;
+        if (direccion !== undefined) updateData.direccion = direccion ? direccion.trim() : null;
+        if (ciudad !== undefined) updateData.ciudad = ciudad ? ciudad.trim() : null;
+        if (pais !== undefined) updateData.pais = pais ? pais.trim() : null;
+        if (tutor_nombre !== undefined) updateData.tutor_nombre = tutor_nombre ? tutor_nombre.trim() : null;
 
         const { error } = await supabaseAdmin
             .from('alumnos')
