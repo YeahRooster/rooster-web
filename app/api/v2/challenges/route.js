@@ -256,16 +256,20 @@ export async function POST(request) {
             return NextResponse.json({ status: 'error', message: 'Falta DNI o ID del reto' }, { status: 400 });
         }
 
-        // 1. Verificar si el alumno tiene acceso restringido y obtener es_menor
-        const { data: studentCheck } = await supabaseAdmin
+        // 1. Obtener es_menor para asignar categoria, y chequear si está dado de baja
+        const { data: studentCheck, error: studentCheckError } = await supabaseAdmin
             .from('alumnos')
-            .select('acceso_restringido, es_menor')
+            .select('dado_de_baja, es_menor')
             .eq('dni', final_dni)
             .single();
 
+        if (studentCheckError) {
+            console.error("Error al obtener alumno para desafío:", studentCheckError);
+        }
 
-        if (studentCheck?.acceso_restringido) {
-            return NextResponse.json({ status: 'error', message: 'Tu cuenta tiene el acceso restringido. Por favor, comunícate con administración para regularizar tu situación.' }, { status: 403 });
+
+        if (studentCheck?.dado_de_baja) {
+            return NextResponse.json({ status: 'error', message: 'Tu cuenta ha sido dada de baja. Por favor, comunícate con administración para regularizar tu situación.' }, { status: 403 });
         }
 
         // 2. Verificar si el reto está en etapa de subida

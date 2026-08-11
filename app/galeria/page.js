@@ -1,11 +1,11 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
 
-export default function GaleriaPage() {
+function GaleriaPageContent() {
     const { user } = useAuth();
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -572,5 +572,13 @@ export default function GaleriaPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function GaleriaPage() {
+    return (
+        <Suspense fallback={<div className="section-padding container"><p style={{color:'#aaa'}}>Cargando galería...</p></div>}>
+            <GaleriaPageContent />
+        </Suspense>
     );
 }

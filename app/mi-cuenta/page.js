@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import Image from 'next/image';
 import styles from './page.module.css';
 
 export default function MiCuentaPage() {
@@ -34,6 +35,7 @@ export default function MiCuentaPage() {
     const [submissionData, setSubmissionData] = useState({ imageBase64: '', caption: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [voterStats, setVoterStats] = useState({}); // { challengeId: { used: 0, locked: false, myVotes: [] } }
+    const [hoveredMedal, setHoveredMedal] = useState(null); // índice de la medalla con hover
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -540,6 +542,8 @@ export default function MiCuentaPage() {
 
     // PANEL DEL ALUMNO
     const { pagos = [] } = user;
+    const wonChallenges = challenges.filter(c => c.ganador_dni === user.dni || c.ganador_menores_dni === user.dni);
+
     return (
         <div className="section-padding container">
             {showAlert && (
@@ -549,9 +553,38 @@ export default function MiCuentaPage() {
                         <strong>¡Aprovecha los descuentos de inicio de mes!</strong>
                         <p>Recuerda que abonando hasta el día 10 tienes descuento por transferencia, ¡y uno extra en efectivo!</p>
                     </div>
-                    <button onClick={closeAlert} className={styles.closeAlert}>✕</button>
+                    <button onClick={() => {
+                        localStorage.setItem('dismiss_discount_alert', 'true');
+                        setShowAlert(false);
+                    }} className={styles.closeAlert}>✕</button>
                 </div>
             )}
+            
+            <h1 className="section-title text-yellow" style={{ marginBottom: '0.5rem' }}>¡Hola, {user.nombre}!</h1>
+            
+            {user.role !== 'admin' && wonChallenges.length > 0 && (
+                <div className={styles.medalsContainer}>
+                    {wonChallenges.map((c, idx) => (
+                        <div
+                            key={idx}
+                            className={styles.medalWrapper}
+                            onMouseEnter={() => setHoveredMedal(idx)}
+                            onMouseLeave={() => setHoveredMedal(null)}
+                        >
+                            <Image src="/images/medal.jpg" alt="Medalla" width={45} height={45} className={styles.medalImage} />
+                            {hoveredMedal === idx && (
+                                <div className={styles.medalTooltip}>
+                                    <span className={styles.medalTooltipTitle}>🏆 {c.titulo}</span>
+                                    <span className={styles.medalTooltipDate}>
+                                        {new Date(c.fecha_cierre_subida).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+
             {paymentStatus === 'success' && (
                 <div className={styles.discountAlert} style={{ borderColor: '#4ade80', background: '#064e3b' }}>
                     <div className={styles.alertIcon}>✅</div>
@@ -582,7 +615,6 @@ export default function MiCuentaPage() {
                     <button onClick={() => setPaymentStatus(null)} className={styles.closeAlert}>✕</button>
                 </div>
             )}
-            <h1 className="section-title text-yellow" style={{ marginBottom: '2rem' }}>Mi Cuenta</h1>
 
             <div className={styles.dashboard}>
                 <div className={styles.profileCard}>
@@ -623,7 +655,11 @@ export default function MiCuentaPage() {
                                     <tr><th>Taller</th><th>Mes</th><th>Estado</th><th>Fecha</th><th>Monto</th></tr>
                                 </thead>
                                 <tbody>
-                                    {pagos.filter(p => p.mes && p.anio && p.mes !== '-').map((p, i) => (
+                                    {pagos.filter(p => p.mes && p.anio && p.mes !== '-').sort((a, b) => {
+                                        const yearDiff = Number(b.anio) - Number(a.anio);
+                                        if (yearDiff !== 0) return yearDiff;
+                                        return Number(b.mes) - Number(a.mes);
+                                    }).map((p, i) => (
                                         <tr key={i}>
                                             <td>{p.taller}</td>
                                             <td>{p.mes}</td>
