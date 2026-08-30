@@ -27,7 +27,7 @@ export default function DesafiosPage() {
         if (!user?.dni) return;
         setLoadingChallenges(true);
         try {
-            const res = await fetch(`/api/v2/challenges?dni=${user.dni}`);
+            const res = await fetch(`/api/v2/challenges?dni=${user.dni}`, { cache: 'no-store' });
             const data = await res.json();
             if (data.status === 'success' && Array.isArray(data.data)) {
                 setChallenges(data.data);
@@ -100,7 +100,7 @@ export default function DesafiosPage() {
         }
     };
 
-    if (loading || loadingChallenges) return <div className="section-padding container text-center">Cargando desafíos...</div>;
+    if (loading) return <div className="section-padding container text-center">Cargando perfil...</div>;
 
     if (!user) {
         if (typeof window !== 'undefined') window.location.href = '/login';
