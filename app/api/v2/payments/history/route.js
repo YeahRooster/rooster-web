@@ -24,10 +24,11 @@ export async function GET(request) {
             .from('inscripciones')
             .select(`
                 *,
-                alumnos!inner(dni, nombre, email, pais, activo),
+                alumnos!inner(dni, nombre, email, pais, activo, dado_de_baja),
                 talleres(id, titulo, precio_base, precio_desc_dia10, precio_desc_efectivo, tipo_cobro)
             `)
-            .eq('alumnos.activo', true);
+            .eq('alumnos.activo', true)
+            .eq('alumnos.dado_de_baja', false);
 
         if (taller_filter) {
             query = query.eq('taller', taller_filter);

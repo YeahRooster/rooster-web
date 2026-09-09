@@ -89,6 +89,14 @@ export async function PUT(request) {
 
         if (error) throw error;
 
+        // ACTUALIZACIÓN DE OBRAS: Si se modificó la edad (es_menor), actualizar todas las obras existentes del alumno
+        if (es_menor !== undefined) {
+            await supabaseAdmin
+                .from('challenge_submissions')
+                .update({ categoria: es_menor ? 'menores' : 'adultos' })
+                .eq('alumno_dni', cleanDni);
+        }
+
         // Gestion de cupos automatica
         if (statusChanged) {
             const { data: inscripciones } = await supabaseAdmin

@@ -1013,7 +1013,7 @@ export default function AdminDashboard() {
                                                         <h4 style={{ margin: 0 }}>{s.nombre}</h4>
                                                         <button
                                                             onClick={() => {
-                                                                setEditingStudent({ dni: s.dni, nombre: s.nombre, email: s.email || '', telefono: s.telefono || '', talleresInscriptos: s.talleresInscriptos || [], es_menor: !!s.es_menor });
+                                                                setEditingStudent({ dni: s.dni, nombre: s.nombre, email: s.email || '', telefono: s.telefono || '', talleresInscriptos: s.talleresInscriptos || [], es_menor: !!s.es_menor, direccion: s.direccion || '', ciudad: s.ciudad || '', pais: s.pais || '', tutor_nombre: s.tutor_nombre || '' });
                                                                 setShowEditStudentModal(true);
                                                             }}
                                                             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '2px', display: 'inline-flex', alignSelf: 'center' }}
@@ -1079,6 +1079,13 @@ export default function AdminDashboard() {
 
                                     <div className={styles.cardFooter}>
                                         <button onClick={() => showPassword(s.dni)} className={styles.footerBtn}>🔑 Pass</button>
+                                        <button onClick={() => {
+                                            const url = `${window.location.origin}/portfolio/${s.slug}`;
+                                            navigator.clipboard.writeText(url);
+                                            alert('Link del portafolio copiado al portapapeles:\n' + url);
+                                        }} className={styles.footerBtn}>
+                                            🌐 Portafolio
+                                        </button>
                                         <button
                                             onClick={() => toggleAccesoRestringido(s.dni, s.acceso_restringido)}
                                             className={`${styles.footerBtn} ${s.acceso_restringido ? styles.textRed : styles.textGreen}`}
@@ -1140,11 +1147,18 @@ export default function AdminDashboard() {
                                                 </td>
                                                 <td>
                                                     <div style={{ display: 'flex', gap: '5px' }}>
+                                                        <button onClick={() => {
+                                                            const url = `${window.location.origin}/portfolio/${s.slug}`;
+                                                            navigator.clipboard.writeText(url);
+                                                            alert('Link copiado:\n' + url);
+                                                        }} className="btn btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
+                                                            🌐 Portafolio
+                                                        </button>
                                                         <button onClick={() => toggleStudentStatus(s.dni, s.activo)} className={`btn ${s.activo ? 'btn-danger' : 'btn-primary'}`} style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
                                                             {s.activo ? 'Baja' : 'Alta'}
                                                         </button>
                                                         <button onClick={() => {
-                                                            setEditingStudent({ dni: s.dni, nombre: s.nombre, email: s.email || '', telefono: s.telefono || '', talleresInscriptos: s.talleresInscriptos || [], es_menor: !!s.es_menor });
+                                                            setEditingStudent({ dni: s.dni, nombre: s.nombre, email: s.email || '', telefono: s.telefono || '', talleresInscriptos: s.talleresInscriptos || [], es_menor: !!s.es_menor, direccion: s.direccion || '', ciudad: s.ciudad || '', pais: s.pais || '', tutor_nombre: s.tutor_nombre || '' });
                                                             setShowEditStudentModal(true);
                                                         }} className="btn btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
                                                             ✏️ Editar
