@@ -633,6 +633,7 @@ export default function MiCuentaPage() {
                     <button onClick={handleChangePassword} className={styles.changePassBtn}>
                         🔑 Cambiar Contraseña
                     </button>
+                    {user.role === 'student' && user.slug && ( <a href={`/portfolio/${user.slug}`} target='_blank' rel='noopener noreferrer' className={styles.changePassBtn} style={{ marginLeft: '10px', background: '#3b82f6', color: 'white', textDecoration: 'none', display: 'inline-block' }}> 🌐 Ver Portafolio </a> )}
                     {user.role === 'admin' && (
                         <button
                             onClick={() => window.location.href = '/admin'}

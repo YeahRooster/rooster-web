@@ -125,7 +125,7 @@ export default function PerfilPage() {
 
                 <button
                     className="btn btn-primary"
-                    style={{ marginTop: '2rem', padding: '12px 30px', fontSize: '1.2rem' }}
+                    style={{ marginTop: '2rem', padding: '12px 30px', fontSize: '1.2rem', width: '100%', maxWidth: '300px', display: 'block', margin: '2rem auto 1rem' }}
                     onClick={handleSave}
                     disabled={saving}
                 >

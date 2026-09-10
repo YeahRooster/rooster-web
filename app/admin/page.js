@@ -435,13 +435,13 @@ export default function AdminDashboard() {
 
     const [processingDni, setProcessingDni] = useState(null);
 
-    const toggleStudentStatus = async (dni, currentStatus) => {
+    const toggleStudentStatus = async (dni, currentStatus, explicitNewStatus = null) => {
         setProcessingDni(dni);
         try {
             const res = await fetch('/api/v2/admin/students', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ dni, activo: !currentStatus })
+                body: JSON.stringify({ dni, activo: explicitNewStatus !== null ? explicitNewStatus : !currentStatus })
             });
             const result = await res.json();
             if (result.status === 'success') {
@@ -973,13 +973,9 @@ export default function AdminDashboard() {
 
                     <div className={styles.filterBar}>
                         <button onClick={() => { setFilter('all'); loadStudents(); }} className={filter === 'all' ? styles.btnFilterActive : ''}>Todos</button>
-                        <button onClick={() => { setFilter('pending'); loadStudents('pending'); }} className={filter === 'pending' ? styles.btnFilterActive : ''}>Pendientes 🟡</button>
-                        <button onClick={() => { setFilter('active'); loadStudents('active'); }} className={filter === 'active' ? styles.btnFilterActive : ''}>Activos 🟢</button>
-                        
-                        <label style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px', color: '#9ca3af', cursor: 'pointer' }}>
-                            <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
-                            Mostrar Inactivos (Bajas)
-                        </label>
+                        <button onClick={() => { setFilter('pending'); loadStudents(); }} className={filter === 'pending' ? styles.btnFilterActive : ''}>Pendientes 🟡</button>
+                        <button onClick={() => { setFilter('active'); loadStudents(); }} className={filter === 'active' ? styles.btnFilterActive : ''}>Activos 🟢</button>
+                        <button onClick={() => { setFilter('inactive'); loadStudents(); }} className={filter === 'inactive' ? styles.btnFilterActive : ''}>Inactivos 🔴</button>
                     </div>
 
                     {studentViewMode === 'grid' ? (
@@ -990,11 +986,11 @@ export default function AdminDashboard() {
                                 return s.nombre.toLowerCase().includes(q) || s.dni.includes(q) || (s.email && s.email.toLowerCase().includes(q));
                             })
                             .filter(s => {
-                                if (filter === 'all') {
-                                    if (!showInactive && !s.activo) return false;
-                                    return true;
-                                }
-                                return filter === 'active' ? s.activo : !s.activo;
+                                if (filter === 'all') return true;
+                                if (filter === 'active') return s.activo && !s.dado_de_baja;
+                                if (filter === 'pending') return !s.activo && !s.dado_de_baja;
+                                if (filter === 'inactive') return s.dado_de_baja;
+                                return true;
                             })
                             .sort((a, b) => {
                                 if (a.activo === b.activo) return a.nombre.localeCompare(b.nombre);
@@ -1092,12 +1088,19 @@ export default function AdminDashboard() {
                                         >
                                             {s.acceso_restringido ? '🚫 Desbloquear' : '🔓 Bloquear'}
                                         </button>
-                                        <button
-                                            onClick={() => toggleStudentStatus(s.dni, s.activo)}
-                                            className={`${styles.footerBtn} ${s.activo ? styles.textRed : styles.textGreen}`}
-                                        >
-                                            {s.activo ? '🛑 Baja' : '✅ Alta'}
-                                        </button>
+                                        {(!s.activo && !s.dado_de_baja) ? (
+                                            <>
+                                                <button onClick={() => toggleStudentStatus(s.dni, s.activo, true)} className={`${styles.footerBtn} ${styles.textGreen}`}>✅ Alta</button>
+                                                <button onClick={() => toggleStudentStatus(s.dni, s.activo, false)} className={`${styles.footerBtn} ${styles.textRed}`}>🚫 Denegar</button>
+                                            </>
+                                        ) : (
+                                            <button
+                                                onClick={() => toggleStudentStatus(s.dni, s.activo)}
+                                                className={`${styles.footerBtn} ${s.activo ? styles.textRed : styles.textGreen}`}
+                                            >
+                                                {s.activo ? '🛑 Baja' : '✅ Alta'}
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))
@@ -1122,11 +1125,11 @@ export default function AdminDashboard() {
                                             return s.nombre.toLowerCase().includes(q) || s.dni.includes(q) || (s.email && s.email.toLowerCase().includes(q));
                                         })
                                         .filter(s => {
-                                            if (filter === 'all') {
-                                                if (!showInactive && !s.activo) return false;
-                                                return true;
-                                            }
-                                            return filter === 'active' ? s.activo : !s.activo;
+                                            if (filter === 'all') return true;
+                                            if (filter === 'active') return s.activo && !s.dado_de_baja;
+                                            if (filter === 'pending') return !s.activo && !s.dado_de_baja;
+                                            if (filter === 'inactive') return s.dado_de_baja;
+                                            return true;
                                         })
                                         .sort((a, b) => {
                                             if (a.activo === b.activo) return a.nombre.localeCompare(b.nombre);
@@ -1154,9 +1157,16 @@ export default function AdminDashboard() {
                                                         }} className="btn btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
                                                             🌐 Portafolio
                                                         </button>
-                                                        <button onClick={() => toggleStudentStatus(s.dni, s.activo)} className={`btn ${s.activo ? 'btn-danger' : 'btn-primary'}`} style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
-                                                            {s.activo ? 'Baja' : 'Alta'}
-                                                        </button>
+                                                        {(!s.activo && !s.dado_de_baja) ? (
+                                                            <>
+                                                                <button onClick={() => toggleStudentStatus(s.dni, s.activo, true)} className="btn btn-primary" style={{ padding: '4px 8px', fontSize: '0.75rem' }}>Alta</button>
+                                                                <button onClick={() => toggleStudentStatus(s.dni, s.activo, false)} className="btn btn-danger" style={{ padding: '4px 8px', fontSize: '0.75rem' }}>Denegar</button>
+                                                            </>
+                                                        ) : (
+                                                            <button onClick={() => toggleStudentStatus(s.dni, s.activo)} className={`btn ${s.activo ? 'btn-danger' : 'btn-primary'}`} style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
+                                                                {s.activo ? 'Baja' : 'Alta'}
+                                                            </button>
+                                                        )}
                                                         <button onClick={() => {
                                                             setEditingStudent({ dni: s.dni, nombre: s.nombre, email: s.email || '', telefono: s.telefono || '', talleresInscriptos: s.talleresInscriptos || [], es_menor: !!s.es_menor, direccion: s.direccion || '', ciudad: s.ciudad || '', pais: s.pais || '', tutor_nombre: s.tutor_nombre || '' });
                                                             setShowEditStudentModal(true);
@@ -1938,6 +1948,29 @@ export default function AdminDashboard() {
                                     style={{ minHeight: 'auto', padding: '0.8rem' }}
                                     value={editingStudent.direccion || ''}
                                     onChange={(e) => setEditingStudent({ ...editingStudent, direccion: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label>Ciudad:</label>
+                                <input
+                                    type="text"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    value={editingStudent.ciudad || ''}
+                                    onChange={(e) => setEditingStudent({ ...editingStudent, ciudad: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className={styles.formGroup} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                                <label>País:</label>
+                                <input
+                                    type="text"
+                                    className={styles.textarea}
+                                    style={{ minHeight: 'auto', padding: '0.8rem' }}
+                                    value={editingStudent.pais || ''}
+                                    onChange={(e) => setEditingStudent({ ...editingStudent, pais: e.target.value })}
                                 />
                             </div>
                             <div>

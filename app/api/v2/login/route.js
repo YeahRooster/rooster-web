@@ -61,6 +61,7 @@ export async function POST(request) {
                 nombre: student.nombre,
                 email: student.email,
                 dni: student.dni,
+                slug: student.slug, // agregado para el portfolio
                 talleresInscriptos,
                 pagos: student.pagos || [],
                 avatar_id: student.avatar_id || 'gallo',
