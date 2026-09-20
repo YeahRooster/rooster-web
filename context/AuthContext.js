@@ -26,8 +26,23 @@ export function AuthProvider({ children }) {
         window.location.href = '/';
     };
 
+    const refreshUser = async () => {
+        if (!user || !user.dni || user.role !== 'student') return;
+        try {
+            const res = await fetch(`/api/v2/student/sync?dni=${user.dni}`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                const updatedUser = { ...data.user, role: 'student' };
+                setUser(updatedUser);
+                localStorage.setItem('rooster_user', JSON.stringify(updatedUser));
+            }
+        } catch (e) {
+            console.error("Error refreshing user", e);
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, logout, loading, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

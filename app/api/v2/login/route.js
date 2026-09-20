@@ -63,10 +63,14 @@ export async function POST(request) {
                 dni: student.dni,
                 slug: student.slug, // agregado para el portfolio
                 talleresInscriptos,
+                inscripciones: student.inscripciones,
                 pagos: student.pagos || [],
                 avatar_id: student.avatar_id || 'gallo',
                 avatar_url: student.avatar_url,
-                acceso_restringido: student.acceso_restringido || false
+                acceso_restringido: student.acceso_restringido || false,
+                etapa_1_aprobada: student.etapa_1_aprobada || false,
+                etapa_2_aprobada: student.etapa_2_aprobada || false,
+                etapa_3_aprobada: student.etapa_3_aprobada || false
             });
         }
 

@@ -21,10 +21,13 @@ export async function GET(request) {
         const { data: inscripciones, error: iErr } = await supabaseAdmin
             .from('inscripciones')
             .select(`
+                id,
                 alumno_dni,
-                alumnos (nombre)
+                certificados_data,
+                alumnos!inner(nombre, dado_de_baja)
             `)
-            .ilike('taller_nombre', tallerNombre.trim());
+            .ilike('taller_nombre', tallerNombre.trim())
+            .eq('alumnos.dado_de_baja', false);
 
         if (iErr) throw iErr;
 
@@ -50,7 +53,10 @@ export async function GET(request) {
 
         // 3. Formatear respuesta
         const students = inscripciones.map(i => ({
+            id: i.id, // inscripcion id
+            dni: i.alumno_dni,
             nombre: i.alumnos.nombre,
+            certificados_data: i.certificados_data || {},
             estado: pagosMap[i.alumno_dni] ? "al dia" : "deudor"
         }));
 

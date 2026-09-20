@@ -3,9 +3,16 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
 import styles from './page.module.css';
+import Certificados from '../components/Certificados';
 
 export default function MiCuentaPage() {
-    const { user, loading } = useAuth();
+    const { user, loading, refreshUser } = useAuth();
+    
+    useEffect(() => {
+        if (user && user.role === 'student') {
+            refreshUser();
+        }
+    }, [user?.dni]);
     const [showAlert, setShowAlert] = useState(false);
     const [teacherData, setTeacherData] = useState({ students: [], resources: [] });
     const [loadingTeacher, setLoadingTeacher] = useState(false);
@@ -14,7 +21,10 @@ export default function MiCuentaPage() {
     const [isDragging, setIsDragging] = useState(false);
 
     // Estados para recursos tipo Nota/Enlace
-    const [resourceMode, setResourceMode] = useState('file'); // 'file' o 'note'
+    const [resourceMode, setResourceMode] = useState('file');
+    const [showCertModal, setShowCertModal] = useState(false);
+    const [editingCertStudent, setEditingCertStudent] = useState(null);
+    const [certSaving, setCertSaving] = useState(false);
     const [noteTitle, setNoteTitle] = useState('');
     const [noteContent, setNoteContent] = useState('');
 
@@ -227,6 +237,8 @@ export default function MiCuentaPage() {
         reader.readAsDataURL(file);
     };
 
+    const handleSaveCertData = async () => { setCertSaving(true); try { const res = await fetch('/api/v2/teacher/certificates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inscripcionId: editingCertStudent.id, certificadosData: editingCertStudent.certificados_data }) }); if(res.ok) { alert('Datos guardados correctamente'); setShowCertModal(false); loadTeacherData(); } else { alert('Error al guardar'); } } catch(err) { console.error(err); alert('Error al guardar'); } finally { setCertSaving(false); } };
+
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
         processFile(file);
@@ -396,6 +408,42 @@ export default function MiCuentaPage() {
                     </button>
                 </div>
 
+                {showCertModal && editingCertStudent && (
+                    <div className={styles.modalOverlay}>
+                        <div className={styles.modal}>
+                            <h2 style={{color:'#f59e0b', marginBottom:'1rem'}}>Certificados para {editingCertStudent.nombre}</h2>
+                            <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
+                                <label style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                                    <input type="checkbox" checked={editingCertStudent.certificados_data?.etapa_1_aprobada || false} onChange={(e) => setEditingCertStudent({...editingCertStudent, certificados_data: {...editingCertStudent.certificados_data, etapa_1_aprobada: e.target.checked}})} />
+                                    Etapa 1 (Ciclo Inicial) Completada
+                                </label>
+                                <label style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                                    <input type="checkbox" checked={editingCertStudent.certificados_data?.etapa_2_aprobada || false} onChange={(e) => setEditingCertStudent({...editingCertStudent, certificados_data: {...editingCertStudent.certificados_data, etapa_2_aprobada: e.target.checked}})} />
+                                    Etapa 2 (Ciclo Medio) Completada
+                                </label>
+                                <label style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                                    <input type="checkbox" checked={editingCertStudent.certificados_data?.etapa_3_aprobada || false} onChange={(e) => setEditingCertStudent({...editingCertStudent, certificados_data: {...editingCertStudent.certificados_data, etapa_3_aprobada: e.target.checked}})} />
+                                    Etapa 3 (Finalización) Completada
+                                </label>
+                                <label style={{marginTop:'1rem'}}>
+                                    Nivel de Idioma (solo Inglés/Italiano):
+                                    <select value={editingCertStudent.certificados_data?.nivel_idioma || ''} onChange={(e) => setEditingCertStudent({...editingCertStudent, certificados_data: {...editingCertStudent.certificados_data, nivel_idioma: e.target.value}})} style={{width:'100%', padding:'8px', marginTop:'4px', background:'#111', color:'white', border:'1px solid #333'}}>
+                                        <option value="">Ninguno</option>
+                                        <option value="A1">A1</option>
+                                        <option value="A2">A2</option>
+                                        <option value="B1">B1</option>
+                                        <option value="B2">B2</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div style={{display:'flex', gap:'10px', marginTop:'1.5rem', justifyContent:'flex-end'}}>
+                                <button className="btn" onClick={() => setShowCertModal(false)}>Cancelar</button>
+                                <button className="btn btn-primary" onClick={handleSaveCertData} disabled={certSaving}>{certSaving ? 'Guardando...' : 'Guardar'}</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <div className={styles.teacherGrid}>
                     <div className={styles.card}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -423,7 +471,15 @@ export default function MiCuentaPage() {
                                         ) : (
                                             teacherData.students.map((s, i) => (
                                                 <tr key={i}>
-                                                    <td>{s.nombre}</td>
+                                                    <td>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>{s.nombre}</span>
+        <button
+            onClick={() => { setEditingCertStudent(s); setShowCertModal(true); }}
+            style={{ background: 'none', border: '1px solid #333', padding: '2px 8px', borderRadius: '4px', color: '#fff', cursor: 'pointer', fontSize: '0.8rem' }}
+        >🎓 Certificados</button>
+    </div>
+</td>
                                                     <td>
                                                         <span className={s.estado === 'al dia' ? styles.tagPaid : styles.tagPending}>
                                                             {s.estado === 'al dia' ? 'Al día' : 'Deudor'}
@@ -644,6 +700,8 @@ export default function MiCuentaPage() {
                         </button>
                     )}
                 </div>
+
+                <Certificados user={user} />
 
                 <div className={styles.paymentsCard}>
                     <h2 className={styles.cardTitle}>Estado de Cuotas</h2>

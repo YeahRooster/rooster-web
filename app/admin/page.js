@@ -2,8 +2,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
+import { BarChart, Users, UserCog, Palette, FolderOpen, Image as ImageIcon, DollarSign, TrendingUp, FileText, Award, Calendar } from 'lucide-react';
 import WorkshopsTab from './WorkshopsTab';
 import ReportsTab from './ReportsTab';
+import CertificatesTab from './CertificatesTab';
 
 export default function AdminDashboard() {
     const { user, loading: authLoading } = useAuth();
@@ -661,7 +663,7 @@ export default function AdminDashboard() {
                     direccion: editingStudent.direccion || null,
                     ciudad: editingStudent.ciudad || null,
                     pais: editingStudent.pais || null,
-                    tutor_nombre: editingStudent.tutor_nombre || null,
+                    tutor_nombre: editingStudent.tutor_nombre || null, etapa_1_aprobada: editingStudent.etapa_1_aprobada, etapa_2_aprobada: editingStudent.etapa_2_aprobada, etapa_3_aprobada: editingStudent.etapa_3_aprobada,
                     es_menor: editingStudent.es_menor
                 })
             });
@@ -776,23 +778,44 @@ export default function AdminDashboard() {
             <div className={styles.adminLayout}>
                 <div className={styles.sidebar}>
                     <div className={styles.tabs}>
-                        <button className={`${styles.tab} ${view === 'stats' ? styles.tabActive : ''}`} onClick={() => setView('stats')}>📊 Estadísticas</button>
+                        <button className={`${styles.tab} ${view === 'stats' ? styles.tabActive : ''}`} onClick={() => setView('stats')}>
+                            <BarChart size={18} style={{marginRight: '8px'}} /> Estadísticas
+                        </button>
                         <button className={`${styles.tab} ${view === 'students' ? styles.tabActive : ''}`} onClick={() => setView('students')}>
-                            👥 Alumnos
+                            <Users size={18} style={{marginRight: '8px'}} /> Alumnos
                             {stats?.alumnosPendientes > 0 && (
                                 <span style={{ background: '#ef4444', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.7rem', marginLeft: '6px' }}>
                                     {stats.alumnosPendientes}
                                 </span>
                             )}
                         </button>
-                        <button className={`${styles.tab} ${view === 'profesores' ? styles.tabActive : ''}`} onClick={() => { setView('profesores'); loadProfesores(); }}>👨‍🏫 Profesores</button>
-                        <button className={`${styles.tab} ${view === 'workshops' ? styles.tabActive : ''}`} onClick={() => { setView('workshops'); loadTalleres(); }}>🏢 Talleres</button>
-                        <button className={`${styles.tab} ${view === 'resources' ? styles.tabActive : ''}`} onClick={() => setView('resources')}>📚 Materiales</button>
-                        <button className={`${styles.tab} ${view === 'gallery' ? styles.tabActive : ''}`} onClick={() => { setView('gallery'); loadGalleryPosts(); loadBannedWords(); }}>🖼️ Galería</button>
-                        <button className={`${styles.tab} ${view === 'payments' ? styles.tabActive : ''}`} onClick={() => { setView('payments'); loadPaymentsHistory(); loadTalleres(); }}>💰 Pagos</button>
-                        <button className={`${styles.tab} ${view === 'reports' ? styles.tabActive : ''}`} onClick={() => { setView('reports'); loadPaymentsHistory(); }}>📈 Reportes</button>
-                        <button className={`${styles.tab} ${view === 'challenges' ? styles.tabActive : ''}`} onClick={() => { setView('challenges'); loadChallenges(); loadTalleres(); }}>🏆 Desafíos</button>
-                        <button className={`${styles.tab}`} onClick={() => window.location.href = '/cronograma'}>📅 Ver Cronograma</button>
+                        <button className={`${styles.tab} ${view === 'profesores' ? styles.tabActive : ''}`} onClick={() => { setView('profesores'); loadProfesores(); }}>
+                            <UserCog size={18} style={{marginRight: '8px'}} /> Profesores
+                        </button>
+                        <button className={`${styles.tab} ${view === 'workshops' ? styles.tabActive : ''}`} onClick={() => { setView('workshops'); loadTalleres(); }}>
+                            <Palette size={18} style={{marginRight: '8px'}} /> Talleres
+                        </button>
+                        <button className={`${styles.tab} ${view === 'resources' ? styles.tabActive : ''}`} onClick={() => setView('resources')}>
+                            <FolderOpen size={18} style={{marginRight: '8px'}} /> Materiales
+                        </button>
+                        <button className={`${styles.tab} ${view === 'gallery' ? styles.tabActive : ''}`} onClick={() => { setView('gallery'); loadGalleryPosts(); loadBannedWords(); }}>
+                            <ImageIcon size={18} style={{marginRight: '8px'}} /> Galería
+                        </button>
+                        <button className={`${styles.tab} ${view === 'payments' ? styles.tabActive : ''}`} onClick={() => { setView('payments'); loadPaymentsHistory(); loadTalleres(); }}>
+                            <DollarSign size={18} style={{marginRight: '8px'}} /> Pagos
+                        </button>
+                        <button className={`${styles.tab} ${view === 'reports' ? styles.tabActive : ''}`} onClick={() => { setView('reports'); loadPaymentsHistory(); }}>
+                            <TrendingUp size={18} style={{marginRight: '8px'}} /> Reportes
+                        </button>
+                        <button className={`${styles.tab} ${view === 'certificates' ? styles.tabActive : ''}`} onClick={() => setView('certificates')}>
+                            <FileText size={18} style={{marginRight: '8px'}} /> Certificados
+                        </button>
+                        <button className={`${styles.tab} ${view === 'challenges' ? styles.tabActive : ''}`} onClick={() => { setView('challenges'); loadChallenges(); loadTalleres(); }}>
+                            <Award size={18} style={{marginRight: '8px'}} /> Desafíos
+                        </button>
+                        <button className={`${styles.tab}`} onClick={() => window.location.href = '/cronograma'}>
+                            <Calendar size={18} style={{marginRight: '8px'}} /> Ver Cronograma
+                        </button>
                     </div>
                 </div>
 
@@ -1009,7 +1032,7 @@ export default function AdminDashboard() {
                                                         <h4 style={{ margin: 0 }}>{s.nombre}</h4>
                                                         <button
                                                             onClick={() => {
-                                                                setEditingStudent({ dni: s.dni, nombre: s.nombre, email: s.email || '', telefono: s.telefono || '', talleresInscriptos: s.talleresInscriptos || [], es_menor: !!s.es_menor, direccion: s.direccion || '', ciudad: s.ciudad || '', pais: s.pais || '', tutor_nombre: s.tutor_nombre || '' });
+                                                                setEditingStudent({ dni: s.dni, nombre: s.nombre, email: s.email || '', telefono: s.telefono || '', talleresInscriptos: s.talleresInscriptos || [], es_menor: !!s.es_menor, direccion: s.direccion || '', ciudad: s.ciudad || '', pais: s.pais || '', tutor_nombre: s.tutor_nombre || '', etapa_1_aprobada: !!s.etapa_1_aprobada, etapa_2_aprobada: !!s.etapa_2_aprobada, etapa_3_aprobada: !!s.etapa_3_aprobada });
                                                                 setShowEditStudentModal(true);
                                                             }}
                                                             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '2px', display: 'inline-flex', alignSelf: 'center' }}
@@ -1168,7 +1191,7 @@ export default function AdminDashboard() {
                                                             </button>
                                                         )}
                                                         <button onClick={() => {
-                                                            setEditingStudent({ dni: s.dni, nombre: s.nombre, email: s.email || '', telefono: s.telefono || '', talleresInscriptos: s.talleresInscriptos || [], es_menor: !!s.es_menor, direccion: s.direccion || '', ciudad: s.ciudad || '', pais: s.pais || '', tutor_nombre: s.tutor_nombre || '' });
+                                                            setEditingStudent({ dni: s.dni, nombre: s.nombre, email: s.email || '', telefono: s.telefono || '', talleresInscriptos: s.talleresInscriptos || [], es_menor: !!s.es_menor, direccion: s.direccion || '', ciudad: s.ciudad || '', pais: s.pais || '', tutor_nombre: s.tutor_nombre || '', etapa_1_aprobada: !!s.etapa_1_aprobada, etapa_2_aprobada: !!s.etapa_2_aprobada, etapa_3_aprobada: !!s.etapa_3_aprobada });
                                                             setShowEditStudentModal(true);
                                                         }} className="btn btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
                                                             ✏️ Editar
@@ -1414,6 +1437,8 @@ export default function AdminDashboard() {
             {view === 'workshops' && <WorkshopsTab />}
             
             {view === 'reports' && <ReportsTab />}
+
+            {view === 'certificates' && <CertificatesTab />}
 
             {view === 'payments' && (
                 <div className={styles.studentsSection}>
@@ -1995,6 +2020,24 @@ export default function AdminDashboard() {
                                 />
                                 <span>Es menor de edad (Categoría Niños para Desafíos)</span>
                             </label>
+                        </div>
+
+                        <div className={styles.formGroup} style={{ marginTop: '1rem', padding: '1rem', background: '#111', borderRadius: '8px' }}>
+                            <label style={{ marginBottom: '0.5rem', display: 'block', color: 'var(--rooster-yellow)' }}>Progreso de Talleres (Certificados):</label>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                    <input type="checkbox" checked={editingStudent.etapa_1_aprobada || false} onChange={(e) => setEditingStudent({ ...editingStudent, etapa_1_aprobada: e.target.checked })} style={{ width: '16px', height: '16px' }} />
+                                    <span>Etapa 1 (Ciclo Inicial) Completada</span>
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                    <input type="checkbox" checked={editingStudent.etapa_2_aprobada || false} onChange={(e) => setEditingStudent({ ...editingStudent, etapa_2_aprobada: e.target.checked })} style={{ width: '16px', height: '16px' }} />
+                                    <span>Etapa 2 (Ciclo Medio) Completada</span>
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                    <input type="checkbox" checked={editingStudent.etapa_3_aprobada || false} onChange={(e) => setEditingStudent({ ...editingStudent, etapa_3_aprobada: e.target.checked })} style={{ width: '16px', height: '16px' }} />
+                                    <span>Etapa 3 (Finalización) Completada</span>
+                                </label>
+                            </div>
                         </div>
 
                         {editingStudent.talleresInscriptos && editingStudent.talleresInscriptos.length > 0 && (
