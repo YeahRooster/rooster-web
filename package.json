@@ -12,6 +12,7 @@
     "@supabase/supabase-js": "^2.90.1",
     "@vercel/analytics": "^1.6.1",
     "cloudinary": "^2.8.0",
+    "dompurify": "^3.4.15",
     "dotenv": "^17.2.3",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
@@ -20,7 +21,9 @@
     "node-fetch": "^2.7.0",
     "nodemailer": "^7.0.13",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "react-dropzone": "^20.1.2",
+    "react-quill": "^2.0.0"
   },
   "devDependencies": {
     "eslint": "^9",

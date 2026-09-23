@@ -107,3 +107,9 @@ a {
   background-color: var(--rooster-blue);
   color: var(--text-light);
 }
+.rich-text-content strong { font-weight: bold; color: var(--rooster-yellow); }
+.rich-text-content em { font-style: italic; }
+.rich-text-content u { text-decoration: underline; }
+.rich-text-content a { color: #60a5fa; text-decoration: underline; }
+.rich-text-content ul { list-style-type: disc; margin-left: 20px; }
+.rich-text-content ol { list-style-type: decimal; margin-left: 20px; }

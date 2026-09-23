@@ -60,12 +60,16 @@ export async function POST(request) {
             return NextResponse.json({ status: 'error', message: 'El alumno ya está inscripto en este taller' }, { status: 400 });
         }
 
-        // 2. Insertar inscripción
+        // 2. Insertar inscripcion
+        const { data: dbTaller } = await supabaseAdmin.from('talleres').select('titulo').eq('id', taller_id).single();
+        const tallerNombre = dbTaller ? dbTaller.titulo : null;
+
         const { error } = await supabaseAdmin
             .from('inscripciones')
             .insert({
                 alumno_dni: String(dni).trim(),
-                taller_id: taller_id
+                taller_id: taller_id,
+                taller_nombre: tallerNombre
             });
 
         if (error) throw error;
