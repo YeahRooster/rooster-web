@@ -113,3 +113,6 @@ a {
 .rich-text-content a { color: #60a5fa; text-decoration: underline; }
 .rich-text-content ul { list-style-type: disc; margin-left: 20px; }
 .rich-text-content ol { list-style-type: decimal; margin-left: 20px; }
+.rich-text-content { word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; overflow: hidden; }
+.rich-text-content p { margin-bottom: 1em; white-space: pre-wrap; }
+.rich-text-content pre { white-space: pre-wrap; font-family: inherit; }

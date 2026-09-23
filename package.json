@@ -23,7 +23,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-dropzone": "^20.1.2",
-    "react-quill": "^2.0.0"
+    "react-quill-new": "^3.8.3"
   },
   "devDependencies": {
     "eslint": "^9",
