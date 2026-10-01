@@ -13,6 +13,8 @@ export default function PostDetail() {
     const [replyingTo, setReplyingTo] = useState(null);
     const [loadingData, setLoadingData] = useState(true);
     const [lightboxImage, setLightboxImage] = useState(null);
+    const [isLiked, setIsLiked] = useState(false);
+    const [likesCount, setLikesCount] = useState(0);
 
     useEffect(() => {
         if (!loading && user) {
@@ -28,6 +30,12 @@ export default function PostDetail() {
             if (data.status === 'success') {
                 const found = data.posts.find(p => p.id.toString() === id);
                 setPost(found);
+                setLikesCount(found.likes_count || 0);
+                if (user) {
+                    fetch(`/api/v2/comunidad/likes?alumno_dni=${user.dni}`).then(r => r.json()).then(d => {
+                        if (d.status === "success") setIsLiked(d.likes.includes(found.id));
+                    });
+                }
             }
         } catch (e) { console.error(e); }
     };
@@ -42,6 +50,25 @@ export default function PostDetail() {
         } catch (e) { console.error(e); } finally {
             setLoadingData(false);
         }
+    };
+
+    
+    const toggleLike = async () => {
+        if (!user) return alert("Debes iniciar sesión para dar me gusta.");
+        if (user.acceso_restringido) return alert("Tu cuenta tiene el acceso restringido a las interacciones.");
+        
+        try {
+            const res = await fetch('/api/v2/comunidad/likes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ post_id: post.id, alumno_dni: user.dni })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                setIsLiked(data.action === 'liked');
+                setLikesCount(prev => data.action === 'liked' ? prev + 1 : prev - 1);
+            }
+        } catch (e) { console.error(e); }
     };
 
     const postComment = async (e) => {
@@ -142,7 +169,16 @@ export default function PostDetail() {
 
                     <h1 style={{ color: '#fff', fontSize: '2rem', marginBottom: '20px' }}>{post.titulo}</h1>
                     
+                    
                     <div className="rich-text-content" style={{ color: '#e5e7eb', fontSize: '1.1rem', lineHeight: '1.8' }} dangerouslySetInnerHTML={{ __html: post.contenido }} />
+
+                    <div style={{ marginTop: '30px', padding: '15px 0', borderTop: '1px solid #333', borderBottom: '1px solid #333', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <button onClick={toggleLike} style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid #444', borderRadius: '30px', padding: '8px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem', transition: 'all 0.2s' }}>
+                            <span style={{ fontSize: '1.4rem' }}>{isLiked ? '❤️' : '🤍'}</span>
+                            <span style={{ color: isLiked ? '#ef4444' : '#fff', fontWeight: 'bold' }}>{likesCount} {likesCount === 1 ? 'Me gusta' : 'Me gustas'}</span>
+                        </button>
+                    </div>
+
 
                     {post.imagenes && post.imagenes.length > 0 && (
                         <div style={{ display: 'flex', gap: '15px', marginTop: '30px', flexWrap: 'wrap' }}>
