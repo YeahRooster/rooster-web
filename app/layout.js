@@ -11,6 +11,13 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata = {
   title: 'Rooster - Escuela de Dibujo',
   description: 'Aprende a dibujar en Rooster. Talleres para todas las edades.',
+  manifest: '/manifest.json',
+  themeColor: '#0d1b2a',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Rooster',
+  },
 };
 
 export default function RootLayout({ children }) {
