@@ -52,7 +52,7 @@ export default function NuevoPost() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     titulo: editTitle,
-                    contenido: editContent,
+                    contenido: editContent.replace(/&nbsp;/g, ' '), // Prevenir problemas de copy-paste con espacios duros
                     imagenes: uploadedUrls,
                     autor_nombre: user.nombre,
                     autor_dni: user.dni,
