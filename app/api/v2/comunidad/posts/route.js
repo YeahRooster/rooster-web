@@ -65,7 +65,7 @@ export async function POST(request) {
         
         if (error) throw error;
 
-        if (notificar) {
+        if (true) { // Siempre notificar
             // Get all active students
             const { data: alumnos } = await supabaseAdmin.from('alumnos').select('dni').eq('activo', true);
             if (alumnos && alumnos.length > 0) {
