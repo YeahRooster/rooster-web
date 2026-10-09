@@ -42,7 +42,7 @@ export async function GET(request) {
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { titulo, contenido, imagenes, autor_nombre, autor_dni, autor_rol, fecha_publicacion } = body;
+        const { titulo, contenido, imagenes, autor_nombre, autor_dni, autor_rol, fecha_publicacion, notificar } = body;
 
         if (!titulo || !contenido || !autor_dni) {
             return NextResponse.json({ status: 'error', message: 'Faltan campos obligatorios' }, { status: 400 });
@@ -62,7 +62,27 @@ export async function POST(request) {
             .select()
             .single();
 
+        
         if (error) throw error;
+
+        if (notificar) {
+            // Get all active students
+            const { data: alumnos } = await supabaseAdmin.from('alumnos').select('dni').eq('activo', true);
+            if (alumnos && alumnos.length > 0) {
+                const notifications = alumnos.map(a => ({
+                    destinatario_dni: a.dni,
+                    actor_nombre: autor_nombre,
+                    tipo: 'COMUNIDAD',
+                    mensaje: `Nuevo tema en la comunidad: "${titulo}"`,
+                    leida: false
+                }));
+                // Insert in chunks
+                const chunkSize = 50;
+                for (let i = 0; i < notifications.length; i += chunkSize) {
+                    await supabaseAdmin.from('social_notifications').insert(notifications.slice(i, i + chunkSize));
+                }
+            }
+        }
 
         return NextResponse.json({ status: 'success', post: data });
     } catch (error) {

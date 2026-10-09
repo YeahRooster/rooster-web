@@ -16,6 +16,7 @@ export default function NuevoPost() {
     const [editDate, setEditDate] = useState("");
     const [editImages, setEditImages] = useState([]);
     const [uploadingPost, setUploadingPost] = useState(false);
+    const [notificar, setNotificar] = useState(false);
 
     const onDrop = (acceptedFiles) => setEditImages(prev => [...prev, ...acceptedFiles]);
     const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: {'image/*': []} });
@@ -56,7 +57,8 @@ export default function NuevoPost() {
                     autor_nombre: user.nombre,
                     autor_dni: user.dni,
                     autor_rol: user.role,
-                    fecha_publicacion: editDate ? new Date(editDate).toISOString() : new Date().toISOString()
+                    fecha_publicacion: editDate ? new Date(editDate).toISOString() : new Date().toISOString(),
+                    notificar
                 })
             });
             const postResult = await postRes.json();

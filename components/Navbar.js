@@ -122,7 +122,10 @@ export default function Navbar() {
                                                         if (tipo === 'GALLERY_PROMO') return <p>🎨 {n.mensaje || '¡No te olvides de compartir tu obra en la galería!'}</p>;
                                                         if (tipo === 'BROADCAST') return <p>📢 {n.mensaje}</p>;
                                                         if (tipo === 'RECURSO') return <p>📚 {n.mensaje}</p>;
-                                                        if (tipo === 'DESAFIO') return <p>🏆 {n.mensaje}</p>;
+                                                        if (tipo === 'DESAFIO') return <p>🏆 {n.mensaje}</p>; 
+                                                        if (tipo === 'COMUNIDAD') return <p>{n.mensaje}</p>; 
+                                                        
+                                                        
 
                                                         // Notificación de COMENTARIO en una obra
                                                         if (tipo === 'COMENTARIO') {
