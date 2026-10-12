@@ -1,0 +1,12 @@
+{
+  "name": "angleref-clone",
+  "version": "1.0.0",
+  "description": "Artist Angle Reference & Pose Search Tool",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "acorn": "^8.19.0"
+  }
+}

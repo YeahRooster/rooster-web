@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AngleRef Studio - Buscador de Ángulos para Dibujo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Three.js + GLTFLoader + OrbitControls via CDN ESM -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body class="dark-theme">
+
+  <!-- Top Navigation -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-logo-wrap">
+        <img src="assets/rooster-logo.png" alt="Rooster Espacio de Arte" class="header-rooster-logo">
+      </div>
+      <div>
+        <h1 class="brand-title">AngleRef <span class="badge">ROOSTER ARTE</span></h1>
+        <p class="brand-subtitle">Estudio anatómico y de perspectiva para dibujantes</p>
+      </div>
+    </div>
+      <button class="btn btn-secondary" id="btnPresetFront">Frente</button>
+      <button class="btn btn-secondary" id="btnPreset34L">3/4 Izq</button>
+      <button class="btn btn-secondary" id="btnPreset34R">3/4 Der</button>
+      <button class="btn btn-secondary" id="btnPresetProfileL">Perfil Izq</button>
+      <button class="btn btn-secondary" id="btnPresetProfileR">Perfil Der</button>
+      <button class="btn btn-secondary" id="btnPresetLowAngle">Contrapicado</button>
+      <button class="btn btn-secondary" id="btnPresetHighAngle">Picado</button>
+      <button class="btn btn-secondary" id="btnPresetBack34">3/4 Atrás</button>
+      <button class="btn btn-secondary" id="btnPresetBack">Nuca (180°)</button>
+            <button class="btn btn-secondary" id="btnResetView">Reset</button>
+      <button class="btn btn-practice" id="btnOpenPractice" title="Iniciar sesión de dibujo con temporizador automático">
+        ⏱️ Práctica con Temporizador
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace Layout -->
+  <main class="app-container">
+    
+    <!-- Left: 3D Skull & Pose Control Lab -->
+    <section class="viewport-card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="dot live-dot"></span>
+          <span>Laboratorio 3D</span>
+        </div>
+        <div class="model-switch-group">
+          <label>Modelo:</label>
+          <select id="modelSelector" class="form-select">
+            <option value="skull">Calavera Anatómica (Humano)</option>
+            <option value="head">Cabeza Humana (Scan)</option>
+            <option value="hand">Mano Humana (Referencia)</option>
+            <option value="dog_skull">Cráneo de Perro (Animales)</option>
+            <option value="human_body">Cuerpo Completo (Humano)</option>
+            <option value="animal_body">Cuerpo Completo (Animal)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Canvas 3D Area -->
+      <div class="canvas-wrapper" id="canvasContainer">
+        <div class="canvas-overlay-help">
+          <span>🖱️ Arrastra con clic izquierdo para rotar la pose | Rueda para Zoom | Clic derecho para encuadrar</span>
+        </div>
+        <div id="loadingIndicator" class="loading-overlay">
+          <div class="spinner"></div>
+          <p id="loadingText">Cargando modelo anatómico 3D...</p>
+        </div>
+      </div>
+
+      <!-- Realtime Angles Gauge Bar -->
+      <div class="angle-gauges">
+        <div class="gauge-item">
+          <span class="gauge-label">Giro Horizontal (Yaw)</span>
+          <span class="gauge-value" id="valYaw">0°</span>
+          <span class="gauge-desc" id="lblYawDesc">Frente</span>
+        </div>
+        <div class="gauge-item">
+          <span class="gauge-label">Inclinación Vertical (Pitch)</span>
+          <span class="gauge-value" id="valPitch">0°</span>
+          <span class="gauge-desc" id="lblPitchDesc">Nivel medio</span>
+        </div>
+        <div class="gauge-item">
+          <span class="gauge-label">Ladeo (Roll)</span>
+          <span class="gauge-value" id="valRoll">0°</span>
+          <span class="gauge-desc">Recto</span>
+        </div>
+      </div>
+
+      <!-- Action Button Area -->
+      <div class="viewport-footer">
+        <button id="btnSearchFaces" class="btn btn-primary pulse-btn">
+          <strong>Buscar Referencias de este Ángulo</strong>
+        </button>
+      </div>
+    </section>
+
+    <!-- Right: Reference Gallery & Search Engine -->
+    <section class="gallery-card">
+      <div class="gallery-header">
+        <div>
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap;">
+            <h2 class="gallery-title" style="margin: 0;">Galería de Referencias</h2>
+            <span id="userAccessBadge" class="user-access-badge free">Búsquedas gratis hoy: 3 de 3</span>
+          </div>
+          <p class="gallery-status" id="galleryStatus">Mostrando rostros que coinciden con la orientación del visor</p>
+        </div>
+        <div class="gallery-toggles">
+          <label class="toggle-container">
+            <input type="checkbox" id="chkAutoSync" checked>
+            <span class="toggle-label">Auto-actualizar al rotar</span>
+          </label>
+          <select id="filterTolerance" class="form-select sm">
+            <option value="15">Tolerancia: ±15° (Ultra estricto)</option>
+            <option value="25" selected>Tolerancia: ±25° (Preciso recomendado)</option>
+            <option value="40">Tolerancia: ±40° (Equilibrado)</option>
+            <option value="60">Tolerancia: ±60° (Amplio)</option>
+            <option value="all">📚 Ver Catálogo Completo (Sin filtro angular)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Studio Demographic & Keyword Filter Bar -->
+      <div class="demographic-filter-bar">
+        <div class="filter-pills" id="filterPills">
+            <button class="pill-btn active" data-filter="all">Todos</button>
+            <button class="pill-btn" data-filter="mujeres">Mujeres</button>
+            <button class="pill-btn" data-filter="hombres">Hombres</button>
+            <button class="pill-btn" data-filter="latinos">Latinos</button>
+            <button class="pill-btn" data-filter="colorados">Colorados</button>
+            <button class="pill-btn" data-filter="ancianos">Ancianos</button>
+            <button class="pill-btn" data-filter="ninos">Niños</button>
+          </div>
+        <div class="search-input-box">
+          <input type="text" id="customSearchInput" placeholder="Buscar por rasgo (ej: barba, trenza, sonrisa)...">
+        </div>
+      </div>
+
+      <!-- Gallery Grid -->
+      <div class="references-grid" id="galleryGrid">
+        <!-- Tarjetas dinámicas inyectadas por app.js -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Image Detail / Lightbox Modal for Artists to draw from -->
+  <div id="imageModal" class="modal">
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+    <div class="modal-content">
+      <button class="modal-close" id="modalClose">&times;</button>
+      <div class="modal-body">
+        
+        <!-- Left: Image Viewer & Interactive Grid Canvas -->
+        <div class="modal-viewport-area">
+          <div class="modal-image-wrapper" id="modalImageWrapper">
+            <img id="modalImg" src="" alt="Referencia artística">
+            <div class="art-grid-overlay" id="artGridOverlay"></div>
+            <div class="modal-watermark">
+              <img src="assets/rooster-logo-gray.png" alt="Rooster Espacio de Arte" class="modal-watermark-logo">
+            </div>
+          </div>
+
+          <!-- Bottom Floating Artist Toolbar (Like AngleRef Pro) -->
+          <div class="artist-toolbar">
+            <div class="toolbar-group">
+              <button class="tool-btn" id="btnZoomOut" title="Reducir zoom">-</button>
+              <span class="tool-label" id="lblZoomVal">100%</span>
+              <button class="tool-btn" id="btnZoomIn" title="Aumentar zoom">+</button>
+            </div>
+
+            <div class="toolbar-group rotation-group">
+              <span class="tool-icon">🔄</span>
+              <input type="range" id="sliderRotate" min="-180" max="180" value="0" step="1" title="Rotar ángulo de inclinación 2D">
+              <span class="tool-label" id="lblRotateVal">0°</span>
+              <button class="tool-btn-sm" id="btnResetRotate" title="Reiniciar rotación">↺</button>
+            </div>
+
+            <div class="toolbar-group">
+              <button class="toggle-tool-btn" id="btnToggleBW" title="Modo Escala de Grises (B&W)">
+                <span>⚪ B&W</span>
+              </button>
+              <button class="toggle-tool-btn" id="btnToggleFlip" title="Invertir espejo horizontal (Flip)">
+                <span>↔ FLIP</span>
+              </button>
+              <button class="toggle-tool-btn" id="btnToggleGrid" title="Cuadrícula para proporciones (Grid)">
+                <span>📐 GRID</span>
+              </button>
+              <button class="toggle-tool-btn" id="btnToggleHighContrast" title="Contraste de valores de luz y sombra (Notan / Levels)">
+                <span>⚖️ NOTAN</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Reference Info & Adjustment Sliders -->
+        <div class="modal-sidebar">
+          <h3 id="modalTitle">Título de la Referencia</h3>
+          
+          <div class="modal-metadata">
+            <p><strong>Orientación 3D:</strong> <span id="modalAngleInfo">-</span></p>
+            <p><strong>Diferencia con calavera:</strong> <span id="modalAngleDiff">-</span></p>
+            <p><strong>Origen:</strong> <span id="modalSource">-</span></p>
+            <p><strong>Autor / Licencia:</strong> <span id="modalAuthor">-</span></p>
+          </div>
+
+          <!-- Extra Image Fine Tuning Sliders -->
+          <div class="image-adjustments-panel">
+            <h4>Ajustes de Valor y Color</h4>
+            
+            <div class="adj-control">
+              <div class="adj-header">
+                <label>Brillo (Brightness)</label>
+                <span id="lblBright">100%</span>
+              </div>
+              <input type="range" id="sliderBright" min="30" max="200" value="100">
+            </div>
+
+            <div class="adj-control">
+              <div class="adj-header">
+                <label>Contraste (Contrast)</label>
+                <span id="lblContrast">100%</span>
+              </div>
+              <input type="range" id="sliderContrast" min="50" max="250" value="100">
+            </div>
+
+            <div class="adj-control">
+              <div class="adj-header">
+                <label>Saturación (Saturation)</label>
+                <span id="lblSat">100%</span>
+              </div>
+              <input type="range" id="sliderSat" min="0" max="200" value="100">
+            </div>
+
+            <button class="btn btn-secondary sm" id="btnResetAdjustments" style="margin-top: 8px;">
+              ↺ Restaurar Valores Originales
+            </button>
+          </div>
+
+          <div class="modal-actions">
+            <a id="modalDownloadBtn" href="" target="_blank" class="btn btn-primary">Abrir en Tamaño Completo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Modal de Configuración de Sesión de Práctica -->
+  <div id="practiceConfigModal" class="practice-modal-backdrop">
+    <div class="practice-config-dialog">
+      <div class="practice-modal-header">
+        <div class="practice-modal-title">
+          <span class="icon">⏱️</span>
+          <h3>Sesión de Práctica de Dibujo</h3>
+        </div>
+        <button class="btn-close-modal" id="btnClosePracticeConfig">&times;</button>
+      </div>
+
+      <div class="practice-modal-body">
+        <p class="practice-intro-text">
+          Configura un temporizador para practicar dibujo gestual, proporción y velocidad con las referencias de tu biblioteca Rooster.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Tipo de Referencias:</label>
+          <select id="practiceCategory" class="form-select">
+            <option value="all">Todas las Referencias (Mixto)</option>
+            <option value="human_body">Solo Figuras Humanas (Cuerpo Completo)</option>
+            <option value="human_head">Solo Retratos / Rostros Humanos</option>
+            <option value="hand">Solo Manos Anatómicas</option>
+            <option value="animal">Solo Animales (Cuerpo y Cabezas)</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="practiceSubfilterGroup">
+          <label class="form-label">Subcategoría / Filtro:</label>
+          <select id="practiceSubfilter" class="form-select">
+            <option value="all">Todos los registros</option>
+            <option value="mujeres">Mujeres</option>
+            <option value="hombres">Hombres</option>
+            <option value="latinos">Latinos</option>
+            <option value="colorados">Colorados / Pelirrojos</option>
+            <option value="ancianos">Ancianos</option>
+            <option value="ninos">Niños</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Tiempo por Imagen / Intervalo:</label>
+          <div class="time-presets" id="practiceTimePresets">
+            <button type="button" class="preset-time-btn" data-time="30">30s <small>(Gesto)</small></button>
+            <button type="button" class="preset-time-btn active" data-time="60">1 min <small>(Rápido)</small></button>
+            <button type="button" class="preset-time-btn" data-time="120">2 min <small>(Estructura)</small></button>
+            <button type="button" class="preset-time-btn" data-time="300">5 min <small>(Detalle)</small></button>
+            <button type="button" class="preset-time-btn" data-time="600">10 min <small>(Estudio)</small></button>
+          </div>
+          <div class="custom-time-wrap">
+            <label>O tiempo exacto en segundos:</label>
+            <input type="number" id="practiceCustomTime" min="5" max="3600" value="60">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Cantidad de Imágenes en la Sesión:</label>
+          <div class="count-presets" id="practiceCountPresets">
+            <button type="button" class="preset-count-btn" data-count="5">5 Poses</button>
+            <button type="button" class="preset-count-btn active" data-count="10">10 Poses</button>
+            <button type="button" class="preset-count-btn" data-count="20">20 Poses</button>
+            <button type="button" class="preset-count-btn" data-count="all">Todas</button>
+          </div>
+        </div>
+
+        <div class="form-group-checkbox">
+          <label class="toggle-container">
+            <input type="checkbox" id="practiceShuffle" checked>
+            <span class="toggle-label">Mezclar orden aleatoriamente (Shuffle)</span>
+          </label>
+          <label class="toggle-container">
+            <input type="checkbox" id="practiceSound" checked>
+            <span class="toggle-label">Aviso sonoro al cambiar de imagen</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="practice-modal-footer">
+        <button class="btn btn-secondary" id="btnCancelPracticeConfig">Cancelar</button>
+        <button class="btn btn-primary btn-start-practice" id="btnStartPractice">
+          ▶ Iniciar Sesión de Práctica
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pantalla Completa de Sesión de Práctica -->
+  <div id="practiceScreen" class="practice-screen">
+    <div class="practice-screen-header">
+      <div class="practice-progress-box">
+        <span class="practice-badge" id="practiceCounter">Pose 1 de 10</span>
+        <span class="practice-title" id="practiceCurrentTitle">Cargando...</span>
+      </div>
+
+      <!-- Temporizador Central -->
+      <div class="practice-timer-box">
+        <div class="timer-display" id="practiceTimerDisplay">01:00</div>
+        <div class="timer-progress-bar-bg">
+          <div class="timer-progress-bar" id="practiceTimerBar"></div>
+        </div>
+      </div>
+
+      <!-- Controles de Reproducción -->
+      <div class="practice-controls-box">
+        <button class="practice-ctrl-btn" id="btnPracticePrev" title="Pose anterior (Flecha Izquierda)">⏮</button>
+        <button class="practice-ctrl-btn primary" id="btnPracticePause" title="Pausar / Reanudar (Espacio)">⏸</button>
+        <button class="practice-ctrl-btn" id="btnPracticeNext" title="Siguiente pose (Flecha Derecha)">⏭</button>
+        <button class="practice-ctrl-btn danger" id="btnPracticeExit" title="Salir de la sesión (Escape)">✕ Salir</button>
+      </div>
+    </div>
+
+    <div class="practice-image-viewport">
+      <div class="practice-img-container" id="practiceImgContainer">
+        <img id="practiceImg" src="" alt="Referencia de práctica">
+        <div class="practice-grid-overlay" id="practiceGridOverlay"></div>
+        <div class="practice-watermark">
+          <img src="assets/rooster-logo-gray.png" alt="Rooster Espacio de Arte">
+        </div>
+      </div>
+    </div>
+
+    <!-- Barra Inferior de Herramientas de Dibujo -->
+    <div class="practice-tools-bar">
+      <button class="practice-tool-pill" id="btnPracticeBW">⚪ Blanco y Negro</button>
+      <button class="practice-tool-pill" id="btnPracticeFlip">↔️ Espejo (Flip)</button>
+      <button class="practice-tool-pill" id="btnPracticeGrid">▦ Cuadrícula</button>
+    </div>
+
+    <!-- Pantalla de Fin de Sesión -->
+    <div id="practiceCompleteView" class="practice-complete-overlay" style="display: none;">
+      <div class="practice-complete-card">
+        <h2>¡Sesión de Práctica Completada!</h2>
+        <p id="practiceSummaryText">Has completado 10 poses con éxito.</p>
+        <div class="complete-actions">
+          <button class="btn btn-secondary" id="btnPracticeRestart">Repetir Sesión</button>
+          <button class="btn btn-primary" id="btnPracticeFinishExit">Volver al Laboratorio 3D</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paywall / Límite Diario Modal -->
+  <div id="paywallModal" class="modal" style="display: none;">
+    <div class="modal-backdrop" id="paywallBackdrop"></div>
+    <div class="modal-content" style="max-width: 500px; text-align: center; padding: 36px 28px;">
+      <h3 style="color: var(--accent-color, #f5b800); font-size: 1.55rem; margin-bottom: 12px; font-weight: 800;">Límite Diario Gratuito Alcanzado</h3>
+      <p style="color: #cbd5e1; font-size: 0.98rem; line-height: 1.5; margin-bottom: 18px;">
+        Has utilizado tus <strong>3 búsquedas gratuitas de hoy</strong>. Tu cupo diario se reiniciará automáticamente mañana a las 00:00 hs.
+      </p>
+      <div style="background: rgba(245, 184, 0, 0.08); border: 1px solid rgba(245, 184, 0, 0.25); border-radius: 8px; padding: 14px; margin-bottom: 24px; text-align: left;">
+        <h4 style="color: #ffffff; font-size: 0.95rem; margin-bottom: 6px;">¿Quieres acceso ilimitado todos los días?</h4>
+        <p style="color: #94a3b8; font-size: 0.85rem; margin: 0; line-height: 1.4;">
+          Los alumnos de Rooster Espacio de Arte tienen acceso total e ilimitado a todas las poses, rotaciones 3D, modo práctica con temporizador y las 106 referencias anatómicas sin restricciones.
+        </p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <a id="btnPaywallLogin" href="/login" target="_top" class="btn btn-primary" style="text-decoration: none; padding: 12px; font-weight: 700; text-align: center;">
+          Iniciar Sesión como Alumno
+        </a>
+        <a id="btnPaywallPricing" href="/talleres" target="_top" class="btn btn-secondary" style="text-decoration: none; padding: 12px; text-align: center;">
+          Conocer Talleres y Planes Rooster
+        </a>
+        <button id="btnPaywallClose" class="btn" style="background: transparent; color: #94a3b8; border: none; font-size: 0.85rem; cursor: pointer; padding: 8px;">
+          Cerrar por ahora
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

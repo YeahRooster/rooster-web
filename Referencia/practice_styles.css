@@ -1,0 +1,496 @@
+/* ==========================================================================
+   PRÁCTICA DE DIBUJO RÁPIDO CON TEMPORIZADOR (Gesture / Speed Drawing)
+   ========================================================================== */
+
+.btn-practice {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff !important;
+  font-weight: 700;
+  border: none;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.btn-practice:hover {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+}
+
+/* Modal de Configuración */
+.practice-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 1500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.practice-modal-backdrop.active {
+  display: flex;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.practice-config-dialog {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 560px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.practice-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  background: var(--bg-card-subtle);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.practice-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.practice-modal-title h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.practice-modal-title .icon {
+  font-size: 1.5rem;
+}
+
+.practice-modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+.practice-intro-text {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #d1d5db;
+}
+
+.time-presets, .count-presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 8px;
+}
+
+.preset-time-btn, .preset-count-btn {
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 10px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.preset-time-btn small {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: normal;
+}
+
+.preset-time-btn:hover, .preset-count-btn:hover {
+  background: #282f44;
+  border-color: #4b5563;
+}
+
+.preset-time-btn.active, .preset-count-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 0 12px var(--primary-glow);
+}
+
+.preset-time-btn.active small {
+  color: #e0e7ff;
+}
+
+.custom-time-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.custom-time-wrap input {
+  width: 90px;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+.form-group-checkbox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.practice-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  background: var(--bg-card-subtle);
+  border-top: 1px solid var(--border-color);
+}
+
+.btn-start-practice {
+  background: linear-gradient(135deg, #10b981, #059669);
+  padding: 10px 24px;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.btn-start-practice:hover {
+  background: linear-gradient(135deg, #34d399, #10b981);
+}
+
+/* ==========================================================================
+   PANTALLA DE SESIÓN ACTIVA (FULLSCREEN / THEATER VIEW)
+   ========================================================================== */
+
+.practice-screen {
+  position: fixed;
+  inset: 0;
+  background: #090b10;
+  z-index: 2000;
+  display: none;
+  flex-direction: column;
+}
+
+.practice-screen.active {
+  display: flex;
+}
+
+.practice-screen-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 28px;
+  background: rgba(15, 17, 23, 0.95);
+  border-bottom: 1px solid var(--border-color);
+  gap: 20px;
+  z-index: 10;
+}
+
+.practice-progress-box {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 260px;
+}
+
+.practice-badge {
+  background: var(--primary);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.practice-title {
+  color: var(--text-main);
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+
+/* Temporizador Central */
+.practice-timer-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 180px;
+}
+
+.timer-display {
+  font-family: var(--font-mono);
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #f59e0b;
+  letter-spacing: 2px;
+  line-height: 1;
+}
+
+.timer-display.danger {
+  color: #ef4444;
+  animation: pulseTimer 1s infinite;
+}
+
+@keyframes pulseTimer {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.timer-progress-bar-bg {
+  width: 160px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.timer-progress-bar {
+  height: 100%;
+  width: 100%;
+  background: #f59e0b;
+  transition: width 0.25s linear;
+}
+
+/* Controles de reproducción */
+.practice-controls-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.practice-ctrl-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.practice-ctrl-btn:hover {
+  background: #2a3145;
+  border-color: #4b5563;
+}
+
+.practice-ctrl-btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  min-width: 50px;
+}
+
+.practice-ctrl-btn.primary:hover {
+  background: var(--primary-hover);
+}
+
+.practice-ctrl-btn.danger {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  font-size: 0.95rem;
+}
+
+.practice-ctrl-btn.danger:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+/* Viewport de Imagen */
+.practice-image-viewport {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  padding: 20px;
+}
+
+.practice-img-container {
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+}
+
+.practice-img-container img#practiceImg {
+  max-width: 90vw;
+  max-height: 78vh;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  user-select: none;
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.practice-img-container img#practiceImg.flip-h {
+  transform: scaleX(-1);
+}
+
+.practice-img-container img#practiceImg.grayscale {
+  filter: grayscale(100%) contrast(110%);
+}
+
+.practice-img-container img#practiceImg.flip-h.grayscale {
+  transform: scaleX(-1);
+  filter: grayscale(100%) contrast(110%);
+}
+
+.practice-grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: none;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.25) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.25) 1px, transparent 1px);
+  background-size: 33.333% 33.333%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.practice-grid-overlay.active {
+  display: block;
+}
+
+.practice-watermark {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.practice-watermark img {
+  height: 38px;
+}
+
+/* Barra inferior de herramientas */
+.practice-tools-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: rgba(15, 17, 23, 0.9);
+  border-top: 1px solid var(--border-color);
+}
+
+.practice-tool-pill {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.practice-tool-pill:hover {
+  background: #283044;
+  color: var(--text-main);
+}
+
+.practice-tool-pill.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* Pantalla de Fin de Sesión */
+.practice-complete-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 12, 18, 0.95);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.practice-complete-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  text-align: center;
+  max-width: 480px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+}
+
+.practice-complete-card h2 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 10px;
+}
+
+.practice-complete-card p {
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  margin-bottom: 28px;
+}
+
+.complete-actions {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}

@@ -88,6 +88,7 @@ export default function Navbar() {
                 <li><Link href="/galeria" className={styles.navLink} onClick={closeMenu}>Galería</Link></li>
                 <li><Link href="/comunidad" className={styles.navLink} onClick={closeMenu}>Comunidad</Link></li>
                 <li><Link href="/desafios" className={styles.navLink} onClick={closeMenu}>Desafíos</Link></li>
+                <li><Link href="/herramientas" className={styles.navLink} onClick={closeMenu}>Herramientas</Link></li>
                 <li><Link href="/recursos" className={styles.navLink} onClick={closeMenu}>Recursos</Link></li>
                 <li><Link href="/contacto" className={styles.navLink} onClick={closeMenu}>Contacto</Link></li>
                 {user?.role === 'admin' && (
