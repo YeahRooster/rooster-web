@@ -24,14 +24,21 @@
   <!-- Top Navigation -->
   <header class="app-header">
     <div class="brand">
-      <div class="brand-logo-wrap">
-        <img src="assets/rooster-logo.png" alt="Rooster Espacio de Arte" class="header-rooster-logo">
+      <div class="brand-left">
+        <div class="brand-logo-wrap">
+          <img src="assets/rooster-logo.png" alt="Rooster Espacio de Arte" class="header-rooster-logo">
+        </div>
+        <div class="brand-info">
+          <h1 class="brand-title">AngleRef <span class="badge">ROOSTER ARTE</span></h1>
+          <p class="brand-subtitle">Estudio anatómico y de perspectiva para dibujantes</p>
+        </div>
       </div>
-      <div>
-        <h1 class="brand-title">AngleRef <span class="badge">ROOSTER ARTE</span></h1>
-        <p class="brand-subtitle">Estudio anatómico y de perspectiva para dibujantes</p>
-      </div>
+      <button class="btn btn-practice" id="btnOpenPractice" title="Iniciar sesión de dibujo con temporizador automático">
+        Práctica con Temporizador
+      </button>
     </div>
+
+    <div class="header-presets-scroll" id="headerPresets">
       <button class="btn btn-secondary" id="btnPresetFront">Frente</button>
       <button class="btn btn-secondary" id="btnPreset34L">3/4 Izq</button>
       <button class="btn btn-secondary" id="btnPreset34R">3/4 Der</button>
@@ -41,10 +48,7 @@
       <button class="btn btn-secondary" id="btnPresetHighAngle">Picado</button>
       <button class="btn btn-secondary" id="btnPresetBack34">3/4 Atrás</button>
       <button class="btn btn-secondary" id="btnPresetBack">Nuca (180°)</button>
-            <button class="btn btn-secondary" id="btnResetView">Reset</button>
-      <button class="btn btn-practice" id="btnOpenPractice" title="Iniciar sesión de dibujo con temporizador automático">
-        ⏱️ Práctica con Temporizador
-      </button>
+      <button class="btn btn-secondary" id="btnResetView">Reset</button>
     </div>
   </header>
 
@@ -58,16 +62,21 @@
           <span class="dot live-dot"></span>
           <span>Laboratorio 3D</span>
         </div>
-        <div class="model-switch-group">
-          <label>Modelo:</label>
-          <select id="modelSelector" class="form-select">
-            <option value="skull">Calavera Anatómica (Humano)</option>
-            <option value="head">Cabeza Humana (Scan)</option>
-            <option value="hand">Mano Humana (Referencia)</option>
-            <option value="dog_skull">Cráneo de Perro (Animales)</option>
-            <option value="human_body">Cuerpo Completo (Humano)</option>
-            <option value="animal_body">Cuerpo Completo (Animal)</option>
-          </select>
+        <div class="header-controls-right">
+          <div class="model-switch-group">
+            <label>Modelo:</label>
+            <select id="modelSelector" class="form-select">
+              <option value="skull">Calavera Anatómica (Humano)</option>
+              <option value="head">Cabeza Humana (Scan)</option>
+              <option value="hand">Mano Humana (Referencia)</option>
+              <option value="dog_skull">Cráneo de Perro (Animales)</option>
+              <option value="human_body">Cuerpo Completo (Humano)</option>
+              <option value="animal_body">Cuerpo Completo (Animal)</option>
+            </select>
+          </div>
+          <button type="button" id="btnToggle3D" class="btn-toggle-3d" title="Ocultar o mostrar visor 3D">
+            <span class="toggle-text">Ocultar 3D</span>
+          </button>
         </div>
       </div>
 

@@ -1488,3 +1488,369 @@ body.dark-theme {
   background: rgba(239, 68, 68, 0.15);
   color: #f87171;
 }
+
+/* ==========================================================================
+   OPTIMIZACIÓN MOBILE Y CONTROLES TÁCTILES COMPACTOS
+   ========================================================================== */
+
+.brand-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-presets-scroll {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.header-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-toggle-3d {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  color: #a5b4fc;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.btn-toggle-3d:hover {
+  background: rgba(99, 102, 241, 0.28);
+  color: #ffffff;
+}
+
+/* Estado colapsado del visor 3D */
+.viewport-card.collapsed-3d {
+  height: auto !important;
+  min-height: auto !important;
+}
+
+.viewport-card.collapsed-3d .canvas-wrapper,
+.viewport-card.collapsed-3d .angle-gauges,
+.viewport-card.collapsed-3d .control-actions {
+  display: none !important;
+}
+
+@media (max-width: 1080px) {
+  .btn-toggle-3d {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .brand {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .brand-logo-wrap {
+    height: 34px;
+    padding: 2px 6px;
+  }
+
+  .header-rooster-logo {
+    height: 26px;
+  }
+
+  .brand-title {
+    font-size: 15px;
+  }
+
+  .brand-subtitle {
+    display: none;
+  }
+
+  .btn-practice {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  /* Cinta deslizable horizontal para los botones de ángulos */
+  .header-presets-scroll {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    padding: 4px 2px;
+    scrollbar-width: none;
+  }
+
+  .header-presets-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .header-presets-scroll .btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  /* Contenedor principal compacto */
+  .app-container {
+    padding: 8px;
+    gap: 10px;
+  }
+
+  /* Visor 3D compacto en celulares (220px en lugar de 580px) */
+  .viewport-card {
+    height: auto !important;
+    min-height: auto !important;
+    position: relative;
+    top: 0;
+  }
+
+  .viewport-card .canvas-wrapper {
+    height: 215px !important;
+    min-height: 215px !important;
+    flex: none !important;
+  }
+
+  .canvas-overlay-help {
+    font-size: 9.5px;
+    padding: 4px 6px;
+    top: 6px;
+    left: 6px;
+    right: 6px;
+  }
+
+  .card-header {
+    padding: 8px 10px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .card-title {
+    font-size: 13px;
+  }
+
+  .model-switch-group label {
+    display: none;
+  }
+
+  .model-switch-group .form-select {
+    font-size: 11px;
+    padding: 5px 8px;
+    max-width: 155px;
+  }
+
+  .angle-gauges {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+
+  .gauge-item {
+    padding: 4px 6px;
+  }
+
+  .gauge-label {
+    font-size: 9px;
+  }
+
+  .gauge-val {
+    font-size: 13px;
+  }
+
+  .gauge-desc {
+    display: none;
+  }
+
+  .control-actions {
+    padding: 8px 10px;
+  }
+
+  .control-actions .btn {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  /* Galería en 2 columnas tipo grilla móvil */
+  .gallery-card {
+    padding: 10px 8px;
+    min-height: auto;
+  }
+
+  .gallery-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+  }
+
+  .gallery-title {
+    font-size: 15px;
+  }
+
+  .gallery-toggles {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .toggle-label {
+    font-size: 11px;
+  }
+
+  .gallery-toggles .form-select.sm {
+    font-size: 11px;
+    padding: 4px 8px;
+    flex: 1;
+    min-width: 140px;
+  }
+
+  /* Pastillas de filtros deslizables horizontalmente */
+  .demographic-filter-bar {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .filter-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .filter-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pill-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 5px 12px;
+    font-size: 11px;
+  }
+
+  .search-input-box input {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .references-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .reference-card {
+    border-radius: 8px;
+  }
+
+  .ref-badge,
+  .ref-match-badge {
+    font-size: 9px !important;
+    padding: 2px 5px !important;
+  }
+
+  .card-watermark-logo {
+    height: 16px !important;
+  }
+
+  .ref-info {
+    padding: 6px 8px;
+  }
+
+  .ref-title {
+    font-size: 11px;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Modal Lightbox en celular */
+  .modal-content {
+    width: 96vw;
+    max-height: 95vh;
+    margin: 6px;
+  }
+
+  .modal-image-wrapper {
+    min-height: 44vh;
+    max-height: 55vh;
+  }
+
+  .artist-toolbar {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .toolbar-btn {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  /* Modo Práctica en celular */
+  .practice-screen-header {
+    padding: 8px 10px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .practice-title {
+    display: none;
+  }
+
+  .practice-timer-box {
+    min-width: auto;
+  }
+
+  .timer-display {
+    font-size: 1.45rem;
+  }
+
+  .timer-progress-bar-bg {
+    width: 90px;
+  }
+
+  .practice-ctrl-btn {
+    padding: 6px 10px;
+    font-size: 0.9rem;
+  }
+
+  .practice-image-viewport {
+    padding: 8px;
+  }
+
+  .practice-img-container img#practiceImg {
+    max-width: 94vw;
+    max-height: 70vh;
+  }
+
+  .practice-tools-bar {
+    padding: 8px 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .practice-tool-pill {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+  }
+}
+

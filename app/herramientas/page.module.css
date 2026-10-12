@@ -115,17 +115,50 @@
 
 @media (max-width: 768px) {
     .container {
-        padding: 12px 10px 24px;
+        padding: 8px 8px 16px;
+    }
+    .header {
+        gap: 8px;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
     }
     .title {
-        font-size: 1.35rem;
+        font-size: 1.15rem;
+        margin: 0;
+    }
+    .subtitle {
+        display: none;
+    }
+    .studentBadge,
+    .freeBadge {
+        font-size: 0.72rem;
+        padding: 4px 10px;
+    }
+    .btnFullscreen {
+        font-size: 0.76rem;
+        padding: 5px 12px;
     }
     .iframeWrapper {
-        height: 880px;
-        min-height: auto;
+        height: calc(100dvh - 130px);
+        min-height: 600px;
+        border-radius: 8px;
     }
     .actions {
         width: 100%;
         justify-content: space-between;
+    }
+    .fullscreenMode {
+        padding: 6px;
+    }
+    .fullscreenMode .header {
+        margin-bottom: 6px;
+        padding-bottom: 4px;
+    }
+    .fullscreenMode .title {
+        display: none;
+    }
+    .fullscreenMode .iframeWrapper {
+        height: calc(100dvh - 48px);
+        min-height: auto;
     }
 }

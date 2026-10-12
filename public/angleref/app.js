@@ -579,7 +579,7 @@ function filterGallery() {
       <div class="ref-img-container">
         <span class="ref-badge">Y:${item.yaw}° P:${item.pitch}°</span>
         <span class="ref-match-badge">${Math.max(0, 100 - item.totalDiff)}% Match</span>
-        <img src="${item.url}" alt="${item.title}" loading="lazy" onerror="if(!this.dataset.retry){this.dataset.retry='1'; if(this.getAttribute('src').startsWith('assets/')){this.src='/angleref/'+this.getAttribute('src');}else if(this.getAttribute('src').startsWith('/angleref/')){this.src=this.getAttribute('src').replace('/angleref/','/');}}">
+        <img src="${item.url}" alt="${item.title}" loading="lazy" decoding="async" onerror="if(!this.dataset.retry){this.dataset.retry='1'; this.src='${item.fullUrl || item.url}';}">
         <div class="card-watermark">
           <img src="assets/rooster-logo-gray.png" alt="Rooster Logo" class="card-watermark-logo">
         </div>
@@ -778,6 +778,21 @@ function setupEvents() {
   btnPresetBack34.addEventListener('click', () => setCameraPreset(140, 0));
   btnPresetBack.addEventListener('click', () => setCameraPreset(180, 0));
   btnResetView.addEventListener('click', () => setCameraPreset(0, 0));
+
+  const btnToggle3D = document.getElementById('btnToggle3D');
+  const viewportCard = document.querySelector('.viewport-card');
+  if (btnToggle3D && viewportCard) {
+    btnToggle3D.addEventListener('click', () => {
+      const isCollapsed = viewportCard.classList.toggle('collapsed-3d');
+      const textEl = btnToggle3D.querySelector('.toggle-text');
+      if (textEl) {
+        textEl.innerText = isCollapsed ? 'Mostrar 3D' : 'Ocultar 3D';
+      }
+      if (!isCollapsed) {
+        setTimeout(() => onWindowResize(), 50);
+      }
+    });
+  }
 
   // Filter Pills (Demographics)
   if (filterPills) {
