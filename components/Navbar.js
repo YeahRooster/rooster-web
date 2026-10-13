@@ -42,7 +42,7 @@ export default function Navbar() {
                     setPendingStudentsCount(resultP.count);
                 }
             }
-        } catch (e) { console.error("Error notifications:", e); }
+        } catch { /* ignorar error de red en polling */ }
     };
 
     const toggleNotifications = async () => {

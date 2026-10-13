@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20261012m6">
 
   <!-- Three.js + GLTFLoader + OrbitControls via CDN ESM -->
   <script type="importmap">
@@ -46,7 +46,8 @@
       <button class="btn btn-secondary" id="btnPresetProfileR">Perfil Der</button>
       <button class="btn btn-secondary" id="btnPresetLowAngle">Contrapicado</button>
       <button class="btn btn-secondary" id="btnPresetHighAngle">Picado</button>
-      <button class="btn btn-secondary" id="btnPresetBack34">3/4 Atrás</button>
+      <button class="btn btn-secondary" id="btnPresetBack34L">3/4 Atrás Izq</button>
+      <button class="btn btn-secondary" id="btnPresetBack34">3/4 Atrás Der</button>
       <button class="btn btn-secondary" id="btnPresetBack">Nuca (180°)</button>
       <button class="btn btn-secondary" id="btnResetView">Reset</button>
     </div>
@@ -85,6 +86,7 @@
         <div class="canvas-overlay-help">
           <span>🖱️ Arrastra con clic izquierdo para rotar la pose | Rueda para Zoom | Clic derecho para encuadrar</span>
         </div>
+        <div class="mobile-angle-pill" id="mobileAnglePill">Y: 0° · P: 0°</div>
         <div id="loadingIndicator" class="loading-overlay">
           <div class="spinner"></div>
           <p id="loadingText">Cargando modelo anatómico 3D...</p>
@@ -431,6 +433,9 @@
         <a id="btnPaywallPricing" href="/talleres" target="_top" class="btn btn-secondary" style="text-decoration: none; padding: 12px; text-align: center;">
           Conocer Talleres y Planes Rooster
         </a>
+        <button id="btnPaywallResetLocal" class="btn btn-secondary" style="display: none; padding: 10px; font-size: 0.85rem; cursor: pointer;">
+          Activar Modo Administrador (Prueba Local)
+        </button>
         <button id="btnPaywallClose" class="btn" style="background: transparent; color: #94a3b8; border: none; font-size: 0.85rem; cursor: pointer; padding: 8px;">
           Cerrar por ahora
         </button>
@@ -438,6 +443,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="app.js?v=20261012m5"></script>
 </body>
 </html>

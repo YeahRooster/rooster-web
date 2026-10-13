@@ -30,7 +30,7 @@ export default function HerramientasPage() {
         setIsFullscreen(!isFullscreen);
     };
 
-    const iframeSrc = `/angleref/index.html${user?.role ? `?role=${encodeURIComponent(user.role)}` : ''}`;
+    const iframeSrc = `/angleref/index.html?v=20261012m6${user?.role ? `&role=${encodeURIComponent(user.role)}` : ''}`;
 
     return (
         <div className={`${styles.container} ${isFullscreen ? styles.fullscreenMode : ''}`}>

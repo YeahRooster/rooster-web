@@ -1512,13 +1512,31 @@ body.dark-theme {
   gap: 8px;
 }
 
+.mobile-angle-pill {
+  display: none;
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(15, 17, 23, 0.85);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #e2e8f0;
+  pointer-events: none;
+  z-index: 5;
+}
+
 .btn-toggle-3d {
   display: none;
   align-items: center;
   justify-content: center;
-  background: rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(99, 102, 241, 0.45);
+  color: #c7d2fe;
   padding: 5px 10px;
   border-radius: 6px;
   font-size: 11px;
@@ -1529,7 +1547,7 @@ body.dark-theme {
 }
 
 .btn-toggle-3d:hover {
-  background: rgba(99, 102, 241, 0.28);
+  background: rgba(99, 102, 241, 0.32);
   color: #ffffff;
 }
 
@@ -1541,56 +1559,65 @@ body.dark-theme {
 
 .viewport-card.collapsed-3d .canvas-wrapper,
 .viewport-card.collapsed-3d .angle-gauges,
-.viewport-card.collapsed-3d .control-actions {
+.viewport-card.collapsed-3d .viewport-footer {
   display: none !important;
 }
 
 @media (max-width: 1080px) {
+  .app-container {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .viewport-card,
+  .gallery-card {
+    min-width: 0;
+    max-width: 100%;
+  }
   .btn-toggle-3d {
     display: inline-flex;
   }
 }
 
 @media (max-width: 768px) {
+  html, body.dark-theme {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
   .app-header {
-    padding: 8px 10px;
-    gap: 8px;
+    padding: 6px 8px;
+    gap: 6px;
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  /* Ocultar doble logo/título en móvil ya que está dentro de la web de Rooster */
+  .brand-left {
+    display: none !important;
   }
 
   .brand {
     width: 100%;
-    justify-content: space-between;
-  }
-
-  .brand-logo-wrap {
-    height: 34px;
-    padding: 2px 6px;
-  }
-
-  .header-rooster-logo {
-    height: 26px;
-  }
-
-  .brand-title {
-    font-size: 15px;
-  }
-
-  .brand-subtitle {
-    display: none;
+    justify-content: stretch;
   }
 
   .btn-practice {
-    padding: 6px 10px;
-    font-size: 11px;
+    width: 100%;
+    justify-content: center;
+    padding: 7px 12px;
+    font-size: 12px;
   }
 
   /* Cinta deslizable horizontal para los botones de ángulos */
   .header-presets-scroll {
+    display: flex;
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     width: 100%;
-    padding: 4px 2px;
+    max-width: 100%;
+    padding: 2px 0 4px;
+    gap: 6px;
     scrollbar-width: none;
   }
 
@@ -1601,46 +1628,73 @@ body.dark-theme {
   .header-presets-scroll .btn {
     white-space: nowrap;
     flex-shrink: 0;
-    padding: 6px 12px;
-    font-size: 12px;
+    padding: 6px 11px;
+    font-size: 11.5px;
   }
 
-  /* Contenedor principal compacto */
+  /* Contenedor principal sin desborde horizontal */
   .app-container {
-    padding: 8px;
-    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding: 6px !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
   }
 
-  /* Visor 3D compacto en celulares (220px en lugar de 580px) */
+  /* Visor 3D ultra compacto en celulares (175px) para ver 3D + Galería al mismo tiempo */
   .viewport-card {
     height: auto !important;
     min-height: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
     position: relative;
     top: 0;
   }
 
   .viewport-card .canvas-wrapper {
-    height: 215px !important;
-    min-height: 215px !important;
+    height: 175px !important;
+    min-height: 175px !important;
+    width: 100% !important;
     flex: none !important;
   }
 
-  .canvas-overlay-help {
-    font-size: 9.5px;
-    padding: 4px 6px;
-    top: 6px;
-    left: 6px;
-    right: 6px;
+  /* Ocultar texto de mouse de PC y paneles grandes en móvil */
+  .canvas-overlay-help,
+  .angle-gauges,
+  .viewport-footer {
+    display: none !important;
+  }
+
+  .mobile-angle-pill {
+    display: block;
   }
 
   .card-header {
-    padding: 8px 10px;
-    flex-wrap: wrap;
+    padding: 6px 8px;
+    flex-wrap: nowrap;
     gap: 6px;
+    width: 100%;
   }
 
   .card-title {
-    font-size: 13px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .header-controls-right {
+    gap: 6px;
+    min-width: 0;
+    flex: 1;
+    justify-content: flex-end;
+  }
+
+  .model-switch-group {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
   }
 
   .model-switch-group label {
@@ -1649,62 +1703,42 @@ body.dark-theme {
 
   .model-switch-group .form-select {
     font-size: 11px;
-    padding: 5px 8px;
-    max-width: 155px;
-  }
-
-  .angle-gauges {
-    padding: 6px 8px;
-    gap: 6px;
-  }
-
-  .gauge-item {
     padding: 4px 6px;
-  }
-
-  .gauge-label {
-    font-size: 9px;
-  }
-
-  .gauge-val {
-    font-size: 13px;
-  }
-
-  .gauge-desc {
-    display: none;
-  }
-
-  .control-actions {
-    padding: 8px 10px;
-  }
-
-  .control-actions .btn {
-    padding: 8px;
-    font-size: 12px;
+    width: 100%;
+    max-width: 160px;
+    text-overflow: ellipsis;
   }
 
   /* Galería en 2 columnas tipo grilla móvil */
   .gallery-card {
-    padding: 10px 8px;
+    padding: 8px;
     min-height: auto;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
   }
 
   .gallery-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
-    margin-bottom: 10px;
-    padding-bottom: 8px;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    width: 100%;
   }
 
   .gallery-title {
-    font-size: 15px;
+    font-size: 14px;
+  }
+
+  .gallery-status {
+    font-size: 11px;
   }
 
   .gallery-toggles {
     width: 100%;
     justify-content: space-between;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
   }
 
@@ -1714,23 +1748,29 @@ body.dark-theme {
 
   .gallery-toggles .form-select.sm {
     font-size: 11px;
-    padding: 4px 8px;
+    padding: 4px 6px;
     flex: 1;
-    min-width: 140px;
+    min-width: 120px;
+    max-width: 100%;
   }
 
   /* Pastillas de filtros deslizables horizontalmente */
   .demographic-filter-bar {
-    gap: 8px;
-    margin-bottom: 10px;
+    gap: 6px;
+    margin-bottom: 8px;
+    width: 100%;
+    min-width: 0;
   }
 
   .filter-pills {
+    display: flex;
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     width: 100%;
+    max-width: 100%;
     padding-bottom: 4px;
+    gap: 6px;
     scrollbar-width: none;
   }
 
@@ -1741,22 +1781,29 @@ body.dark-theme {
   .pill-btn {
     white-space: nowrap;
     flex-shrink: 0;
-    padding: 5px 12px;
+    padding: 5px 11px;
     font-size: 11px;
   }
 
+  .search-input-box {
+    width: 100%;
+  }
+
   .search-input-box input {
-    padding: 8px 10px;
+    width: 100%;
+    padding: 7px 10px;
     font-size: 12px;
   }
 
   .references-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 8px !important;
+    width: 100%;
   }
 
   .reference-card {
     border-radius: 8px;
+    min-width: 0;
   }
 
   .ref-badge,
@@ -1766,16 +1813,16 @@ body.dark-theme {
   }
 
   .card-watermark-logo {
-    height: 16px !important;
+    height: 15px !important;
   }
 
   .ref-info {
-    padding: 6px 8px;
+    padding: 5px 7px;
   }
 
   .ref-title {
     font-size: 11px;
-    line-height: 1.25;
+    line-height: 1.2;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;

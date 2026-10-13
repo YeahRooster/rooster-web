@@ -115,32 +115,29 @@
 
 @media (max-width: 768px) {
     .container {
-        padding: 8px 8px 16px;
+        padding: 4px 6px 8px;
     }
     .header {
-        gap: 8px;
-        margin-bottom: 10px;
-        padding-bottom: 8px;
+        gap: 6px;
+        margin-bottom: 6px;
+        padding-bottom: 6px;
     }
-    .title {
-        font-size: 1.15rem;
-        margin: 0;
-    }
+    .title,
     .subtitle {
         display: none;
     }
     .studentBadge,
     .freeBadge {
-        font-size: 0.72rem;
+        font-size: 0.7rem;
         padding: 4px 10px;
     }
     .btnFullscreen {
-        font-size: 0.76rem;
-        padding: 5px 12px;
+        font-size: 0.74rem;
+        padding: 4px 10px;
     }
     .iframeWrapper {
-        height: calc(100dvh - 130px);
-        min-height: 600px;
+        height: calc(100dvh - 102px);
+        min-height: 560px;
         border-radius: 8px;
     }
     .actions {
@@ -148,17 +145,14 @@
         justify-content: space-between;
     }
     .fullscreenMode {
-        padding: 6px;
+        padding: 4px;
     }
     .fullscreenMode .header {
-        margin-bottom: 6px;
+        margin-bottom: 4px;
         padding-bottom: 4px;
     }
-    .fullscreenMode .title {
-        display: none;
-    }
     .fullscreenMode .iframeWrapper {
-        height: calc(100dvh - 48px);
+        height: calc(100dvh - 44px);
         min-height: auto;
     }
 }

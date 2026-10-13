@@ -11,7 +11,8 @@ function getItemType(item) {
     text.includes('ciervo') || text.includes('elefante') || text.includes('jirafa') || text.includes('perezoso') || 
     text.includes('mofeta') || text.includes('cebra') || text.includes('panda') || text.includes('rinoceronte') || 
     text.includes('ave') || text.includes('pájaro') || text.includes('pajaro') || text.includes('reptil') || 
-    text.includes('yacaré') || text.includes('yacare')
+    text.includes('yacaré') || text.includes('yacare') || text.includes('águila') || text.includes('aguila') ||
+    text.includes('cocodrilo') || text.includes('búho') || text.includes('buho') || text.includes('canguro')
   );
 
   const isFullBody = (text.includes('cuerpo completo') || text.includes('cuerpo entero') || text.includes('full body') || text.includes('figura completa') || text.includes('de pie') || text.includes('entero'));
@@ -32,8 +33,8 @@ function getItemType(item) {
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { setupPracticeTool } from './practice.js';
-import { AccessControl } from './access.js';
+import { setupPracticeTool } from './practice.js?v=20261012m5';
+import { AccessControl } from './access.js?v=20261012m5';
 
 // Application State
 const state = {
@@ -88,6 +89,7 @@ const btnPresetProfileL = document.getElementById('btnPresetProfileL');
 const btnPresetProfileR = document.getElementById('btnPresetProfileR');
 const btnPresetLowAngle = document.getElementById('btnPresetLowAngle');
 const btnPresetHighAngle = document.getElementById('btnPresetHighAngle');
+const btnPresetBack34L = document.getElementById('btnPresetBack34L');
 const btnPresetBack34 = document.getElementById('btnPresetBack34');
 const btnPresetBack = document.getElementById('btnPresetBack');
 const btnResetView = document.getElementById('btnResetView');
@@ -191,8 +193,12 @@ function initThree() {
   // Load Models
   loadModels();
 
-  // Window Resize
+  // Window & Container Resize
   window.addEventListener('resize', onWindowResize);
+  if (window.ResizeObserver && canvasContainer) {
+    const ro = new ResizeObserver(() => onWindowResize());
+    ro.observe(canvasContainer);
+  }
 
   // Track Orbit Controls change to calculate angles
   controls.addEventListener('change', updateAnglesFromCamera);
@@ -317,9 +323,10 @@ function loadModels() {
     });
 }
 function onWindowResize() {
-  if (!renderer || !camera) return;
+  if (!renderer || !camera || !canvasContainer) return;
   const width = canvasContainer.clientWidth;
   const height = canvasContainer.clientHeight;
+  if (width === 0 || height === 0) return;
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
   renderer.setSize(width, height);
@@ -361,6 +368,11 @@ function updateAnglesFromCamera() {
   valPitch.innerText = `${pitchDeg > 0 ? '+' : ''}${pitchDeg}°`;
   valRoll.innerText = `${rollDeg}°`;
 
+  const mobileAnglePill = document.getElementById('mobileAnglePill');
+  if (mobileAnglePill) {
+    mobileAnglePill.innerText = `Y: ${yawDeg > 0 ? '+' : ''}${yawDeg}° · P: ${pitchDeg > 0 ? '+' : ''}${pitchDeg}°`;
+  }
+
   // Descripciones amigables para artistas
   lblYawDesc.innerText = getYawDescription(yawDeg);
   lblPitchDesc.innerText = getPitchDescription(pitchDeg);
@@ -401,7 +413,7 @@ function debounceFilterGallery() {
 // Carga del dataset local
 async function loadDataset() {
   try {
-    const res = await fetch('faces-dataset.json');
+    const res = await fetch('faces-dataset.json?v=20261012m6');
     const raw = await res.json();
     state.dataset = raw.map(item => {
       let u = item.url || '';
@@ -457,8 +469,10 @@ function filterGallery() {
 
     const diffPitch = Math.abs(item.pitch - currentPitch);
 
-    // Distancia total euclidiana ponderada
-    const totalDiff = Math.sqrt(diffYaw * diffYaw + Math.pow(diffPitch * 1.25, 2));
+    // Distancia total euclidiana ponderada (en Picado/Contrapicado priorizar Pitch sobre Yaw)
+    const isVerticalAngle = Math.abs(currentPitch) > 18;
+    const effectiveDiffYaw = isVerticalAngle ? diffYaw * 0.45 : diffYaw;
+    const totalDiff = Math.sqrt(effectiveDiffYaw * effectiveDiffYaw + Math.pow(diffPitch * (isVerticalAngle ? 1.0 : 1.25), 2));
     return { ...item, diffYaw, diffPitch, totalDiff: Math.round(totalDiff) };
   });
 
@@ -482,16 +496,17 @@ function filterGallery() {
 
       // Si NO está activo el modo "Catálogo completo", aplicar filtrado angular estricto
       if (!isShowAll) {
+        const isVerticalPreset = Math.abs(currentPitch) > 18 && Math.abs(currentYaw) <= 15;
         // Diferencia general de distancia
         if (item.totalDiff > tol) return false;
-        if (item.diffPitch > (tol * 1.05)) return false;
-        if (item.diffYaw > (tol * 1.05)) return false;
+        if (item.diffPitch > (tol * 1.15)) return false;
+        if (!isVerticalPreset && item.diffYaw > (tol * 1.05)) return false;
 
         // Si el usuario busca 3/4 o perfil (Yaw >= 25°), rechazar categóricamente fotos frontales (Yaw <= 15°)
         if (Math.abs(currentYaw) >= 25 && Math.abs(item.yaw) <= 15) return false;
 
-        // Si el usuario busca frente (Yaw <= 15°), rechazar fotos de 3/4 o perfil (Yaw >= 25°)
-        if (Math.abs(currentYaw) <= 15 && Math.abs(item.yaw) >= 25) return false;
+        // Si el usuario busca frente horizontal (Yaw <= 15° y Pitch horizontal), rechazar fotos de 3/4 o perfil (Yaw >= 25°)
+        if (Math.abs(currentYaw) <= 15 && Math.abs(currentPitch) <= 18 && Math.abs(item.yaw) >= 25) return false;
 
         // Si el usuario gira hacia la derecha (+), no mezclar con izquierda (-)
         if (currentYaw > 20 && item.yaw < -10) return false;
@@ -535,18 +550,18 @@ function filterGallery() {
           if (activeFilter === 'heroicas') {
             if (!text.includes('heroic') && !text.includes('épic') && !text.includes('epic') && !text.includes('alerta') && !text.includes('guardia') && !text.includes('encabritado') && !text.includes('majestuos')) return false;
           } else if (activeFilter === 'cuadrupedos') {
-            if (!text.includes('cuadruped') && !text.includes('cuadrúped') && !text.includes('caballo') && !text.includes('perro') && !text.includes('gato') && !text.includes('lobo') && !text.includes('león') && !text.includes('leon') && !text.includes('tigre')) return false;
+            if (!text.includes('cuadruped') && !text.includes('cuadrúped') && !text.includes('caballo') && !text.includes('perro') && !text.includes('gato') && !text.includes('lobo') && !text.includes('león') && !text.includes('leon') && !text.includes('tigre') && !text.includes('oso') && !text.includes('panda') && !text.includes('ciervo') && !text.includes('jirafa') && !text.includes('cebra') && !text.includes('elefante') && !text.includes('mofeta') && !text.includes('zorro') && !text.includes('yacaré') && !text.includes('yacare')) return false;
           } else if (activeFilter === 'caninos' || activeFilter === 'perros') {
             if (!text.includes('perro') && !text.includes('canin') && !text.includes('lobo') && !text.includes('zorro')) return false;
           } else if (activeFilter === 'felinos' || activeFilter === 'gatos') {
             if (!text.includes('gato') && !text.includes('felin') && !text.includes('tigre') && !text.includes('león') && !text.includes('leon')) return false;
           } else if (activeFilter === 'salvajes') {
-            if (!text.includes('león') && !text.includes('leon') && !text.includes('lobo') && !text.includes('salvaje') && !text.includes('zorro') && !text.includes('chimpancé') && !text.includes('chimpance') && !text.includes('mono') && !text.includes('tigre')) return false;
+            if (!text.includes('león') && !text.includes('leon') && !text.includes('lobo') && !text.includes('salvaje') && !text.includes('zorro') && !text.includes('chimpancé') && !text.includes('chimpance') && !text.includes('mono') && !text.includes('tigre') && !text.includes('oso') && !text.includes('panda') && !text.includes('ciervo') && !text.includes('jirafa') && !text.includes('cebra') && !text.includes('elefante') && !text.includes('gorila') && !text.includes('perezoso') && !text.includes('mofeta') && !text.includes('águila') && !text.includes('aguila') && !text.includes('yacaré') && !text.includes('yacare') && !text.includes('cocodrilo')) return false;
           }
         } else if (isHandModel) {
-          if (activeFilter === 'abierta' && (!text.includes('palma') && !text.includes('abierta'))) return false;
+          if (activeFilter === 'abierta' && (!text.includes('palma') && !text.includes('abierta') && !text.includes('relajada') && !text.includes('dorso'))) return false;
           if (activeFilter === 'puño' && (!text.includes('puño') && !text.includes('cerrad'))) return false;
-          if (activeFilter === 'objeto' && (!text.includes('sujetando') && !text.includes('empuñando') && !text.includes('manzana') && !text.includes('espada'))) return false;
+          if (activeFilter === 'objeto' && (!text.includes('sujetando') && !text.includes('empuñando') && !text.includes('manzana') && !text.includes('espada') && !text.includes('lápiz') && !text.includes('lapiz') && !text.includes('vaso'))) return false;
         }
       }
 
@@ -775,6 +790,7 @@ function setupEvents() {
   btnPresetProfileR.addEventListener('click', () => setCameraPreset(90, 0));
   btnPresetLowAngle.addEventListener('click', () => setCameraPreset(0, -32));
   btnPresetHighAngle.addEventListener('click', () => setCameraPreset(0, 32));
+  if (btnPresetBack34L) btnPresetBack34L.addEventListener('click', () => setCameraPreset(-140, 0));
   btnPresetBack34.addEventListener('click', () => setCameraPreset(140, 0));
   btnPresetBack.addEventListener('click', () => setCameraPreset(180, 0));
   btnResetView.addEventListener('click', () => setCameraPreset(0, 0));
