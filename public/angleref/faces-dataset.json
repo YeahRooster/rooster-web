@@ -1683,39 +1683,6 @@
     "fullUrl": "assets/generated/skunk_head_crop_left_mirror.jpg"
   },
   {
-    "id": 155,
-    "title": "Mujer de Pie en Paso Lateral (Perfil Izq - Cuerpo Completo)",
-    "author": "Estudio Anatómico IA",
-    "category": "Cuerpo Completo",
-    "yaw": -90,
-    "pitch": 0,
-    "roll": 0,
-    "url": "assets/thumbs/woman_body_profile_stride_left.webp",
-    "fullUrl": "assets/generated/woman_body_profile_stride_left.jpg"
-  },
-  {
-    "id": 156,
-    "title": "Mujer de Pie en Paso Lateral (Perfil Der - Cuerpo Completo)",
-    "author": "Estudio Anatómico IA",
-    "category": "Cuerpo Completo",
-    "yaw": 90,
-    "pitch": 0,
-    "roll": 0,
-    "url": "assets/thumbs/woman_body_profile_stride_right_mirror.webp",
-    "fullUrl": "assets/generated/woman_body_profile_stride_right_mirror.jpg"
-  },
-  {
-    "id": 157,
-    "title": "Mujer Joven Mirada sobre el Hombro (3/4 Izq Retrato)",
-    "author": "Estudio Anatómico IA",
-    "category": "Anatomía",
-    "yaw": -45,
-    "pitch": -10,
-    "roll": 0,
-    "url": "assets/thumbs/woman_head_stride_34_left_crop.webp",
-    "fullUrl": "assets/generated/woman_head_stride_34_left_crop.jpg"
-  },
-  {
     "id": 158,
     "title": "Hombre Atlético de Espalda Luz Lateral (Vista Trasera 180° - Cuerpo Completo)",
     "author": "Estudio Anatómico IA",

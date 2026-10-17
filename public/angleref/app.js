@@ -33,8 +33,8 @@ function getItemType(item) {
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { setupPracticeTool } from './practice.js?v=20261012m5';
-import { AccessControl } from './access.js?v=20261012m5';
+import { setupPracticeTool } from './practice.js?v=20261015m1';
+import { AccessControl } from './access.js?v=20261015m1';
 
 // Application State
 const state = {
@@ -142,6 +142,7 @@ let dogSkullMesh = null;
 let humanBodyMesh = null;
 let animalBodyMesh = null;
 let currentActiveMesh = null;
+let applyZoom = null;
 
 function initThree() {
   const width = canvasContainer.clientWidth;
@@ -167,9 +168,73 @@ function initThree() {
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   controls.enablePan = true;
-  controls.minDistance = 1.2;
-  controls.maxDistance = 8.0;
+  // Desactivamos el zoom nativo de Three.js para evitar que en trackpads o ruedas de ratón de alta resolución
+  // el visor dé saltos gigantescos que dejan el modelo demasiado cerca o microscópico
+  controls.enableZoom = false;
+  controls.minDistance = 2.0;
+  controls.maxDistance = 6.2;
   controls.target.set(0, 0, 0);
+
+  // Función de zoom suave y acotado dentro de un rango visual cómodo
+  applyZoom = (deltaFactor) => {
+    const offset = new THREE.Vector3().subVectors(camera.position, controls.target);
+    const currentDist = offset.length();
+    
+    // Rango visual confortable: min 2.0 (nunca atraviesa la cabeza o cuerpo) y max 6.2 (nunca queda minúsculo)
+    const minD = 2.0;
+    const maxD = 6.2;
+    const newDist = Math.max(minD, Math.min(maxD, currentDist * deltaFactor));
+
+    offset.setLength(newDist);
+    camera.position.copy(controls.target).add(offset);
+    controls.update();
+    updateAnglesFromCamera();
+  };
+
+  // Normalización de la rueda del mouse / trackpad para todas las computadoras y navegadores
+  canvasContainer.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    
+    // Normalizar según el modo del navegador (píxeles, líneas o páginas)
+    let delta = e.deltaY;
+    if (e.deltaMode === 1) delta *= 20; // Modo líneas (ratón convencional)
+    else if (e.deltaMode === 2) delta *= 80; // Modo páginas
+
+    // Limitar el delta por evento para evitar saltos gigantes con ruedas libres o trackpads
+    delta = Math.max(-60, Math.min(60, delta));
+
+    // Factor de escala suave y proporcional
+    const factor = 1 + delta * 0.0022;
+    if (applyZoom) applyZoom(factor);
+  }, { passive: false });
+
+  // Soporte de pellizco (Pinch-to-zoom) para pantallas táctiles y celulares
+  let initialPinchDist = null;
+  canvasContainer.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      initialPinchDist = Math.sqrt(dx * dx + dy * dy);
+    }
+  }, { passive: true });
+
+  canvasContainer.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && initialPinchDist) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const currentPinchDist = Math.sqrt(dx * dx + dy * dy);
+      if (initialPinchDist > 0) {
+        const pinchRatio = initialPinchDist / currentPinchDist;
+        const smoothRatio = 1 + (pinchRatio - 1) * 0.25;
+        if (applyZoom) applyZoom(smoothRatio);
+      }
+      initialPinchDist = currentPinchDist;
+    }
+  }, { passive: true });
+
+  canvasContainer.addEventListener('touchend', () => {
+    initialPinchDist = null;
+  }, { passive: true });
 
   // Lighting
   const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
@@ -413,7 +478,7 @@ function debounceFilterGallery() {
 // Carga del dataset local
 async function loadDataset() {
   try {
-    const res = await fetch('faces-dataset.json?v=20261012m6');
+    const res = await fetch('faces-dataset.json?v=20261015m1');
     const raw = await res.json();
     state.dataset = raw.map(item => {
       let u = item.url || '';
@@ -469,10 +534,8 @@ function filterGallery() {
 
     const diffPitch = Math.abs(item.pitch - currentPitch);
 
-    // Distancia total euclidiana ponderada (en Picado/Contrapicado priorizar Pitch sobre Yaw)
-    const isVerticalAngle = Math.abs(currentPitch) > 18;
-    const effectiveDiffYaw = isVerticalAngle ? diffYaw * 0.45 : diffYaw;
-    const totalDiff = Math.sqrt(effectiveDiffYaw * effectiveDiffYaw + Math.pow(diffPitch * (isVerticalAngle ? 1.0 : 1.25), 2));
+    // Distancia total euclidiana
+    const totalDiff = Math.sqrt(diffYaw * diffYaw + diffPitch * diffPitch);
     return { ...item, diffYaw, diffPitch, totalDiff: Math.round(totalDiff) };
   });
 
@@ -496,21 +559,37 @@ function filterGallery() {
 
       // Si NO está activo el modo "Catálogo completo", aplicar filtrado angular estricto
       if (!isShowAll) {
-        const isVerticalPreset = Math.abs(currentPitch) > 18 && Math.abs(currentYaw) <= 15;
-        // Diferencia general de distancia
+        // Diferencia general de distancia euclidiana y por eje
         if (item.totalDiff > tol) return false;
-        if (item.diffPitch > (tol * 1.15)) return false;
-        if (!isVerticalPreset && item.diffYaw > (tol * 1.05)) return false;
+        if (item.diffYaw > tol) return false;
+        if (item.diffPitch > tol) return false;
 
-        // Si el usuario busca 3/4 o perfil (Yaw >= 25°), rechazar categóricamente fotos frontales (Yaw <= 15°)
-        if (Math.abs(currentYaw) >= 25 && Math.abs(item.yaw) <= 15) return false;
+        // 1. Frente estricto (|currentYaw| <= 18°): solo fotos frontales (|item.yaw| <= 20°)
+        if (Math.abs(currentYaw) <= 18 && Math.abs(item.yaw) > 20) return false;
 
-        // Si el usuario busca frente horizontal (Yaw <= 15° y Pitch horizontal), rechazar fotos de 3/4 o perfil (Yaw >= 25°)
-        if (Math.abs(currentYaw) <= 15 && Math.abs(currentPitch) <= 18 && Math.abs(item.yaw) >= 25) return false;
+        // 2. 3/4 (22° a 70°): no mezclar con frente ni con perfil
+        if (Math.abs(currentYaw) >= 22 && Math.abs(currentYaw) <= 70 && (Math.abs(item.yaw) < 22 || Math.abs(item.yaw) > 72)) return false;
 
-        // Si el usuario gira hacia la derecha (+), no mezclar con izquierda (-)
-        if (currentYaw > 20 && item.yaw < -10) return false;
-        if (currentYaw < -20 && item.yaw > 10) return false;
+        // 3. Perfil (70° a 115°): solo fotos de perfil
+        if (Math.abs(currentYaw) > 70 && Math.abs(currentYaw) <= 115 && Math.abs(item.yaw) < 68) return false;
+
+        // 4. 3/4 Atrás (115° a 165°): solo fotos de 3/4 trasero
+        if (Math.abs(currentYaw) > 115 && Math.abs(currentYaw) < 165 && (Math.abs(item.yaw) <= 115 || Math.abs(item.yaw) >= 168)) return false;
+
+        // 5. Espalda / Nuca (>= 165°): solo fotos de espalda
+        if (Math.abs(currentYaw) >= 165 && Math.abs(item.yaw) < 160) return false;
+
+        // 6. Lateralidad Izquierda vs Derecha: no mezclar lados opuestos
+        if (currentYaw > 15 && item.yaw < -10) return false;
+        if (currentYaw < -15 && item.yaw > 10) return false;
+
+        // 7. Coherencia vertical (Pitch):
+        // Horizontal / Nivel de ojos (|currentPitch| <= 15°): rechazar contrapicados y picados marcados
+        if (Math.abs(currentPitch) <= 15 && Math.abs(item.pitch) > 22) return false;
+        // Contrapicado (currentPitch < -18°): rechazar fotos a nivel de ojos o picado
+        if (currentPitch < -18 && item.pitch > -15) return false;
+        // Picado (currentPitch > 18°): rechazar fotos a nivel de ojos o contrapicado
+        if (currentPitch > 18 && item.pitch < 15) return false;
       }
 
       // 1. FILTRADO ESTRICTO SEGÚN EL MODELO 3D SELECCIONADO
@@ -794,6 +873,32 @@ function setupEvents() {
   btnPresetBack34.addEventListener('click', () => setCameraPreset(140, 0));
   btnPresetBack.addEventListener('click', () => setCameraPreset(180, 0));
   btnResetView.addEventListener('click', () => setCameraPreset(0, 0));
+
+  // Botones flotantes de Zoom 3D en el viewport
+  const btn3dZoomIn = document.getElementById('btn3dZoomIn');
+  const btn3dZoomOut = document.getElementById('btn3dZoomOut');
+  const btn3dZoomReset = document.getElementById('btn3dZoomReset');
+  if (btn3dZoomIn) {
+    btn3dZoomIn.addEventListener('click', () => {
+      if (applyZoom) applyZoom(0.85);
+    });
+  }
+  if (btn3dZoomOut) {
+    btn3dZoomOut.addEventListener('click', () => {
+      if (applyZoom) applyZoom(1.18);
+    });
+  }
+  if (btn3dZoomReset) {
+    btn3dZoomReset.addEventListener('click', () => {
+      if (camera && controls) {
+        const offset = new THREE.Vector3().subVectors(camera.position, controls.target);
+        offset.setLength(3.8);
+        camera.position.copy(controls.target).add(offset);
+        controls.update();
+        updateAnglesFromCamera();
+      }
+    });
+  }
 
   const btnToggle3D = document.getElementById('btnToggle3D');
   const viewportCard = document.querySelector('.viewport-card');
