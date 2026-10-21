@@ -5,6 +5,7 @@ function getItemType(item) {
   const isAnimal = (
     text.includes('perro') || text.includes('gato') || text.includes('león') || text.includes('leon') || 
     text.includes('tigre') || text.includes('caballo') || text.includes('lobo') || text.includes('animal') || 
+    text.includes('pantera') || 
     text.includes('salvaje') || text.includes('cachorro') || text.includes('zorro') || text.includes('chimpancé') || 
     text.includes('chimpance') || text.includes('mono') || text.includes('gorila') || text.includes('felino') || 
     text.includes('canino') || text.includes('cuadrupedo') || text.includes('cuadrúpedo') || text.includes('oso') || 
@@ -478,7 +479,7 @@ function debounceFilterGallery() {
 // Carga del dataset local
 async function loadDataset() {
   try {
-    const res = await fetch('faces-dataset.json?v=20261015m1');
+    const res = await fetch('faces-dataset.json?v=20261020m7');
     const raw = await res.json();
     state.dataset = raw.map(item => {
       let u = item.url || '';
@@ -633,9 +634,9 @@ function filterGallery() {
           } else if (activeFilter === 'caninos' || activeFilter === 'perros') {
             if (!text.includes('perro') && !text.includes('canin') && !text.includes('lobo') && !text.includes('zorro')) return false;
           } else if (activeFilter === 'felinos' || activeFilter === 'gatos') {
-            if (!text.includes('gato') && !text.includes('felin') && !text.includes('tigre') && !text.includes('león') && !text.includes('leon')) return false;
+            if (!text.includes('gato') && !text.includes('felin') && !text.includes('tigre') && !text.includes('león') && !text.includes('leon') && !text.includes('pantera')) return false;
           } else if (activeFilter === 'salvajes') {
-            if (!text.includes('león') && !text.includes('leon') && !text.includes('lobo') && !text.includes('salvaje') && !text.includes('zorro') && !text.includes('chimpancé') && !text.includes('chimpance') && !text.includes('mono') && !text.includes('tigre') && !text.includes('oso') && !text.includes('panda') && !text.includes('ciervo') && !text.includes('jirafa') && !text.includes('cebra') && !text.includes('elefante') && !text.includes('gorila') && !text.includes('perezoso') && !text.includes('mofeta') && !text.includes('águila') && !text.includes('aguila') && !text.includes('yacaré') && !text.includes('yacare') && !text.includes('cocodrilo')) return false;
+            if (!text.includes('león') && !text.includes('leon') && !text.includes('lobo') && !text.includes('salvaje') && !text.includes('pantera') && !text.includes('zorro') && !text.includes('chimpancé') && !text.includes('chimpance') && !text.includes('mono') && !text.includes('tigre') && !text.includes('oso') && !text.includes('panda') && !text.includes('ciervo') && !text.includes('jirafa') && !text.includes('cebra') && !text.includes('elefante') && !text.includes('gorila') && !text.includes('perezoso') && !text.includes('mofeta') && !text.includes('águila') && !text.includes('aguila') && !text.includes('yacaré') && !text.includes('yacare') && !text.includes('cocodrilo')) return false;
           }
         } else if (isHandModel) {
           if (activeFilter === 'abierta' && (!text.includes('palma') && !text.includes('abierta') && !text.includes('relajada') && !text.includes('dorso'))) return false;

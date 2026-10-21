@@ -58,7 +58,7 @@ export default function HerramientasPage() {
         setIsFullscreen(!isFullscreen);
     };
 
-    const anatomyIframeSrc = `/angleref/index.html?v=20261020m3${user?.role ? `&role=${encodeURIComponent(user.role)}` : ''}`;
+    const anatomyIframeSrc = `/angleref/index.html?v=20261020m7${user?.role ? `&role=${encodeURIComponent(user.role)}` : ''}`;
     const colorIframeSrc = `/color-palette/index.html?v=20261020m4`;
 
     const toolMeta = {
