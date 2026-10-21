@@ -19,14 +19,20 @@
 .logoLink {
     display: flex;
     align-items: center;
-    gap: 1rem;
     text-decoration: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.logoLink:hover {
+    opacity: 0.9;
+    transform: scale(1.02);
 }
 
 .logo {
-    height: 50px;
+    height: 52px;
     width: auto;
     object-fit: contain;
+    display: block;
 }
 
 .brandText {
@@ -260,6 +266,10 @@
 }
 
 @media (max-width: 768px) {
+    .logo {
+        height: 40px;
+    }
+
     .mobileMenuBtn {
         display: block;
     }

@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estudio de Color Rooster - Rueda de Color, Extractor y Paletas Armónicas</title>
+  <link rel="stylesheet" href="css/styles.css?v=20261020m4">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2245%22 fill=%22%232563eb%22/></svg>">
+</head>
+<body>
+
+  <!-- Top Header Navigation -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-icon">
+        <div class="brand-icon-inner"></div>
+      </div>
+      <h1 class="brand-title">Estudio de Color Rooster</h1>
+    </div>
+
+    <div class="header-actions">
+      <!-- Saved Palettes Library Button -->
+      <button class="btn" id="btnOpenLibrary" title="Mis Paletas Guardadas (Favoritos)">
+        <svg class="btn-svg-icon" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        <span>Mis Paletas</span>
+      </button>
+
+      <!-- Global Adjustments Popover Dropdown -->
+      <div class="popover-container">
+        <button class="btn" id="btnToggleGlobalAdjust" title="Ajustes Globales (Temperatura, Saturación, Brillo)">
+          <svg class="btn-svg-icon" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+          <span>Ajustes</span>
+        </button>
+
+        <div class="global-adjust-dropdown" id="globalAdjustDropdown">
+          <div style="font-weight: 700; font-size: 0.9rem; margin-bottom: 2px;">Ajustes Globales de Paleta</div>
+
+          <div class="adjust-slider-row">
+            <div class="adjust-header-row">
+              <span>Temperatura:</span>
+              <span id="tempValText" style="font-family: monospace;">0</span>
+            </div>
+            <input type="range" id="globalTempSlider" class="adjust-range" min="-50" max="50" value="0">
+            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-dim);">
+              <span style="display: inline-flex; align-items: center; gap: 4px;">
+                <svg class="badge-svg-icon" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"/></svg>
+                <span>Frío</span>
+              </span>
+              <span style="display: inline-flex; align-items: center; gap: 4px;">
+                <svg class="badge-svg-icon" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+                <span>Cálido</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="adjust-slider-row">
+            <div class="adjust-header-row">
+              <span>Saturación Global:</span>
+              <span id="satValText" style="font-family: monospace;">100%</span>
+            </div>
+            <input type="range" id="globalSatSlider" class="adjust-range" min="20" max="180" value="100">
+          </div>
+
+          <div class="adjust-slider-row">
+            <div class="adjust-header-row">
+              <span>Brillo Global:</span>
+              <span id="briValText" style="font-family: monospace;">100%</span>
+            </div>
+            <input type="range" id="globalBriSlider" class="adjust-range" min="30" max="150" value="100">
+          </div>
+
+          <button class="btn" id="btnResetAdjust" style="margin-top: 4px; font-size: 0.78rem;">
+            Restablecer Valores
+          </button>
+        </div>
+      </div>
+
+      <!-- Randomize Button -->
+      <button class="btn" id="btnRandom" title="Generar paleta armónica aleatoria (Tecla: Espacio)">
+        <svg class="btn-svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="16" cy="8" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="8" cy="16" r="1.3" fill="currentColor"/><circle cx="16" cy="16" r="1.3" fill="currentColor"/></svg>
+        <span>Aleatorio</span>
+      </button>
+
+      <!-- Export Button -->
+      <button class="btn btn-primary" id="btnExport" title="Exportar códigos CSS, JSON, Tailwind o PNG">
+        <svg class="btn-svg-icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>Exportar</span>
+      </button>
+
+      <!-- Theme Button -->
+      <button class="btn btn-icon" id="btnTheme" title="Alternar Modo Oscuro / Claro">
+        <svg class="btn-svg-icon" id="themeIcon" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Navigation Mode Tabs -->
+  <div style="max-width: 100%; width: 100%; margin: 4px auto 0; padding: 0 16px;">
+    <nav class="mode-navigation-bar" style="margin: 0; overflow-x: auto;">
+      <button class="tool-tab-btn active" id="tabWheel">
+        <svg class="btn-svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="3.5"/><line x1="12" y1="2.5" x2="12" y2="8.5"/><line x1="18.8" y1="16" x2="14" y2="13.2"/><line x1="5.2" y1="16" x2="10" y2="13.2"/></svg>
+        <span>Rueda de color</span>
+      </button>
+
+      <button class="tool-tab-btn" id="tabImage">
+        <svg class="btn-svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="2"/><path d="m21 15-5-5L5 21"/></svg>
+        <span>Extraer de Imagen</span>
+      </button>
+
+      <button class="tool-tab-btn" id="tabMockup">
+        <svg class="btn-svg-icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <span>Vista Previa UI</span>
+      </button>
+
+      <button class="tool-tab-btn" id="tabAccessibility">
+        <svg class="btn-svg-icon" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>Accesibilidad & Daltonismo</span>
+      </button>
+
+      <button class="tool-tab-btn" id="tabGradients">
+        <svg class="btn-svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M14.31 8l5.74 9.94M9.69 8h11.48M7.38 12l5.74-9.94M9.69 16L3.95 6.06M14.31 16H2.83M16.62 12l-5.74 9.94"/></svg>
+        <span>Degradados CSS</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- =========================================================================
+       VIEW 1: Rueda de Color & Armonías (Adobe Reference Style)
+       ========================================================================= -->
+  <div class="app-container" id="wheelViewContainer">
+    
+    <!-- Left Column: Title, Intro text, Wheel & Harmony Carousel -->
+    <div class="wheel-column">
+      
+      <!-- Intro Hero Header -->
+      <div class="intro-hero">
+        <div class="intro-badge">
+          <svg class="badge-svg-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12c0 3.5 2.2 6 5.2 6h1.3c.8 0 1.5.7 1.5 1.5 0 .8.7 1.5 1.5 1.5H12c5.52 0 10-4.48 10-10S17.52 2 12 2z"/><circle cx="7.5" cy="10" r="1.3" fill="currentColor"/><circle cx="11.5" cy="7" r="1.3" fill="currentColor"/><circle cx="16.5" cy="9.5" r="1.3" fill="currentColor"/></svg>
+          <span>ESTUDIO CROMÁTICO</span>
+        </div>
+        <h2 class="intro-title" id="introHeroTitle">
+          Generador de paletas armónicas y rueda cromática interactiva.
+        </h2>
+        <p class="intro-desc" id="introHeroDesc">
+          Diseña combinaciones de color equilibradas para cualquier proyecto visual. Selecciona un color base, explora reglas geométricas de armonía en tiempo real o extrae tonos únicos directamente desde tus fotos e imágenes.
+        </p>
+      </div>
+      
+      <!-- Interactive Color Wheel Card -->
+      <section class="wheel-card">
+        <div class="wheel-canvas-wrapper">
+          <canvas id="colorWheelCanvas" width="340" height="340"></canvas>
+        </div>
+
+        <!-- Sliders below Wheel -->
+        <div class="wheel-quick-controls">
+          <div class="control-group" id="spreadControlGroup">
+            <span class="control-label">Apertura:</span>
+            <input type="range" id="spreadSlider" class="control-slider" min="10" max="80" value="30">
+            <span id="spreadValText" style="font-family: monospace; font-size: 0.8rem; min-width: 28px;">30°</span>
+          </div>
+
+          <div class="control-group">
+            <span class="control-label">Brillo:</span>
+            <input type="range" id="baseBrightnessSlider" class="control-slider" min="15" max="100" value="95">
+          </div>
+        </div>
+      </section>
+
+      <!-- Horizontal Harmony Icons Carousel -->
+      <section class="harmony-section">
+        <div class="harmony-header">
+          <span class="harmony-title">Armonía de Color</span>
+          <span class="harmony-current-label" id="currentHarmonyLabel">Colores análogos</span>
+        </div>
+
+        <div class="harmony-carousel-container">
+          <button class="carousel-btn" id="btnPrevHarmony" title="Ver anteriores">‹</button>
+          <div class="harmony-track" id="harmonyTrack">
+            <!-- Dynamic SVG icon buttons rendered via app.js -->
+          </div>
+          <button class="carousel-btn" id="btnNextHarmony" title="Ver siguientes">›</button>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Right Column: Tall Vertical Swatches Palette -->
+    <div class="palette-column">
+      <div class="palette-swatches-grid" id="tallSwatchesGrid">
+        <!-- 5 Tall Swatches rendered via app.js -->
+      </div>
+
+      <!-- Bottom Palette Actions Bar -->
+      <div class="palette-bottom-bar">
+        <div class="palette-preview-strip" id="palettePreviewStrip" title="Vista previa condensada">
+          <!-- Mini preview items -->
+        </div>
+
+        <div class="palette-bottom-actions">
+          <button class="btn" id="btnSaveToLibraryQuick" title="Guardar esta paleta en Favoritos">
+            <svg class="btn-svg-icon" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            <span>Guardar Paleta</span>
+          </button>
+          <button class="btn" id="btnRandomBottom">
+            <svg class="btn-svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="16" cy="8" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="8" cy="16" r="1.3" fill="currentColor"/><circle cx="16" cy="16" r="1.3" fill="currentColor"/></svg>
+            <span>Generar aleatoriamente</span>
+          </button>
+          <button class="btn btn-primary" id="btnExportBottom">
+            <svg class="btn-svg-icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Exportar</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- =========================================================================
+       VIEW 2: Extraer de Imagen (Adobe Color Extract Theme)
+       ========================================================================= -->
+  <div class="extractor-view-container" id="extractViewContainer">
+    <div class="extractor-main-col">
+      <div class="intro-hero" style="margin-bottom: 14px;">
+        <div class="intro-badge">
+          <svg class="badge-svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3.5"/><circle cx="8.5" cy="8.5" r="1.8"/><path d="m21 15-5-5L5 21"/></svg>
+          <span>EXTRACTOR DE IMAGEN</span>
+        </div>
+        <h2 class="intro-title">
+          Extractor inteligente de paletas y selector de color.
+        </h2>
+        <p class="intro-desc">
+          Carga cualquier fotografía o ilustración para detectar automáticamente su espectro cromático predominante y arrastra los marcadores interactivos para capturar con precisión los tonos clave de tu composición.
+        </p>
+      </div>
+
+      <div id="imageExtractorMount">
+        <!-- Mounted dynamically by ImageExtractor -->
+      </div>
+    </div>
+
+    <!-- Extractor Side Summary Panel -->
+    <div class="extractor-side-panel">
+      <div class="extractor-actions-card">
+        <h3>Paleta Extraída</h3>
+        <p>Arrastra los 5 marcadores circulares sobre la imagen para seleccionar colores específicos con muestreo en tiempo real.</p>
+        
+        <div id="extractorPalettePreview" style="display: flex; flex-direction: column; gap: 8px; margin: 10px 0;">
+          <!-- Live swatch bars -->
+        </div>
+
+        <button class="btn btn-primary" id="btnApplyExtracted" style="margin-top: 8px;">
+          <svg class="btn-svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="3.5"/><line x1="12" y1="2.5" x2="12" y2="8.5"/><line x1="18.8" y1="16" x2="14" y2="13.2"/><line x1="5.2" y1="16" x2="10" y2="13.2"/></svg>
+          <span>Aplicar a la Rueda de Color</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       VIEW 3: Vista Previa en UI Real (Mockup Interactivo)
+       ========================================================================= -->
+  <div class="preview-view-container" id="mockupViewContainer">
+    <div class="mockup-controls-bar">
+      <div>
+        <h3 style="font-size: 1.1rem; font-weight: 700;">Vista Previa de Interfaz UI</h3>
+        <p style="font-size: 0.82rem; color: var(--text-muted);">Comprueba cómo interactúan los 5 colores en una aplicación web real.</p>
+      </div>
+
+      <div style="display: flex; gap: 10px;">
+        <button class="btn" id="btnShuffleMockup">
+          <svg class="btn-svg-icon" viewBox="0 0 24 24"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+          <span>Rotar Asignación</span>
+        </button>
+        <button class="btn" id="btnToggleMockupTheme">
+          <svg class="btn-svg-icon" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
+          <span>Invertir Fondo Mockup</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- The Realistic UI Mockup Frame -->
+    <div class="mockup-frame" id="mockupFrame">
+      <div class="mockup-window-header">
+        <div class="window-dots">
+          <div class="window-dot" style="background: #ef4444;"></div>
+          <div class="window-dot" style="background: #eab308;"></div>
+          <div class="window-dot" style="background: #22c55e;"></div>
+        </div>
+        <div style="margin: 0 auto; font-size: 0.75rem; opacity: 0.6; font-family: monospace;">app.proyecto-estudio.com</div>
+      </div>
+
+      <!-- Mockup Navbar -->
+      <header class="mockup-navbar" id="mockupNavbar">
+        <div class="mockup-brand" id="mockupBrand">Nova Studio</div>
+        <div class="mockup-nav-links">
+          <span>Características</span>
+          <span>Proyectos</span>
+          <span>Precios</span>
+        </div>
+        <button class="btn" id="mockupNavBtn" style="border-radius: 9999px; padding: 6px 18px;">Empezar</button>
+      </header>
+
+      <!-- Mockup Hero -->
+      <section class="mockup-hero">
+        <span class="mockup-badge" id="mockupBadge">Nueva Versión 3.0</span>
+        <h1 class="mockup-headline" id="mockupHeadline">Crea experiencias visuales inolvidables</h1>
+        <p class="mockup-subtext" id="mockupSubtext">Herramienta moderna para creadores, diseñadores y desarrolladores de alto nivel. Potencia tu flujo de trabajo con precisión.</p>
+        
+        <div class="mockup-cta-row">
+          <button class="btn" id="mockupCtaPrimary" style="padding: 10px 24px; font-size: 0.95rem; border-radius: 8px;">Explorar Ahora</button>
+          <button class="btn" id="mockupCtaSecondary" style="padding: 10px 20px; font-size: 0.95rem; border-radius: 8px;">Ver Demostración</button>
+        </div>
+      </section>
+
+      <!-- Mockup Cards Grid -->
+      <div class="mockup-cards-grid">
+        <div class="mockup-card-item" id="mockupCard1">
+          <div class="mockup-card-icon-wrap">
+            <svg class="mockup-card-svg" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <h3 style="font-weight: 700; font-size: 1.1rem;">Rendimiento Instantáneo</h3>
+          <p style="font-size: 0.88rem; opacity: 0.8; line-height: 1.5;">Optimizaciones ultrarrápidas pensadas para que no pierdas ni un solo segundo en el proceso creativo.</p>
+        </div>
+
+        <div class="mockup-card-item" id="mockupCard2">
+          <div class="mockup-card-icon-wrap">
+            <svg class="mockup-card-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+          </div>
+          <h3 style="font-weight: 700; font-size: 1.1rem;">Precisión Geométrica</h3>
+          <p style="font-size: 0.88rem; opacity: 0.8; line-height: 1.5;">Relaciones matemáticas armónicas que garantizan equilibrio y contraste estético perfecto.</p>
+        </div>
+
+        <div class="mockup-card-item" id="mockupCard3">
+          <div class="mockup-card-icon-wrap">
+            <svg class="mockup-card-svg" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <h3 style="font-weight: 700; font-size: 1.1rem;">Compatibilidad Total</h3>
+          <p style="font-size: 0.88rem; opacity: 0.8; line-height: 1.5;">Exporta código CSS, Tailwind y JSON compatible con cualquier framework del mercado.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       VIEW 4: Accesibilidad & Simulador de Daltonismo
+       ========================================================================= -->
+  <div class="accessibility-view-container" id="accessibilityViewContainer">
+    <div class="intro-hero">
+      <div class="intro-badge">
+        <svg class="badge-svg-icon" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>ACCESIBILIDAD Y CONTRASTE</span>
+      </div>
+      <h2 class="intro-title">Simulador de Daltonismo y Matriz de Contraste WCAG</h2>
+      <p class="intro-desc">Comprueba la legibilidad y asegura que tus combinaciones cromáticas sean perceptibles para usuarios con diversos tipos de daltonismo.</p>
+    </div>
+
+    <!-- Daltonism Simulation Strips -->
+    <div class="accessibility-cards-grid" id="daltonismStripsMount">
+      <!-- Rendered dynamically via app.js -->
+    </div>
+
+    <!-- WCAG Contrast Matrix Table -->
+    <div class="contrast-matrix-card">
+      <h3 style="font-size: 1rem; font-weight: 700;">Matriz de Relación de Contraste (Texto vs Fondo)</h3>
+      <p style="font-size: 0.82rem; color: var(--text-muted);">El estándar WCAG 2.1 requiere un mínimo de 4.5:1 (AA) para texto normal y 3.0:1 para texto grande.</p>
+      
+      <div style="overflow-x: auto; margin-top: 10px;">
+        <table class="matrix-table" id="wcagMatrixTable">
+          <!-- Rendered dynamically via app.js -->
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       VIEW 5: Generador de Degradados CSS
+       ========================================================================= -->
+  <div class="gradients-view-container" id="gradientsViewContainer">
+    <div class="gradient-canvas-box">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 1.1rem; font-weight: 700;">Generador de Degradados CSS</h3>
+        <span style="font-size: 0.82rem; color: var(--text-muted);" id="gradientCssSummary">linear-gradient(...)</span>
+      </div>
+
+      <div class="gradient-preview-screen" id="gradientPreviewScreen"></div>
+
+      <div>
+        <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;">Código CSS generado:</div>
+        <pre class="export-code-box" id="gradientCodeBox" style="max-height: 80px;"></pre>
+      </div>
+    </div>
+
+    <!-- Gradient Settings Panel -->
+    <div class="gradient-settings-card">
+      <h3 style="font-size: 1rem; font-weight: 700;">Controles del Degradado</h3>
+
+      <div class="adjust-slider-row">
+        <label style="font-size: 0.85rem; font-weight: 600;">Tipo de Degradado:</label>
+        <div style="display: flex; gap: 6px; margin-top: 4px;">
+          <button class="btn active" id="btnGradLinear" style="flex: 1;">Lineal</button>
+          <button class="btn" id="btnGradRadial" style="flex: 1;">Radial</button>
+        </div>
+      </div>
+
+      <div class="adjust-slider-row" id="gradAngleGroup">
+        <div class="adjust-header-row">
+          <span>Ángulo de dirección:</span>
+          <span id="gradAngleText" style="font-family: monospace;">135°</span>
+        </div>
+        <input type="range" id="gradAngleSlider" class="adjust-range" min="0" max="360" value="135">
+      </div>
+
+      <div class="adjust-slider-row">
+        <label style="font-size: 0.85rem; font-weight: 600; margin-bottom: 6px;">Colores incluidos en el degradado:</label>
+        <div class="gradient-stops-selector" id="gradientStopsSelector">
+          <!-- 5 color stop checkboxes rendered dynamically -->
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="btnCopyGradient" style="margin-top: 10px;">
+        <svg class="btn-svg-icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span>Copiar Código CSS</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       Slide-Over Drawer: Biblioteca de Paletas Guardadas (LocalStorage)
+       ========================================================================= -->
+  <div class="drawer-backdrop" id="libraryDrawer">
+    <div class="drawer-panel">
+      <div class="drawer-header">
+        <h2 class="drawer-title">
+          <svg class="btn-svg-icon" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          <span>Mis Paletas Guardadas</span>
+        </h2>
+        <button class="btn-close" id="btnCloseLibrary" title="Cerrar">&times;</button>
+      </div>
+
+      <div class="drawer-body">
+        <!-- Save Current Palette Box -->
+        <div class="save-current-box">
+          <span style="font-size: 0.85rem; font-weight: 700;">Guardar Paleta Activa</span>
+          <div class="save-input-row">
+            <input type="text" id="savePaletteNameInput" class="save-input" placeholder="Nombre de la paleta...">
+            <button class="btn btn-primary" id="btnConfirmSavePalette">Guardar</button>
+          </div>
+        </div>
+
+        <!-- Saved Palettes List -->
+        <div style="font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim);">
+          Colección Guardada
+        </div>
+        <div class="saved-palettes-list" id="savedPalettesList">
+          <!-- Rendered dynamically via app.js -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Modal -->
+  <div class="modal-backdrop" id="exportModal">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h2 class="modal-title">Exportar Paleta de Colores</h2>
+        <button class="btn-close" id="btnCloseModal" title="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="export-tabs">
+          <button class="export-tab active" data-type="css">CSS Variables</button>
+          <button class="export-tab" data-type="tailwind">Tailwind CSS</button>
+          <button class="export-tab" data-type="json">JSON</button>
+          <button class="export-tab" data-type="svg">SVG</button>
+        </div>
+
+        <pre class="export-code-box" id="exportCodeBox"></pre>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px;">
+          <button class="btn" id="btnDownloadPng">
+            <svg class="btn-svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="2"/><path d="m21 15-5-5L5 21"/></svg>
+            <span>Descargar Imagen PNG</span>
+          </button>
+          <button class="btn btn-primary" id="btnCopyExport">
+            <svg class="btn-svg-icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span>Copiar al portapapeles</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Scripts -->
+  <script src="js/color-math.js?v=20261020m1"></script>
+  <script src="js/wheel.js?v=20261020m1"></script>
+  <script src="js/palette-library.js?v=20261020m1"></script>
+  <script src="js/image-extractor.js?v=20261020m1"></script>
+  <script src="js/app.js?v=20261020m4"></script>
+</body>
+</html>

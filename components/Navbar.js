@@ -67,14 +67,13 @@ export default function Navbar() {
             <div className={styles.logoContainer}>
                 <Link href="/" className={styles.logoLink} onClick={closeMenu}>
                     <Image
-                        src="/images/logo.jpg"
-                        alt="Rooster Escuela de Dibujo"
-                        width={80}
-                        height={35}
+                        src="/images/logo.png"
+                        alt="Rooster Espacio de Arte"
+                        width={140}
+                        height={60}
                         className={styles.logo}
                         priority
                     />
-                    <span className={styles.brandText}>Rooster</span>
                 </Link>
             </div>
 
