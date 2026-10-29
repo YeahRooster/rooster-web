@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Estudio de Iluminación & Cabeza de Asaro 3D - Rooster Espacio de Arte</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20261029m1">
+
+  <!-- Three.js + Addons (ESM) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <!-- Top App Header -->
+  <header class="app-header">
+    <div class="brand-section">
+      <img src="rooster-logo.png" alt="Rooster Espacio de Arte" class="header-logo">
+      <div class="brand-text">
+        <h1>
+          Cabeza de Asaro 3D
+          <span class="brand-badge">ILUMINACIÓN</span>
+        </h1>
+        <p class="brand-sub">Estudio de planos faciales, luz direccional y valores para artistas</p>
+      </div>
+    </div>
+
+    <!-- Quick Camera Angle Presets -->
+    <div class="camera-presets-bar">
+      <button type="button" class="btn-preset active" data-cam="front">Frente</button>
+      <button type="button" class="btn-preset" data-cam="threequarter-r">3/4 Der</button>
+      <button type="button" class="btn-preset" data-cam="threequarter-l">3/4 Izq</button>
+      <button type="button" class="btn-preset" data-cam="profile-r">Perfil Der</button>
+      <button type="button" class="btn-preset" data-cam="profile-l">Perfil Izq</button>
+      <button type="button" class="btn-preset" data-cam="high">Picado</button>
+      <button type="button" class="btn-preset" data-cam="low">Contrapicado</button>
+      <button type="button" class="btn-preset" data-cam="back">Nuca</button>
+      <button type="button" class="btn-preset" id="btnResetCamera" title="Restablecer vista centrada">↺ Reset</button>
+    </div>
+
+    <!-- Header Actions -->
+    <div class="header-actions">
+      <button type="button" id="btnToggleSplit" class="btn-header-action" title="Comparar con imagen de referencia">
+        <span>🖼️</span>
+        <span class="action-label">Foto Ref.</span>
+      </button>
+      <button type="button" id="btnCapture" class="btn-header-action" title="Guardar captura de pantalla en alta resolución">
+        <span>📷</span>
+        <span class="action-label">Capturar</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="workspace">
+    
+    <!-- 3D Viewport Area -->
+    <section class="viewport-area" id="viewportArea">
+      
+      <div class="split-view-container">
+        
+        <!-- WebGL Canvas Panel -->
+        <div class="canvas-panel" id="canvasPanel">
+          <canvas id="asaroCanvas"></canvas>
+
+          <!-- Floating Help Pill -->
+          <div class="canvas-help-pill">
+            <span>🖱️ Arrastra para rotar la cabeza · Rueda/Pellizco para zoom · Clic derecho para encuadrar</span>
+          </div>
+
+          <!-- Value Filter Active Banner -->
+          <div class="filter-active-banner" id="filterBanner" style="display: none;">
+            <span id="filterBannerText">Modo Notan Activo</span>
+            <button type="button" id="btnResetFilterBanner">Desactivar</button>
+          </div>
+
+          <!-- Telemetry Badges (Angle & Light) -->
+          <div class="telemetry-badges">
+            <div class="badge-item">
+              <span class="badge-label">Ángulo Cabeza</span>
+              <span class="badge-val" id="telemetryAngle">Y: 0° · P: 0°</span>
+            </div>
+            <div class="badge-item">
+              <span class="badge-label">Luz Principal</span>
+              <span class="badge-val" id="telemetryLight">Az: 45° · El: 35°</span>
+            </div>
+          </div>
+
+          <!-- Zoom Controls -->
+          <div class="canvas-zoom-controls">
+            <button type="button" id="btnZoomIn" class="btn-zoom" title="Acercar (+)">+</button>
+            <button type="button" id="btnZoomOut" class="btn-zoom" title="Alejar (−)">−</button>
+            <button type="button" id="btnZoomReset" class="btn-zoom" title="Distancia por defecto">↺</button>
+          </div>
+        </div>
+
+        <!-- Split Photo Reference Panel (Hidden by default) -->
+        <aside class="reference-split-panel" id="refSplitPanel">
+          <div class="ref-panel-header">
+            <span>Foto de Referencia</span>
+            <button type="button" id="btnCloseSplit" class="btn-preset" style="padding: 2px 8px;">✕ Cerrar</button>
+          </div>
+          <div class="ref-panel-body" id="refDropArea">
+            <div class="ref-dropzone" id="refDropzone">
+              <p style="font-weight: 700; margin-bottom: 6px;">📂 Cargar foto propia</p>
+              <p style="font-size: 11px;">Arrastra un archivo aquí o haz clic para subir</p>
+              <input type="file" id="fileInputRef" accept="image/*" style="display: none;">
+            </div>
+            <img id="refDisplayImg" class="ref-panel-img" style="display: none;" alt="Referencia fotográfica">
+          </div>
+        </aside>
+
+      </div>
+
+    </section>
+
+    <!-- Sidebar Control Panel -->
+    <aside class="control-sidebar">
+      
+      <!-- Tab Navigation -->
+      <nav class="sidebar-tabs">
+        <button type="button" class="tab-btn active" data-tab="lighting">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <span>Luz</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="materials">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+          <span>Material</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="values">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor"/></svg>
+          <span>Valores</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="reference">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <span>Fotos</span>
+        </button>
+      </nav>
+
+      <!-- Tab Content Area -->
+      <div class="tab-contents-container">
+        
+        <!-- TAB 1: ILUMINACIÓN -->
+        <div class="tab-pane active" id="tab-lighting">
+          
+          <!-- Presets Section -->
+          <div class="control-section">
+            <div class="section-title">
+              <span>Presets de Iluminación</span>
+              <span class="hint">Esquemas clásicos</span>
+            </div>
+            <div class="presets-grid">
+              <button type="button" class="preset-card active" data-light-preset="rembrandt">
+                <span class="preset-card-name">🏛️ Rembrandt</span>
+                <span class="preset-card-desc">Triángulo de luz en mejilla</span>
+              </button>
+              <button type="button" class="preset-card" data-light-preset="topdown">
+                <span class="preset-card-name">☀️ Cenital</span>
+                <span class="preset-card-desc">Luz directa desde arriba</span>
+              </button>
+              <button type="button" class="preset-card" data-light-preset="split">
+                <span class="preset-card-name">🌓 Dividida (Split)</span>
+                <span class="preset-card-desc">Mitad iluminada, mitad sombra</span>
+              </button>
+              <button type="button" class="preset-card" data-light-preset="loop">
+                <span class="preset-card-name">🔄 Loop (3/4)</span>
+                <span class="preset-card-desc">Sombra suave bajo nariz</span>
+              </button>
+              <button type="button" class="preset-card" data-light-preset="butterfly">
+                <span class="preset-card-name">🦋 Mariposa</span>
+                <span class="preset-card-desc">Luz frontal alta elegante</span>
+              </button>
+              <button type="button" class="preset-card" data-light-preset="rim">
+                <span class="preset-card-name">🌙 Contraluz (Rim)</span>
+                <span class="preset-card-desc">Silueta de contorno brillante</span>
+              </button>
+              <button type="button" class="preset-card" data-light-preset="under">
+                <span class="preset-card-name">🕯️ Inferior (Campfire)</span>
+                <span class="preset-card-desc">Luz dramática desde abajo</span>
+              </button>
+              <button type="button" class="preset-card" data-light-preset="flat">
+                <span class="preset-card-name">💡 Frontal Neutra</span>
+                <span class="preset-card-desc">Mínima sombra para estudio</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Key Light Controls -->
+          <div class="control-section">
+            <div class="section-title">
+              <span>Luz Principal (Key Light)</span>
+            </div>
+
+            <!-- Azimuth (Horizontal) -->
+            <div class="control-row">
+              <div class="control-label-wrap">
+                <span class="control-label">Giro Horizontal (Azimut)</span>
+                <span class="control-val" id="valAzimuth">45°</span>
+              </div>
+              <input type="range" id="sliderAzimuth" class="slider-input" min="0" max="360" value="45">
+            </div>
+
+            <!-- Elevation (Vertical) -->
+            <div class="control-row">
+              <div class="control-label-wrap">
+                <span class="control-label">Altura (Elevación)</span>
+                <span class="control-val" id="valElevation">35°</span>
+              </div>
+              <input type="range" id="sliderElevation" class="slider-input" min="-60" max="85" value="35">
+            </div>
+
+            <!-- Intensity -->
+            <div class="control-row">
+              <div class="control-label-wrap">
+                <span class="control-label">Intensidad</span>
+                <span class="control-val" id="valKeyIntensity">2.2x</span>
+              </div>
+              <input type="range" id="sliderKeyIntensity" class="slider-input" min="0.2" max="4.0" step="0.1" value="2.2">
+            </div>
+
+            <!-- Temperature / Color -->
+            <div class="control-row">
+              <span class="control-label">Color / Temperatura</span>
+              <div class="temp-buttons-grid">
+                <button type="button" class="btn-temp" data-temp="warm" title="Luz de sol / atardecer (3200K)">🌅 Cálida</button>
+                <button type="button" class="btn-temp active" data-temp="neutral" title="Luz de estudio neutra (5500K)">⚪ Neutra</button>
+                <button type="button" class="btn-temp" data-temp="cool" title="Luz de cielo / luna (7500K)">🌌 Fría</button>
+                <div class="color-picker-wrap" title="Color personalizado">
+                  <span class="color-picker-box" id="keyColorBox" style="background: #ffffff;"></span>
+                  <input type="color" id="keyColorPicker" class="color-picker-input" value="#ffffff">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Secondary Lights -->
+          <div class="control-section">
+            <div class="section-title">
+              <span>Luces Secundarias & Ambiente</span>
+            </div>
+
+            <!-- Fill Light Switch -->
+            <div class="switch-row">
+              <span class="switch-label">Luz de Relleno (Fill Light)</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="chkFillLight" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="control-row" id="fillIntensityWrap">
+              <div class="control-label-wrap">
+                <span class="control-label" style="font-size: 11px;">Intensidad de Relleno</span>
+                <span class="control-val" id="valFillIntensity">0.6x</span>
+              </div>
+              <input type="range" id="sliderFillIntensity" class="slider-input" min="0" max="2.0" step="0.1" value="0.6">
+            </div>
+
+            <!-- Rim Light Switch -->
+            <div class="switch-row" style="margin-top: 6px;">
+              <span class="switch-label">Contraluz (Rim Light)</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="chkRimLight">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="control-row" id="rimIntensityWrap" style="display: none;">
+              <div class="control-label-wrap">
+                <span class="control-label" style="font-size: 11px;">Intensidad de Contraluz</span>
+                <span class="control-val" id="valRimIntensity">1.5x</span>
+              </div>
+              <input type="range" id="sliderRimIntensity" class="slider-input" min="0.2" max="3.0" step="0.1" value="1.5">
+            </div>
+
+            <!-- Ambient / Shadow Depth -->
+            <div class="control-row" style="margin-top: 6px;">
+              <div class="control-label-wrap">
+                <span class="control-label">Luz Ambiental (Contraste)</span>
+                <span class="control-val" id="valAmbient">0.35</span>
+              </div>
+              <input type="range" id="sliderAmbient" class="slider-input" min="0.05" max="0.9" step="0.05" value="0.35">
+            </div>
+
+            <!-- Floor Shadow Switch -->
+            <div class="switch-row" style="margin-top: 6px;">
+              <span class="switch-label">Sombra en Suelo</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="chkFloorShadow" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- TAB 2: MATERIALES & PLANOS -->
+        <div class="tab-pane" id="tab-materials">
+          
+          <!-- Shading Mode -->
+          <div class="control-section">
+            <div class="section-title">
+              <span>Tipo de Sombreado</span>
+            </div>
+            <div class="pill-selector" style="grid-template-columns: repeat(2, 1fr);">
+              <button type="button" class="pill-opt active" data-shading="flat">📐 Planos Nítidos (Asaro)</button>
+              <button type="button" class="pill-opt" data-shading="smooth">⚪ Suave (Gouraud)</button>
+            </div>
+          </div>
+
+          <!-- Materials Grid -->
+          <div class="control-section">
+            <div class="section-title">
+              <span>Material de Estudio</span>
+            </div>
+            <div class="materials-grid">
+              <div class="material-card active" data-mat="plaster">
+                <span class="material-swatch" style="background: #e2e8f0;"></span>
+                <div class="material-info">
+                  <span class="material-name">Yeso Blanco</span>
+                  <span class="material-desc">Escultura de academia</span>
+                </div>
+              </div>
+              <div class="material-card" data-mat="clay">
+                <span class="material-swatch" style="background: #8b8e99;"></span>
+                <div class="material-info">
+                  <span class="material-name">Arcilla Gris 50%</span>
+                  <span class="material-desc">Neutral para valores</span>
+                </div>
+              </div>
+              <div class="material-card" data-mat="bronze">
+                <span class="material-swatch" style="background: #a3724c;"></span>
+                <div class="material-info">
+                  <span class="material-name">Terracota / Bronce</span>
+                  <span class="material-desc">Tono cálido clásico</span>
+                </div>
+              </div>
+              <div class="material-card" data-mat="skin">
+                <span class="material-swatch" style="background: #d4a381;"></span>
+                <div class="material-info">
+                  <span class="material-name">Tono Piel</span>
+                  <span class="material-desc">Base anatómica</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Structural Wireframe -->
+          <div class="control-section">
+            <div class="section-title">
+              <span>Guías Estructurales</span>
+            </div>
+            <div class="switch-row">
+              <span class="switch-label">Líneas de Construcción (Wireframe)</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="chkWireframe">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- TAB 3: FILTROS DE VALOR TONAL -->
+        <div class="tab-pane" id="tab-values">
+          
+          <!-- Notan 2-Value -->
+          <div class="value-mode-card">
+            <div class="value-mode-header">
+              <span class="value-mode-title">🌓 Filtro Notan (2 Valores)</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="chkNotan">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <p class="value-mode-desc">
+              Reduce la imagen a blanco y negro absolutos para evaluar la fuerza del diseño de siluetas y masas de sombra.
+            </p>
+            <div class="control-row" id="notanThresholdWrap" style="display: none;">
+              <div class="control-label-wrap">
+                <span class="control-label" style="font-size: 11px;">Umbral de Corte</span>
+                <span class="control-val" id="valNotanThreshold">50%</span>
+              </div>
+              <input type="range" id="sliderNotanThreshold" class="slider-input" min="15" max="85" value="50">
+            </div>
+          </div>
+
+          <!-- Posterization Steps -->
+          <div class="value-mode-card">
+            <div class="value-mode-header">
+              <span class="value-mode-title">📊 Posterización Tonal</span>
+            </div>
+            <p class="value-mode-desc">
+              Cuantifica la luz en escalones tonales discretos para pintar por planos de valor (Escala Munsell).
+            </p>
+            <div class="pill-selector">
+              <button type="button" class="pill-opt active" data-posterize="off">Normal</button>
+              <button type="button" class="pill-opt" data-posterize="3">3 Tonos</button>
+              <button type="button" class="pill-opt" data-posterize="5">5 Tonos</button>
+            </div>
+          </div>
+
+          <!-- Squint / Blur Tool -->
+          <div class="value-mode-card">
+            <div class="value-mode-header">
+              <span class="value-mode-title">👓 Entrecerrar los Ojos (Squint)</span>
+              <span class="control-val" id="valSquint">0px</span>
+            </div>
+            <p class="value-mode-desc">
+              Desenfoque óptico que elimina el detalle fino para forzar al ojo a percibir las grandes masas de luz y sombra.
+            </p>
+            <input type="range" id="sliderSquint" class="slider-input" min="0" max="16" step="1" value="0">
+          </div>
+
+          <!-- Grayscale Toggle -->
+          <div class="switch-row" style="padding: 10px 0;">
+            <span class="switch-label">Escala de Grises Monocromática</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="chkGrayscale">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+        </div>
+
+        <!-- TAB 4: FOTOS DE REFERENCIA (SPLIT SCREEN) -->
+        <div class="tab-pane" id="tab-reference">
+          
+          <div class="control-section">
+            <div class="section-title">
+              <span>Comparador de Referencia</span>
+            </div>
+            <p class="value-mode-desc" style="margin-bottom: 8px;">
+              Abre una foto de modelo o retrato al lado de la Cabeza de Asaro para descifrar exactamente qué planos del rostro corresponden a las sombras de tu foto.
+            </p>
+            <button type="button" id="btnUploadPhotoRef" class="btn-preset active" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 12px;">
+              📁 Subir Foto de Referencia
+            </button>
+          </div>
+
+          <!-- Sample Portraits -->
+          <div class="control-section">
+            <div class="section-title">
+              <span>Fotos de Estudio de Ejemplo</span>
+            </div>
+            <div class="sample-portraits-grid">
+              <div class="sample-thumb" data-sample="../Referencia/assets/thumbs/man_head_power_crop.webp">
+                <img src="../Referencia/assets/thumbs/man_head_power_crop.webp" alt="Retrato 1">
+              </div>
+              <div class="sample-thumb" data-sample="../Referencia/assets/thumbs/heroic_woman_stance_head_right_crop.webp">
+                <img src="../Referencia/assets/thumbs/heroic_woman_stance_head_right_crop.webp" alt="Retrato 2">
+              </div>
+              <div class="sample-thumb" data-sample="../Referencia/assets/thumbs/human_head_rear_34_right_crop.webp">
+                <img src="../Referencia/assets/thumbs/human_head_rear_34_right_crop.webp" alt="Retrato 3">
+              </div>
+              <div class="sample-thumb" data-sample="../Referencia/assets/thumbs/human_head_back_180_crop.webp">
+                <img src="../Referencia/assets/thumbs/human_head_back_180_crop.webp" alt="Retrato 4">
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </aside>
+
+  </main>
+
+  <!-- Application Logic -->
+  <script type="module" src="app.js?v=20261029m1"></script>
+</body>
+</html>

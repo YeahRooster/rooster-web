@@ -138,6 +138,7 @@ const btnResetAdjustments = document.getElementById('btnResetAdjustments');
 let scene, camera, renderer, controls, loader;
 let skullMesh = null;
 let headMesh = null;
+let asaroMesh = null;
 let handMesh = null;
 let dogSkullMesh = null;
 let humanBodyMesh = null;
@@ -290,6 +291,7 @@ function initThree() {
 
 const fileMap = {
     'head': { file: 'LeePerrySmith.glb', hex: 0xccaa99 },
+    'asaro': { file: 'asaro_head.glb', hex: 0xe2e8f0, flatShading: true },
     'hand': { file: 'hand.glb', hex: 0xdcb8a3 },
     'dog_skull': { file: 'dog_skull.glb', hex: 0xdddddd },
     'human_body': { file: 'human_body.glb', hex: 0xbbbbcc },
@@ -322,7 +324,8 @@ window.loadExtraMesh = (val) => {
                         child.material = new THREE.MeshStandardMaterial({
                             color: info.hex ? info.hex : 0xffffff,
                             roughness: 0.7,
-                            metalness: 0.05
+                            metalness: 0.05,
+                            flatShading: Boolean(info.flatShading)
                         });
                     }
                 });
@@ -336,6 +339,7 @@ window.loadExtraMesh = (val) => {
                 m.visible = false;
                 
                 if (val === 'head') headMesh = m;
+                if (val === 'asaro') asaroMesh = m;
                 if (val === 'hand') handMesh = m;
                 if (val === 'dog_skull') dogSkullMesh = m;
                 if (val === 'human_body') humanBodyMesh = m;
@@ -541,7 +545,7 @@ function filterGallery() {
   });
 
   const currentModel = modelSelector ? modelSelector.value : 'skull';
-  const isHumanModel = (currentModel === 'skull' || currentModel === 'head' || currentModel === 'human_body');
+  const isHumanModel = (currentModel === 'skull' || currentModel === 'head' || currentModel === 'asaro' || currentModel === 'human_body');
   const isAnimalModel = (currentModel === 'dog_skull' || currentModel === 'animal_body');
   const isHandModel = (currentModel === 'hand');
   const activeFilter = state.demographicFilter || state.activeFilter || 'all';
@@ -596,7 +600,7 @@ function filterGallery() {
       // 1. FILTRADO ESTRICTO SEGÚN EL MODELO 3D SELECCIONADO
       if (currentModel === 'human_body') {
         if (itemType !== 'human_body') return false;
-      } else if (currentModel === 'skull' || currentModel === 'head') {
+      } else if (currentModel === 'skull' || currentModel === 'head' || currentModel === 'asaro') {
         if (itemType !== 'human_head') return false;
       } else if (currentModel === 'hand') {
         if (itemType !== 'hand') return false;
@@ -962,6 +966,7 @@ function setupEvents() {
     
     if (skullMesh) skullMesh.visible = false;
     if (headMesh) headMesh.visible = false;
+    if (asaroMesh) asaroMesh.visible = false;
     if (handMesh) handMesh.visible = false;
     if (dogSkullMesh) dogSkullMesh.visible = false;
     if (humanBodyMesh) humanBodyMesh.visible = false;
@@ -970,6 +975,7 @@ function setupEvents() {
     let targetMesh = null;
     if (val === 'skull') targetMesh = skullMesh;
     else if (val === 'head' && headMesh) targetMesh = headMesh;
+    else if (val === 'asaro' && asaroMesh) targetMesh = asaroMesh;
     else if (val === 'hand' && handMesh) targetMesh = handMesh;
     else if (val === 'dog_skull' && dogSkullMesh) targetMesh = dogSkullMesh;
     else if (val === 'human_body' && humanBodyMesh) targetMesh = humanBodyMesh;

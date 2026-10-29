@@ -1,21 +1,23 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Box, Palette, Maximize2, Minimize2 } from 'lucide-react';
+import { Box, Palette, Sun, Maximize2, Minimize2 } from 'lucide-react';
 import styles from './page.module.css';
 
 export default function HerramientasPage() {
     const { user } = useAuth();
-    const [activeTool, setActiveTool] = useState('anatomy'); // 'anatomy' | 'color'
+    const [activeTool, setActiveTool] = useState('anatomy'); // 'anatomy' | 'color' | 'asaro'
     const [isFullscreen, setIsFullscreen] = useState(false);
 
-    // Permitir acceso directo vía URL: ?tool=color o ?tool=colores o ?tool=anatomy
+    // Permitir acceso directo vía URL: ?tool=color o ?tool=asaro o ?tool=anatomy
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const params = new URLSearchParams(window.location.search);
             const tool = params.get('tool');
             if (tool === 'color' || tool === 'colores' || tool === 'paleta') {
                 setActiveTool('color');
+            } else if (tool === 'asaro' || tool === 'iluminacion' || tool === 'luz') {
+                setActiveTool('asaro');
             } else if (tool === 'anatomy' || tool === 'anatomia' || tool === '3d') {
                 setActiveTool('anatomy');
             }
@@ -58,8 +60,9 @@ export default function HerramientasPage() {
         setIsFullscreen(!isFullscreen);
     };
 
-    const anatomyIframeSrc = `/angleref/index.html?v=20261020m7${user?.role ? `&role=${encodeURIComponent(user.role)}` : ''}`;
+    const anatomyIframeSrc = `/angleref/index.html?v=20261029m1${user?.role ? `&role=${encodeURIComponent(user.role)}` : ''}`;
     const colorIframeSrc = `/color-palette/index.html?v=20261020m4`;
+    const asaroIframeSrc = `/asaro-studio/index.html?v=20261029m1`;
 
     const toolMeta = {
         anatomy: {
@@ -70,6 +73,11 @@ export default function HerramientasPage() {
         color: {
             title: 'Estudio de Color Rooster',
             badge: 'Herramienta Creativa · Acceso Libre',
+            badgeClass: styles.freeCreativeBadge
+        },
+        asaro: {
+            title: 'Estudio de Iluminación & Cabeza de Asaro 3D',
+            badge: 'Herramienta de Iluminación · Acceso Libre',
             badgeClass: styles.freeCreativeBadge
         }
     };
@@ -93,13 +101,23 @@ export default function HerramientasPage() {
 
                     <button
                         type="button"
+                        className={`${styles.toolTab} ${activeTool === 'asaro' ? styles.toolTabActive : ''}`}
+                        onClick={() => handleSelectTool('asaro')}
+                        title="Cabeza de Asaro 3D: Planos del rostro, luz direccional 360° y valores tonales"
+                    >
+                        <Sun size={16} className={styles.tabIcon} />
+                        <span className={styles.tabLabel}>Cabeza de Asaro 3D</span>
+                        <span className={styles.newPill}>Nuevo</span>
+                    </button>
+
+                    <button
+                        type="button"
                         className={`${styles.toolTab} ${activeTool === 'color' ? styles.toolTabActive : ''}`}
                         onClick={() => handleSelectTool('color')}
                         title="Estudio de Color Rooster: Círculo cromático, armonías, extractor y accesibilidad"
                     >
                         <Palette size={16} className={styles.tabIcon} />
                         <span className={styles.tabLabel}>Estudio de Color Rooster</span>
-                        <span className={styles.newPill}>Nuevo</span>
                     </button>
                 </div>
 
@@ -133,6 +151,15 @@ export default function HerramientasPage() {
                         src={anatomyIframeSrc}
                         className={styles.nativeFrame}
                         title="Estudio Anatómico 3D Rooster"
+                        allow="clipboard-write; fullscreen"
+                    />
+                </div>
+
+                <div className={`${styles.toolFramePane} ${activeTool === 'asaro' ? styles.paneVisible : styles.paneHidden}`}>
+                    <iframe
+                        src={asaroIframeSrc}
+                        className={styles.nativeFrame}
+                        title="Estudio de Iluminación & Cabeza de Asaro 3D"
                         allow="clipboard-write; fullscreen"
                     />
                 </div>
