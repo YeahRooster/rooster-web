@@ -18,7 +18,8 @@ export async function GET() {
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { dni, nombre, email, password, taller } = body;
+        const { dni, nombre, email, password } = body;
+        const tallerValue = body.taller !== undefined ? body.taller : body.taller_asignado;
 
         if (!dni || !nombre || !password) {
             return NextResponse.json({ status: 'error', message: 'Faltan campos obligatorios' }, { status: 400 });
@@ -31,7 +32,7 @@ export async function POST(request) {
                 nombre: String(nombre).trim(),
                 email: email ? String(email).trim() : null,
                 password: String(password).trim(),
-                taller_asignado: taller ? String(taller).trim() : null
+                taller_asignado: tallerValue ? String(tallerValue).trim() : null
             });
 
         if (error) {
@@ -50,7 +51,8 @@ export async function POST(request) {
 export async function PUT(request) {
     try {
         const body = await request.json();
-        const { dni, nombre, email, password, taller } = body;
+        const { dni, nombre, email, password } = body;
+        const tallerValue = body.taller !== undefined ? body.taller : body.taller_asignado;
 
         if (!dni) {
             return NextResponse.json({ status: 'error', message: 'Falta el DNI' }, { status: 400 });
@@ -60,7 +62,7 @@ export async function PUT(request) {
         if (nombre !== undefined) updateData.nombre = String(nombre).trim();
         if (email !== undefined) updateData.email = email ? String(email).trim() : null;
         if (password !== undefined && password.trim() !== '') updateData.password = String(password).trim();
-        if (taller !== undefined) updateData.taller_asignado = taller ? String(taller).trim() : null;
+        if (tallerValue !== undefined) updateData.taller_asignado = tallerValue ? String(tallerValue).trim() : null;
 
         const { error } = await supabaseAdmin
             .from('profesores')

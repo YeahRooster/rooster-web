@@ -262,6 +262,7 @@ export default function AdminDashboard() {
         const url = '/api/v2/admin/profesores';
         const method = editingProfesor ? 'PUT' : 'POST';
         const body = editingProfesor ? { ...editingProfesor } : { ...newProfesor };
+        body.taller = body.taller_asignado || '';
 
         try {
             const res = await fetch(url, {
@@ -931,11 +932,18 @@ export default function AdminDashboard() {
                             />
                             <input 
                                 type="text" 
-                                placeholder="Taller / Especialidad (opcional)" 
+                                list="listaTalleresProfesor"
+                                placeholder="Taller / Especialidad (ej: TALLER DE ANIMACION 2D)" 
                                 value={editingProfesor ? (editingProfesor.taller_asignado || '') : (newProfesor.taller_asignado || '')} 
                                 onChange={(e) => editingProfesor ? setEditingProfesor({ ...editingProfesor, taller_asignado: e.target.value }) : setNewProfesor({ ...newProfesor, taller_asignado: e.target.value })}
                                 className={styles.inputField} 
                             />
+                            <datalist id="listaTalleresProfesor">
+                                {talleres.map((t, idx) => (
+                                    <option key={idx} value={t.titulo || t.title || t.nombre} />
+                                ))}
+                                <option value="TALLER DE ANIMACION 2D" />
+                            </datalist>
                             <input 
                                 type="text" 
                                 placeholder="Contraseña" 
