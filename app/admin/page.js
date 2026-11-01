@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
-import { BarChart, Users, UserCog, Palette, FolderOpen, Image as ImageIcon, DollarSign, TrendingUp, FileText, Award, Calendar } from 'lucide-react';
+import { BarChart, Users, UserCog, Palette, FolderOpen, Image as ImageIcon, DollarSign, TrendingUp, FileText, Award, Calendar, Eye, EyeOff } from 'lucide-react';
 import WorkshopsTab from './WorkshopsTab';
 import ReportsTab from './ReportsTab';
 import CertificatesTab from './CertificatesTab';
@@ -40,6 +40,15 @@ export default function AdminDashboard() {
     const [showProfesorModal, setShowProfesorModal] = useState(false);
     const [editingProfesor, setEditingProfesor] = useState(null);
     const [newProfesor, setNewProfesor] = useState({ dni: '', nombre: '', email: '', password: '', taller_asignado: '' });
+    const [showProfPassword, setShowProfPassword] = useState({});
+    const [showModalPassword, setShowModalPassword] = useState(false);
+
+    const toggleShowPassword = (dni) => {
+        setShowProfPassword(prev => ({
+            ...prev,
+            [dni]: !prev[dni]
+        }));
+    };
     const [isSavingChallenge, setIsSavingChallenge] = useState(false);
     const [showSubmissionsModal, setShowSubmissionsModal] = useState(false);
     const [currentSubmissions, setCurrentSubmissions] = useState([]);
@@ -848,6 +857,7 @@ export default function AdminDashboard() {
                         <button onClick={() => {
                             setEditingProfesor(null);
                             setNewProfesor({ dni: '', nombre: '', email: '', password: '', taller_asignado: '' });
+                            setShowModalPassword(false);
                             setShowProfesorModal(true);
                         }} className="btn btn-primary">➕ Nuevo Profesor</button>
                     </div>
@@ -875,14 +885,38 @@ export default function AdminDashboard() {
                                             <td>{p.email || '-'}</td>
                                             <td>{p.taller_asignado || '-'}</td>
                                             <td>
-                                                <span style={{ fontFamily: 'monospace', background: '#374151', padding: '2px 6px', borderRadius: '4px' }}>
-                                                    {p.password}
-                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleShowPassword(p.dni)}
+                                                    title={showProfPassword[p.dni] ? "Ocultar contraseña" : "Tocar para ver contraseña"}
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '8px',
+                                                        background: '#374151',
+                                                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                                                        padding: '3px 8px',
+                                                        borderRadius: '5px',
+                                                        cursor: 'pointer',
+                                                        color: showProfPassword[p.dni] ? '#ffd500' : '#e5e7eb',
+                                                        transition: 'all 0.15s ease'
+                                                    }}
+                                                >
+                                                    <span style={{
+                                                        fontFamily: 'monospace',
+                                                        letterSpacing: showProfPassword[p.dni] ? 'normal' : '2px',
+                                                        fontSize: '0.85rem'
+                                                    }}>
+                                                        {showProfPassword[p.dni] ? p.password : '••••••••'}
+                                                    </span>
+                                                    {showProfPassword[p.dni] ? <EyeOff size={14} /> : <Eye size={14} style={{ opacity: 0.7 }} />}
+                                                </button>
                                             </td>
                                             <td>
                                                 <div style={{ display: 'flex', gap: '5px' }}>
                                                     <button onClick={() => {
                                                         setEditingProfesor({ ...p });
+                                                        setShowModalPassword(false);
                                                         setShowProfesorModal(true);
                                                     }} className="btn btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
                                                         ✏️ Editar
@@ -944,14 +978,35 @@ export default function AdminDashboard() {
                                 ))}
                                 <option value="TALLER DE ANIMACION 2D" />
                             </datalist>
-                            <input 
-                                type="text" 
-                                placeholder="Contraseña" 
-                                value={editingProfesor ? editingProfesor.password : newProfesor.password} 
-                                onChange={(e) => editingProfesor ? setEditingProfesor({ ...editingProfesor, password: e.target.value }) : setNewProfesor({ ...newProfesor, password: e.target.value })}
-                                required 
-                                className={styles.inputField} 
-                            />
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                <input 
+                                    type={showModalPassword ? "text" : "password"} 
+                                    placeholder="Contraseña" 
+                                    value={editingProfesor ? editingProfesor.password : newProfesor.password} 
+                                    onChange={(e) => editingProfesor ? setEditingProfesor({ ...editingProfesor, password: e.target.value }) : setNewProfesor({ ...newProfesor, password: e.target.value })} 
+                                    required 
+                                    className={styles.inputField} 
+                                    style={{ paddingRight: '40px', width: '100%' }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowModalPassword(!showModalPassword)}
+                                    title={showModalPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                                    style={{
+                                        position: 'absolute',
+                                        right: '12px',
+                                        background: 'none',
+                                        border: 'none',
+                                        color: showModalPassword ? '#ffd500' : '#9ca3af',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        padding: '4px'
+                                    }}
+                                >
+                                    {showModalPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
                             
                             <div className={styles.modalActions}>
                                 <button type="submit" className="btn btn-primary">{editingProfesor ? 'Actualizar' : 'Guardar'}</button>
