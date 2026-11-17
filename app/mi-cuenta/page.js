@@ -192,9 +192,11 @@ export default function MiCuentaPage() {
     const processFile = async (file) => {
         if (!file) return;
 
-        // Validar tamaño máximo (hasta 100MB)
-        if (file.size > 100 * 1024 * 1024) {
-            alert('El archivo es demasiado pesado (máximo permitido: 100MB)');
+        // Validar límite del plan gratuito de Cloudinary (10MB para documentos/imágenes, 100MB para videos)
+        const isVideo = file.type?.startsWith('video/') || /\.(mp4|mov|avi|mkv|webm)$/i.test(file.name);
+        const maxLimit = isVideo ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
+        if (file.size > maxLimit) {
+            alert(`El archivo "${file.name}" pesa ${(file.size / (1024 * 1024)).toFixed(1)} MB.\n\nEl plan gratuito de Cloudinary admite hasta 10 MB por archivo de documento/imagen.\n\n💡 Para archivos más pesados, usá la pestaña "📝 Nota / Link" de al lado pegando el enlace de Google Drive o Dropbox (sin límite de tamaño).`);
             return;
         }
 
@@ -601,7 +603,7 @@ export default function MiCuentaPage() {
                             {resourceMode === 'file' ? (
                                 <>
                                     <p>Sube material para tus alumnos:</p>
-                                    <p style={{ fontSize: '0.8rem', color: '#9ca3af', margin: '-0.5rem 0 0.5rem 0' }}>PDFs, imágenes, libros, pinceles o archivos ZIP (hasta 100MB)</p>
+                                    <p style={{ fontSize: '0.8rem', color: '#9ca3af', margin: '-0.5rem 0 0.5rem 0' }}>Archivos hasta 10MB (o usá "Nota / Link" para enlaces de Drive sin límite)</p>
                                     <input type="file" id="fileUpload" hidden onChange={handleFileUpload} disabled={uploadProgress > 0} />
                                     {uploadProgress === 0 ? (
                                         <label htmlFor="fileUpload" className={styles.uploadBtn}>➕ Seleccionar Archivo</label>

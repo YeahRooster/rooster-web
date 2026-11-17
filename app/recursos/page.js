@@ -11,7 +11,7 @@ export default function RecursosPage() {
     const [fetchingDrive, setFetchingDrive] = useState(false);
 
     useEffect(() => {
-        if (user && user.pagos && user.pagos.length > 0) {
+        if (user && ((user.pagos && user.pagos.length > 0) || user.role === 'teacher' || user.taller)) {
             loadAllResources();
         }
     }, [user]);
