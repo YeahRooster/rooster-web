@@ -9,6 +9,23 @@ export default function RecursosPage() {
 
     const [recursosPorTaller, setRecursosPorTaller] = useState({});
     const [fetchingDrive, setFetchingDrive] = useState(false);
+    const [highlightedRecursoId, setHighlightedRecursoId] = useState(null);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined' && Object.keys(recursosPorTaller).length > 0) {
+            const params = new URLSearchParams(window.location.search);
+            const targetRecurso = params.get('recurso');
+            if (targetRecurso) {
+                setHighlightedRecursoId(Number(targetRecurso));
+                setTimeout(() => {
+                    const el = document.getElementById(`recurso-${targetRecurso}`);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 400);
+            }
+        }
+    }, [recursosPorTaller]);
 
     useEffect(() => {
         if (user && ((user.pagos && user.pagos.length > 0) || user.role === 'teacher' || user.taller)) {
@@ -144,7 +161,21 @@ export default function RecursosPage() {
                                 recursosPorTaller[tName].map((item, i) => {
                                     const isLink = item.url?.startsWith('http');
                                     return (
-                                        <div key={i} className={styles.resourceItem} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '10px', marginBottom: '1rem' }}>
+                                        <div 
+                                            key={i} 
+                                            id={`recurso-${item.id}`}
+                                            className={styles.resourceItem} 
+                                            style={{ 
+                                                flexDirection: 'column', 
+                                                alignItems: 'flex-start', 
+                                                gap: '10px', 
+                                                marginBottom: '1rem',
+                                                border: highlightedRecursoId === item.id ? '2px solid var(--rooster-yellow)' : '1px solid rgba(255, 255, 255, 0.1)',
+                                                boxShadow: highlightedRecursoId === item.id ? '0 0 20px rgba(255, 213, 0, 0.6)' : 'none',
+                                                transform: highlightedRecursoId === item.id ? 'scale(1.01)' : 'none',
+                                                transition: 'all 0.4s ease'
+                                            }}
+                                        >
                                             <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                                 <div>
                                                     <h3 style={{ color: 'var(--rooster-yellow)', fontSize: '1.1rem', marginBottom: '0.25rem' }}>

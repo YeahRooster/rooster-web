@@ -117,7 +117,7 @@
     background: #1f2937;
     border: 1px solid #374151;
     border-radius: 8px;
-    width: 250px;
+    width: 290px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
     z-index: 1001;
     padding: 1rem;
@@ -137,9 +137,19 @@
 }
 
 .notificationItem {
-    padding: 0.5rem;
+    display: block;
+    padding: 0.65rem 0.6rem;
     border-bottom: 1px solid #374151;
     font-size: 0.85rem;
+    text-decoration: none;
+    color: inherit;
+    border-radius: 6px;
+    transition: background 0.15s ease;
+    cursor: pointer;
+}
+
+.notificationItem:hover {
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .notificationItem p {

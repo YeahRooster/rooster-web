@@ -21,7 +21,28 @@ export default function Navbar() {
         if (user) {
             loadNotifications();
             const interval = setInterval(loadNotifications, 30000); // Poll cada 30s
-            return () => clearInterval(interval);
+            
+    const getNotificationLink = (n) => {
+        const tipo = (n.tipo || '').toUpperCase().trim();
+        if (tipo === 'RECURSO') {
+            return n.post_id ? `/recursos?recurso=${n.post_id}` : '/recursos';
+        }
+        if (tipo === 'LIKE' || tipo === 'COMENTARIO' || tipo === 'LIKE_COMENTARIO') {
+            return n.post_id ? `/galeria?post=${n.post_id}` : '/galeria';
+        }
+        if (tipo === 'DESAFIO') {
+            return '/desafios';
+        }
+        if (tipo === 'COMUNIDAD') {
+            return '/comunidad';
+        }
+        if (tipo === 'GALLERY_PROMO') {
+            return '/galeria';
+        }
+        return null;
+    };
+
+    return () => clearInterval(interval);
         }
     }, [user]);
 
@@ -115,62 +136,55 @@ export default function Navbar() {
                                         {notifications.length === 0 ? (
                                             <p className={styles.emptyNotif}>No tienes notificaciones aún.</p>
                                         ) : (
-                                            notifications.map((n) => (
-                                                 <div key={n.id} className={`${styles.notificationItem} ${!n.leida ? styles.unreadLine : ''}`}>
-                                                    {(() => {
-                                                        const tipo = n.tipo?.toUpperCase().trim();
-                                                        if (tipo === 'GALLERY_PROMO') return <p>🎨 {n.mensaje || '¡No te olvides de compartir tu obra en la galería!'}</p>;
-                                                        if (tipo === 'BROADCAST') return <p>📢 {n.mensaje}</p>;
-                                                        if (tipo === 'RECURSO') return <p>📚 {n.mensaje}</p>;
-                                                        if (tipo === 'DESAFIO') return <p>🏆 {n.mensaje}</p>; 
-                                                        if (tipo === 'COMUNIDAD') return <p>{n.mensaje}</p>; 
-                                                        
-                                                        
+                                            notifications.map((n) => {
+                                                const dest = getNotificationLink(n);
+                                                const tipo = (n.tipo || '').toUpperCase().trim();
+                                                return (
+                                                    <Link
+                                                        key={n.id}
+                                                        href={dest || '#'}
+                                                        onClick={() => setShowNotifications(false)}
+                                                        className={`${styles.notificationItem} ${!n.leida ? styles.unreadLine : ''}`}
+                                                    >
+                                                        {tipo === 'GALLERY_PROMO' && (
+                                                            <p>🎨 {n.mensaje || '¡No te olvides de compartir tu obra en la galería!'}</p>
+                                                        )}
+                                                        {tipo === 'BROADCAST' && (
+                                                            <p>📢 {n.mensaje}</p>
+                                                        )}
+                                                        {tipo === 'RECURSO' && (
+                                                            <p>📚 {n.mensaje}</p>
+                                                        )}
+                                                        {tipo === 'DESAFIO' && (
+                                                            <p>🏆 {n.mensaje}</p>
+                                                        )}
+                                                        {tipo === 'COMUNIDAD' && (
+                                                            <p>💬 {n.mensaje}</p>
+                                                        )}
+                                                        {tipo === 'COMENTARIO' && (
+                                                            <p>💬 <strong>{n.actor_nombre}</strong> ha comentado tu dibujo.</p>
+                                                        )}
+                                                        {tipo === 'LIKE_COMENTARIO' && (
+                                                            <p>❤️ <strong>{n.actor_nombre}</strong> le dio me gusta a tu comentario.</p>
+                                                        )}
+                                                        {tipo === 'LIKE' && (
+                                                            <p>❤️ <strong>{n.actor_nombre}</strong> le dio me gusta a tu obra.</p>
+                                                        )}
+                                                        {!['GALLERY_PROMO', 'BROADCAST', 'RECURSO', 'DESAFIO', 'COMUNIDAD', 'COMENTARIO', 'LIKE_COMENTARIO', 'LIKE'].includes(tipo) && (
+                                                            <p>🔔 {n.actor_nombre && <strong>{n.actor_nombre} </strong>}{n.mensaje || 'tiene una nueva notificación.'}</p>
+                                                        )}
 
-                                                        // Notificación de COMENTARIO en una obra
-                                                        if (tipo === 'COMENTARIO') {
-                                                            const link = n.post_id ? `/galeria?post=${n.post_id}` : '/galeria';
-                                                            return (
-                                                                <p>
-                                                                    💬 <strong>{n.actor_nombre}</strong> ha comentado tu dibujo.{' '}
-                                                                    <a href={link} style={{ color: 'var(--rooster-yellow)', fontSize: '0.82rem' }}>Ver obra →</a>
-                                                                </p>
-                                                            );
-                                                        }
-
-                                                        // Notificación de LIKE en un comentario
-                                                        if (tipo === 'LIKE_COMENTARIO') {
-                                                            const link = n.post_id ? `/galeria?post=${n.post_id}` : '/galeria';
-                                                            return (
-                                                                <p>
-                                                                    ❤️ <strong>{n.actor_nombre}</strong> le dio me gusta a tu comentario.{' '}
-                                                                    <a href={link} style={{ color: 'var(--rooster-yellow)', fontSize: '0.82rem' }}>Ver obra →</a>
-                                                                </p>
-                                                            );
-                                                        }
-
-                                                        // Notificación de LIKE en una foto
-                                                        if (tipo === 'LIKE') {
-                                                            const link = n.post_id ? `/galeria?post=${n.post_id}` : '/galeria';
-                                                            return (
-                                                                <p>
-                                                                    ❤️ <strong>{n.actor_nombre}</strong> le dio me gusta a tu obra.{' '}
-                                                                    <a href={link} style={{ color: 'var(--rooster-yellow)', fontSize: '0.82rem' }}>Ver obra →</a>
-                                                                </p>
-                                                            );
-                                                        }
-
-                                                        // Fallback genérico
-                                                        return (
-                                                            <p>
-                                                                🔔 {n.actor_nombre && <strong>{n.actor_nombre} </strong>}
-                                                                {n.mensaje || 'tiene una nueva notificación.'}
-                                                            </p>
-                                                        );
-                                                    })()}
-                                                    <span>{new Date(n.fecha).toLocaleDateString()}</span>
-                                                </div>
-                                            ))
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                                                            <span>{new Date(n.fecha).toLocaleDateString()}</span>
+                                                            {dest && (
+                                                                <span style={{ color: 'var(--rooster-yellow)', fontSize: '0.72rem', fontWeight: 'bold' }}>
+                                                                    {tipo === 'RECURSO' ? 'Ver material →' : (tipo === 'DESAFIO' ? 'Ver desafío →' : (tipo === 'COMUNIDAD' ? 'Ir a comunidad →' : 'Ver obra →'))}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </Link>
+                                                );
+                                            })
                                         )}
                                     </div>
                                 </div>

@@ -30,6 +30,7 @@ function GaleriaPageContent() {
     const [comments, setComments] = useState([]);
     const [loadingComments, setLoadingComments] = useState(false);
     const [newCommentText, setNewCommentText] = useState('');
+    const [highlightedPostId, setHighlightedPostId] = useState(null);
 
     // URL params para abrir post desde notificación
     const searchParams = useSearchParams();
@@ -38,12 +39,19 @@ function GaleriaPageContent() {
         loadPosts();
     }, [viewMode]); // Recargar cuando cambia el modo de vista
 
-    // Si viene ?post=ID desde una notificación, abrir ese post automáticamente
+    // Si viene ?post=ID desde una notificación, abrir ese post automáticamente y hacer scroll hacia él
     useEffect(() => {
         const postIdFromUrl = searchParams.get('post');
         if (postIdFromUrl && posts.length > 0) {
             const targetPost = posts.find(p => String(p.id) === String(postIdFromUrl));
             if (targetPost) {
+                setHighlightedPostId(targetPost.id);
+                setTimeout(() => {
+                    const el = document.getElementById(`post-${targetPost.id}`);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 350);
                 openComments(targetPost);
             }
         }
@@ -336,7 +344,18 @@ function GaleriaPageContent() {
                 )}
 
                 {posts.map((post) => (
-                    <div key={post.id} className={styles.postCard} style={{ opacity: viewMode === 'trash' ? 0.8 : 1, border: viewMode === 'trash' ? '2px solid red' : 'none' }}>
+                    <div 
+                        key={post.id} 
+                        id={`post-${post.id}`}
+                        className={styles.postCard} 
+                        style={{ 
+                            opacity: viewMode === 'trash' ? 0.8 : 1, 
+                            border: highlightedPostId === post.id ? '2px solid var(--rooster-yellow)' : (viewMode === 'trash' ? '2px solid red' : 'none'),
+                            boxShadow: highlightedPostId === post.id ? '0 0 25px rgba(255, 213, 0, 0.6)' : 'none',
+                            transform: highlightedPostId === post.id ? 'scale(1.02)' : 'none',
+                            transition: 'all 0.4s ease'
+                        }}
+                    >
                         <div
                             className={styles.imageContainer}
                             onClick={() => setSelectedImage(post.imagen_url)}

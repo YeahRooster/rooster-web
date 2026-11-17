@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/config/supabaseAdmin';
 import { v2 as cloudinary } from 'cloudinary';
-import { sendResourceNotificationEmail } from '@/lib/email';
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -22,32 +21,35 @@ export async function POST(request) {
         console.log(`☁️ Procesando recurso para el taller: ${taller} (Acción: ${action || 'upload'})`);
 
         let resourceUrl = '';
+        let createdResourceId = null;
 
         if (action === 'shareNote') {
             // Caso 1: NOTA o LINK
-            const { error: dbErr } = await supabaseAdmin.from('recursos').insert({
+            const { data: dbData, error: dbErr } = await supabaseAdmin.from('recursos').insert({
                 taller: taller,
                 nombre_archivo: filename,
                 url_archivo: data, // El link o mensaje se guarda en la URL
                 profesor_dni: teacher_dni || null,
                 fecha_subida: new Date()
-            });
+            }).select('id').single();
 
             if (dbErr) throw dbErr;
             resourceUrl = data;
+            createdResourceId = dbData?.id;
         } else if (url || action === 'registerResource') {
             // Caso 2: ARCHIVO YA SUBIDO DIRECTO A CLOUDINARY (Soporta archivos grandes)
             const finalUrl = url || data;
-            const { error: dbErr } = await supabaseAdmin.from('recursos').insert({
+            const { data: dbData, error: dbErr } = await supabaseAdmin.from('recursos').insert({
                 taller: taller,
                 nombre_archivo: filename,
                 url_archivo: finalUrl,
                 profesor_dni: teacher_dni || null,
                 fecha_subida: new Date()
-            });
+            }).select('id').single();
 
             if (dbErr) throw dbErr;
             resourceUrl = finalUrl;
+            createdResourceId = dbData?.id;
         } else {
             // Caso 3: Fallback legado (Base64)
             const isDocument = filename.toLowerCase().endsWith('.pdf') ||
@@ -71,16 +73,17 @@ export async function POST(request) {
             });
 
             // Registrar en Supabase
-            const { error: dbErr } = await supabaseAdmin.from('recursos').insert({
+            const { data: dbData, error: dbErr } = await supabaseAdmin.from('recursos').insert({
                 taller: taller,
                 nombre_archivo: filename,
                 url_archivo: uploadRes.secure_url,
                 profesor_dni: teacher_dni || null,
                 fecha_subida: new Date()
-            });
+            }).select('id').single();
 
             if (dbErr) throw dbErr;
             resourceUrl = uploadRes.secure_url;
+            createdResourceId = dbData?.id;
         }
 
         // --- LÓGICA DE NOTIFICACIONES ---
@@ -92,12 +95,13 @@ export async function POST(request) {
             .eq('alumnos.activo', true);
 
         if (!iErr && activeStudents?.length > 0) {
-            // 2. Crear las notificaciones visuales (campanita)
+            // 2. Crear las notificaciones visuales (campanita) con post_id apuntando al recurso
             const notifications = activeStudents.map(i => ({
                 destinatario_dni: i.alumno_dni,
                 actor_nombre: teacher || 'Tu profesor',
                 tipo: 'RECURSO',
-                mensaje: `Tu profesor subió material nuevo al taller de ${taller}. ¡Ya está disponible para descargarlo!`,
+                post_id: createdResourceId || null,
+                mensaje: `Tu profesor subió material nuevo al taller de ${taller}: "${filename}". ¡Ya podés descargarlo!`,
                 leida: false
             }));
 
@@ -106,7 +110,8 @@ export async function POST(request) {
 
         return NextResponse.json({
             status: 'success',
-            url: resourceUrl
+            url: resourceUrl,
+            id: createdResourceId
         });
 
     } catch (error) {
