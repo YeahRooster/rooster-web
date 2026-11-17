@@ -12,7 +12,7 @@ cloudinary.config({
 export async function POST(request) {
     try {
         const body = await request.json();
-        let { action, filename, data, taller, teacher, filetype, teacher_dni } = body;
+        let { action, filename, data, url, taller, teacher, filetype, teacher_dni } = body;
 
         // Normalizar taller de guion para Jorge Roldan (mismatch con el nombre del taller en la base de datos)
         if (taller && taller.trim().toUpperCase() === 'TALLER DE GUION') {
@@ -24,7 +24,7 @@ export async function POST(request) {
         let resourceUrl = '';
 
         if (action === 'shareNote') {
-            // Caso 1: NOTA o LINK (No usa Cloudinary)
+            // Caso 1: NOTA o LINK
             const { error: dbErr } = await supabaseAdmin.from('recursos').insert({
                 taller: taller,
                 nombre_archivo: filename,
@@ -35,11 +35,26 @@ export async function POST(request) {
 
             if (dbErr) throw dbErr;
             resourceUrl = data;
+        } else if (url || action === 'registerResource') {
+            // Caso 2: ARCHIVO YA SUBIDO DIRECTO A CLOUDINARY (Soporta archivos grandes)
+            const finalUrl = url || data;
+            const { error: dbErr } = await supabaseAdmin.from('recursos').insert({
+                taller: taller,
+                nombre_archivo: filename,
+                url_archivo: finalUrl,
+                profesor_dni: teacher_dni || null,
+                fecha_subida: new Date()
+            });
+
+            if (dbErr) throw dbErr;
+            resourceUrl = finalUrl;
         } else {
-            // Caso 2: ARCHIVO (Usa Cloudinary)
+            // Caso 3: Fallback legado (Base64)
             const isDocument = filename.toLowerCase().endsWith('.pdf') ||
                 filename.toLowerCase().endsWith('.doc') ||
-                filename.toLowerCase().endsWith('.docx');
+                filename.toLowerCase().endsWith('.docx') ||
+                filename.toLowerCase().endsWith('.zip') ||
+                filename.toLowerCase().endsWith('.rar');
 
             const resourceType = isDocument ? 'raw' : 'auto';
             const publicId = isDocument ? filename : filename.split('.')[0];
@@ -47,7 +62,7 @@ export async function POST(request) {
 
             // Subir a Cloudinary
             const uploadRes = await cloudinary.uploader.upload(`data:${mime};base64,${data}`, {
-                folder: `rooster/recursos/${taller.replace(/\s+/g, '_')}`,
+                folder: `rooster/recursos/${(taller || 'general').replace(/\s+/g, '_')}`,
                 public_id: publicId,
                 resource_type: resourceType,
                 type: 'upload',
@@ -87,22 +102,6 @@ export async function POST(request) {
             }));
 
             await supabaseAdmin.from('social_notifications').insert(notifications);
-
-            // 3. (OPCIONAL) Enviar mails desactivado por pedido del usuario
-            // para evitar saturar la bandeja de entrada.
-            /*
-            Promise.all(activeStudents.map(s => {
-                if (s.alumnos.email) {
-                    return sendResourceNotificationEmail({
-                        to: s.alumnos.email,
-                        studentName: s.alumnos.nombre,
-                        teacherName: teacher || 'Tu profesor',
-                        workshopName: taller,
-                        resourceName: filename
-                    });
-                }
-            })).catch(e => console.error("Error enviando mails de recurso:", e));
-            */
         }
 
         return NextResponse.json({

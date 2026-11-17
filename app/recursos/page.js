@@ -159,9 +159,7 @@ export default function RecursosPage() {
                                                         rel="noopener noreferrer"
                                                         className="btn btn-outline"
                                                         style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', textDecoration: 'none' }}
-                                                    >
-                                                        Ver Material
-                                                    </a>
+                                                    >📥 Ver / Descargar</a>
                                                 ) : (
                                                     <span style={{ background: 'rgba(255,255,255,0.1)', padding: '5px 10px', borderRadius: '4px', fontSize: '0.8rem' }}>Nota del Profe</span>
                                                 )}

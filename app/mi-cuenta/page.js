@@ -192,49 +192,133 @@ export default function MiCuentaPage() {
     const processFile = async (file) => {
         if (!file) return;
 
-        // Validar tamaño máximo (ej: 10MB)
-        if (file.size > 10 * 1024 * 1024) {
-            alert('El archivo es muy pesado (máx 10MB)');
+        // Validar tamaño máximo (hasta 100MB)
+        if (file.size > 100 * 1024 * 1024) {
+            alert('El archivo es demasiado pesado (máximo permitido: 100MB)');
             return;
         }
 
-        setUploadProgress(10);
-        setUploadStatus('Leyendo archivo...');
+        setUploadProgress(5);
+        setUploadStatus('Preparando carga directa...');
 
-        const reader = new FileReader();
-        reader.onload = async (f) => {
-            setUploadProgress(30);
-            const base64 = f.target.result.split(',')[1];
-            try {
-                setUploadProgress(50);
-                setUploadStatus('Subiendo a Rooster Cloud...');
-                const res = await fetch('/api/teacher/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'uploadResource',
-                        filename: file.name,
-                        filetype: file.type,
-                        data: base64,
-                        taller: selectedTaller,
-                        teacher: user.nombre,
-                        teacher_dni: user.dni
-                    })
-                });
-                const result = await res.json();
-                if (result.status === 'success') {
-                    setUploadProgress(100);
-                    setUploadStatus('¡Hecho!');
-                    setTimeout(() => { setUploadProgress(0); loadTeacherData(); }, 1500);
-                } else {
-                    throw new Error(result.message);
-                }
-            } catch (err) {
-                alert('Error: ' + err.message);
-                setUploadProgress(0);
+        try {
+            // 1. Solicitar firma de subida segura para Cloudinary
+            const signRes = await fetch('/api/teacher/upload/sign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    taller: selectedTaller,
+                    filename: file.name
+                })
+            });
+
+            const signData = await signRes.json();
+            if (signData.status !== 'success') {
+                throw new Error(signData.message || 'No se pudo autorizar la subida');
             }
-        };
-        reader.readAsDataURL(file);
+
+            const { signature, timestamp, folder, apiKey, cloudName } = signData;
+
+            // 2. Determinar endpoint y tipo de recurso según extensión
+            const ext = (file.name.split('.').pop() || '').toLowerCase();
+            const rawExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar', '7z', 'psd', 'ai', 'clip', 'kra', 'txt', 'epub', 'obj', 'blend', 'fbx'];
+            const videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+
+            let endpointType = 'raw';
+            if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext)) {
+                endpointType = 'image';
+            } else if (videoExtensions.includes(ext)) {
+                endpointType = 'video';
+            }
+
+            // 3. Preparar FormData para subida directa
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('api_key', apiKey);
+            formData.append('timestamp', timestamp);
+            formData.append('signature', signature);
+            formData.append('folder', folder);
+
+            setUploadStatus('Subiendo a la nube: 0%...');
+
+            // 4. Subir directamente a Cloudinary con XMLHttpRequest para barra de progreso real
+            const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${endpointType}/upload`;
+
+            const cloudinaryData = await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', uploadUrl);
+
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        const pct = Math.round((e.loaded / e.total) * 100);
+                        const displayPct = Math.min(Math.round(pct * 0.95), 95);
+                        setUploadProgress(displayPct);
+                        setUploadStatus(`Subiendo a la nube: ${pct}%`);
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try {
+                            const res = JSON.parse(xhr.responseText);
+                            resolve(res);
+                        } catch (err) {
+                            reject(new Error('Respuesta inválida de Cloudinary'));
+                        }
+                    } else {
+                        try {
+                            const errData = JSON.parse(xhr.responseText);
+                            reject(new Error(errData.error?.message || `Error ${xhr.status} de Cloudinary`));
+                        } catch (_) {
+                            reject(new Error(`Error ${xhr.status} al subir a Cloudinary`));
+                        }
+                    }
+                };
+
+                xhr.onerror = () => reject(new Error('Error de conexión al subir el archivo'));
+                xhr.send(formData);
+            });
+
+            if (!cloudinaryData.secure_url) {
+                throw new Error('No se recibió la URL de descarga del archivo');
+            }
+
+            setUploadProgress(96);
+            setUploadStatus('Registrando recurso en el taller...');
+
+            // 5. Registrar el recurso en Supabase y notificar a los alumnos
+            const regRes = await fetch('/api/teacher/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'registerResource',
+                    filename: file.name,
+                    url: cloudinaryData.secure_url,
+                    taller: selectedTaller,
+                    teacher: user.nombre,
+                    teacher_dni: user.dni
+                })
+            });
+
+            const regData = await regRes.json();
+            if (regData.status !== 'success') {
+                throw new Error(regData.message || 'Error al guardar el recurso');
+            }
+
+            setUploadProgress(100);
+            setUploadStatus('¡Subida completada con éxito!');
+            setTimeout(() => {
+                setUploadProgress(0);
+                setUploadStatus('');
+                loadTeacherData();
+            }, 1500);
+
+        } catch (err) {
+            console.error('Error al subir recurso:', err);
+            alert('Error: ' + err.message);
+            setUploadProgress(0);
+            setUploadStatus('');
+        }
     };
 
     const handleSaveCertData = async () => { setCertSaving(true); try { const res = await fetch('/api/v2/teacher/certificates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inscripcionId: editingCertStudent.id, certificadosData: editingCertStudent.certificados_data }) }); if(res.ok) { alert('Datos guardados correctamente'); setShowCertModal(false); loadTeacherData(); } else { alert('Error al guardar'); } } catch(err) { console.error(err); alert('Error al guardar'); } finally { setCertSaving(false); } };
@@ -517,6 +601,7 @@ export default function MiCuentaPage() {
                             {resourceMode === 'file' ? (
                                 <>
                                     <p>Sube material para tus alumnos:</p>
+                                    <p style={{ fontSize: '0.8rem', color: '#9ca3af', margin: '-0.5rem 0 0.5rem 0' }}>PDFs, imágenes, libros, pinceles o archivos ZIP (hasta 100MB)</p>
                                     <input type="file" id="fileUpload" hidden onChange={handleFileUpload} disabled={uploadProgress > 0} />
                                     {uploadProgress === 0 ? (
                                         <label htmlFor="fileUpload" className={styles.uploadBtn}>➕ Seleccionar Archivo</label>
