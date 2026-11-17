@@ -6,6 +6,27 @@ import { useAuth } from '@/context/AuthContext';
 import styles from './Navbar.module.css';
 import UserAvatar from '@/components/UserAvatar';
 
+function getNotificationLink(n) {
+    if (!n) return null;
+    const tipo = (n.tipo || '').toUpperCase().trim();
+    if (tipo === 'RECURSO') {
+        return n.post_id ? `/recursos?recurso=${n.post_id}` : '/recursos';
+    }
+    if (tipo === 'LIKE' || tipo === 'COMENTARIO' || tipo === 'LIKE_COMENTARIO') {
+        return n.post_id ? `/galeria?post=${n.post_id}` : '/galeria';
+    }
+    if (tipo === 'DESAFIO') {
+        return '/desafios';
+    }
+    if (tipo === 'COMUNIDAD') {
+        return '/comunidad';
+    }
+    if (tipo === 'GALLERY_PROMO') {
+        return '/galeria';
+    }
+    return null;
+}
+
 export default function Navbar() {
     const { user, logout } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -21,28 +42,7 @@ export default function Navbar() {
         if (user) {
             loadNotifications();
             const interval = setInterval(loadNotifications, 30000); // Poll cada 30s
-            
-    const getNotificationLink = (n) => {
-        const tipo = (n.tipo || '').toUpperCase().trim();
-        if (tipo === 'RECURSO') {
-            return n.post_id ? `/recursos?recurso=${n.post_id}` : '/recursos';
-        }
-        if (tipo === 'LIKE' || tipo === 'COMENTARIO' || tipo === 'LIKE_COMENTARIO') {
-            return n.post_id ? `/galeria?post=${n.post_id}` : '/galeria';
-        }
-        if (tipo === 'DESAFIO') {
-            return '/desafios';
-        }
-        if (tipo === 'COMUNIDAD') {
-            return '/comunidad';
-        }
-        if (tipo === 'GALLERY_PROMO') {
-            return '/galeria';
-        }
-        return null;
-    };
-
-    return () => clearInterval(interval);
+            return () => clearInterval(interval);
         }
     }, [user]);
 
@@ -175,7 +175,7 @@ export default function Navbar() {
                                                         )}
 
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
-                                                            <span>{new Date(n.fecha).toLocaleDateString()}</span>
+                                                            <span>{n.fecha ? new Date(n.fecha).toLocaleDateString() : ''}</span>
                                                             {dest && (
                                                                 <span style={{ color: 'var(--rooster-yellow)', fontSize: '0.72rem', fontWeight: 'bold' }}>
                                                                     {tipo === 'RECURSO' ? 'Ver material →' : (tipo === 'DESAFIO' ? 'Ver desafío →' : (tipo === 'COMUNIDAD' ? 'Ir a comunidad →' : 'Ver obra →'))}
