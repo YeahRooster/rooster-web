@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import styles from './page.module.css';
 import { BarChart, Users, UserCog, Palette, FolderOpen, Image as ImageIcon, DollarSign, TrendingUp, FileText, Award, Calendar, Eye, EyeOff } from 'lucide-react';
@@ -64,6 +64,60 @@ export default function AdminDashboard() {
 
     // NUEVOS ESTADOS: Búsqueda y Modal de Alumno
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedTallerFilter, setSelectedTallerFilter] = useState('all');
+
+    const availableTalleres = useMemo(() => {
+        const list = new Set();
+        if (Array.isArray(talleres)) {
+            talleres.forEach(t => {
+                if (t.titulo) list.add(t.titulo.trim().toUpperCase());
+            });
+        }
+        if (Array.isArray(students)) {
+            students.forEach(s => {
+                if (Array.isArray(s.talleres)) {
+                    s.talleres.forEach(t => {
+                        if (t) list.add(t.trim().toUpperCase());
+                    });
+                }
+                if (Array.isArray(s.talleresInscriptos)) {
+                    s.talleresInscriptos.forEach(t => {
+                        if (t) list.add(t.trim().toUpperCase());
+                    });
+                }
+            });
+        }
+        return Array.from(list).sort();
+    }, [talleres, students]);
+
+    const filteredStudents = useMemo(() => {
+        const q = searchQuery.toLowerCase().trim();
+        return students
+            .filter(s => {
+                if (!q) return true;
+                const inNombre = s.nombre?.toLowerCase().includes(q);
+                const inDni = s.dni?.includes(q);
+                const inEmail = s.email && s.email.toLowerCase().includes(q);
+                const inTalleres = s.talleres && s.talleres.some(t => t.toLowerCase().includes(q));
+                return inNombre || inDni || inEmail || inTalleres;
+            })
+            .filter(s => {
+                if (selectedTallerFilter === 'all') return true;
+                const target = selectedTallerFilter.toLowerCase();
+                return s.talleres && s.talleres.some(t => t.toLowerCase().includes(target));
+            })
+            .filter(s => {
+                if (filter === 'all') return true;
+                if (filter === 'active') return s.activo && !s.dado_de_baja;
+                if (filter === 'pending') return !s.activo && !s.dado_de_baja;
+                if (filter === 'inactive') return s.dado_de_baja;
+                return true;
+            })
+            .sort((a, b) => {
+                if (a.activo === b.activo) return a.nombre.localeCompare(b.nombre);
+                return a.activo ? -1 : 1;
+            });
+    }, [students, searchQuery, selectedTallerFilter, filter]);
     const [showAddStudentModal, setShowAddStudentModal] = useState(false);
     const [newStudent, setNewStudent] = useState({ dni: '', nombre: '', email: '', telefono: '', direccion: '', ciudad: '', pais: '', tutor_nombre: '', talleres: [] });
     const [isAddingStudent, setIsAddingStudent] = useState(false);
@@ -1019,15 +1073,39 @@ export default function AdminDashboard() {
 
             {view === 'students' && (
                 <div className={styles.studentsSection}>
-                    <div className={styles.topActions}>
-                        <div className={styles.searchBar}>
-                            <input
-                                type="text"
-                                placeholder="Buscar por nombre, DNI o email..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                            <span className={styles.searchIcon}>🔍</span>
+                    <div className={styles.topActions} style={{ flexWrap: 'wrap', gap: '1rem' }}>
+                        <div style={{ display: 'flex', flex: 1, minWidth: '320px', gap: '10px', alignItems: 'center' }}>
+                            <div className={styles.searchBar} style={{ flex: 1, maxWidth: '100%' }}>
+                                <input
+                                    type="text"
+                                    placeholder="Buscar por nombre, DNI, email o taller (ej: cerámica)..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                                <span className={styles.searchIcon}>🔍</span>
+                            </div>
+                            <select
+                                value={selectedTallerFilter}
+                                onChange={(e) => setSelectedTallerFilter(e.target.value)}
+                                style={{
+                                    background: '#1f2937',
+                                    color: selectedTallerFilter === 'all' ? '#e5e7eb' : '#ffd500',
+                                    border: selectedTallerFilter === 'all' ? '1px solid #374151' : '1px solid #ffd500',
+                                    borderRadius: '8px',
+                                    padding: '10px 14px',
+                                    fontSize: '0.85rem',
+                                    cursor: 'pointer',
+                                    fontWeight: selectedTallerFilter === 'all' ? 'normal' : 'bold',
+                                    outline: 'none',
+                                    minWidth: '200px'
+                                }}
+                                title="Filtrar por Taller"
+                            >
+                                <option value="all">🎨 Todos los talleres</option>
+                                {availableTalleres.map(t => (
+                                    <option key={t} value={t}>{t}</option>
+                                ))}
+                            </select>
                         </div>
                         <button
                             className="btn btn-primary"
@@ -1063,26 +1141,47 @@ export default function AdminDashboard() {
                         <button onClick={() => { setFilter('active'); loadStudents(); }} className={filter === 'active' ? styles.btnFilterActive : ''}>Activos 🟢</button>
                         <button onClick={() => { setFilter('inactive'); loadStudents(); }} className={filter === 'inactive' ? styles.btnFilterActive : ''}>Inactivos 🔴</button>
                     </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', flexWrap: 'wrap', gap: '10px' }}>
+                        <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
+                            Mostrando <strong style={{ color: '#fff' }}>{filteredStudents.length}</strong> alumnos
+                            {selectedTallerFilter !== 'all' && (
+                                <> del taller <span style={{ color: '#ffd500', fontWeight: 'bold' }}>{selectedTallerFilter}</span></>
+                            )}
+                            {searchQuery.trim() && (
+                                <> con búsqueda "<span style={{ color: '#ffd500' }}>{searchQuery.trim()}</span>"</>
+                            )}
+                        </span>
+                        {(searchQuery || selectedTallerFilter !== 'all' || filter !== 'all') && (
+                            <button
+                                onClick={() => {
+                                    setSearchQuery('');
+                                    setSelectedTallerFilter('all');
+                                    setFilter('all');
+                                    loadStudents();
+                                }}
+                                style={{
+                                    background: 'none',
+                                    border: '1px solid #4b5563',
+                                    color: '#ffd500',
+                                    borderRadius: '4px',
+                                    padding: '3px 10px',
+                                    fontSize: '0.75rem',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Limpiar filtros ✕
+                            </button>
+                        )}
+                    </div>
 
                     {studentViewMode === 'grid' ? (
                         <div className={styles.cardsGrid}>
-                        {students
-                            .filter(s => {
-                                const q = searchQuery.toLowerCase();
-                                return s.nombre.toLowerCase().includes(q) || s.dni.includes(q) || (s.email && s.email.toLowerCase().includes(q));
-                            })
-                            .filter(s => {
-                                if (filter === 'all') return true;
-                                if (filter === 'active') return s.activo && !s.dado_de_baja;
-                                if (filter === 'pending') return !s.activo && !s.dado_de_baja;
-                                if (filter === 'inactive') return s.dado_de_baja;
-                                return true;
-                            })
-                            .sort((a, b) => {
-                                if (a.activo === b.activo) return a.nombre.localeCompare(b.nombre);
-                                return a.activo ? -1 : 1;
-                            })
-                            .map((s) => (
+                        {filteredStudents.length === 0 ? (
+                            <p style={{ color: '#9ca3af', textAlign: 'center', gridColumn: '1 / -1', padding: '2.5rem', background: '#1f2937', borderRadius: '8px' }}>
+                                🔍 No se encontraron alumnos con los filtros seleccionados.
+                            </p>
+                        ) : (
+                            filteredStudents.map((s) => (
                                 <div key={s.dni} className={styles.studentCard} style={{ opacity: s.activo ? 1 : 0.6, filter: s.activo ? 'none' : 'grayscale(80%)' }}>
                                     <div className={styles.cardHeader}>
                                         <div className={styles.avatar}>
@@ -1107,6 +1206,15 @@ export default function AdminDashboard() {
                                                     <p>{s.email || 'Sin email'}</p>
                                                     <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>{s.dni}</p>
                                                     <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>{s.telefono || 'Sin teléfono'}</p>
+                                                    {s.talleres && s.talleres.length > 0 && (
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
+                                                            {s.talleres.map(t => (
+                                                                <span key={t} style={{ fontSize: '0.7rem', background: 'rgba(255, 213, 0, 0.1)', border: '1px solid rgba(255, 213, 0, 0.25)', color: '#ffd500', padding: '1px 6px', borderRadius: '4px' }}>
+                                                                    🎨 {t}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'flex-start' }}>
                                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
@@ -1189,8 +1297,7 @@ export default function AdminDashboard() {
                                         )}
                                     </div>
                                 </div>
-                            ))
-                        }
+                            )))}
                         </div>
                     ) : (
                         <div className={styles.tableWrapper} style={{ overflowX: 'auto' }}>
@@ -1205,23 +1312,14 @@ export default function AdminDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {students
-                                        .filter(s => {
-                                            const q = searchQuery.toLowerCase();
-                                            return s.nombre.toLowerCase().includes(q) || s.dni.includes(q) || (s.email && s.email.toLowerCase().includes(q));
-                                        })
-                                        .filter(s => {
-                                            if (filter === 'all') return true;
-                                            if (filter === 'active') return s.activo && !s.dado_de_baja;
-                                            if (filter === 'pending') return !s.activo && !s.dado_de_baja;
-                                            if (filter === 'inactive') return s.dado_de_baja;
-                                            return true;
-                                        })
-                                        .sort((a, b) => {
-                                            if (a.activo === b.activo) return a.nombre.localeCompare(b.nombre);
-                                            return a.activo ? -1 : 1;
-                                        })
-                                        .map((s) => (
+                                    {filteredStudents.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="5" className="text-center" style={{ color: '#9ca3af', padding: '2rem' }}>
+                                                🔍 No se encontraron alumnos con los filtros seleccionados.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredStudents.map((s) => (
                                             <tr key={s.dni} style={{ opacity: s.activo ? 1 : 0.6, background: s.activo ? 'transparent' : '#2d3748' }}>
                                                 <td>
                                                     <strong>{s.nombre}</strong><br/>
@@ -1262,7 +1360,8 @@ export default function AdminDashboard() {
                                                     </div>
                                                 </td>
                                             </tr>
-                                        ))}
+                                        )))
+                                    }
                                 </tbody>
                             </table>
                         </div>
