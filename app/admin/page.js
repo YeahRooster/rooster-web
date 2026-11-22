@@ -16,6 +16,43 @@ export default function AdminDashboard() {
     const [talleres, setTalleres] = useState([]); // Para editor de precios
     const [paymentsHistory, setPaymentsHistory] = useState([]);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [paymentTallerFilter, setPaymentTallerFilter] = useState('all');
+    const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
+
+    const availablePaymentTalleres = useMemo(() => {
+        const set = new Set();
+        if (Array.isArray(paymentsHistory)) {
+            paymentsHistory.forEach(p => {
+                if (p.taller) set.add(p.taller.trim().toUpperCase());
+            });
+        }
+        if (Array.isArray(talleres)) {
+            talleres.forEach(t => {
+                if (t.titulo) set.add(t.titulo.trim().toUpperCase());
+            });
+        }
+        return Array.from(set).sort();
+    }, [paymentsHistory, talleres]);
+
+    const filteredPayments = useMemo(() => {
+        const q = paymentSearchQuery.toLowerCase().trim();
+        return (paymentsHistory || []).filter(item => {
+            if (paymentTallerFilter !== 'all') {
+                const target = paymentTallerFilter.toLowerCase();
+                const tallerName = (item.taller || '').toLowerCase();
+                if (!tallerName.includes(target) && tallerName !== target) {
+                    return false;
+                }
+            }
+            if (q) {
+                const inName = item.alumno_nombre?.toLowerCase().includes(q);
+                const inDni = item.alumno_dni?.includes(q);
+                const inTaller = item.taller?.toLowerCase().includes(q);
+                if (!inName && !inDni && !inTaller) return false;
+            }
+            return true;
+        });
+    }, [paymentsHistory, paymentTallerFilter, paymentSearchQuery]);
     const [view, setView] = useState('stats'); // 'stats', 'students', 'resources', 'payments', 'gallery', 'workshops', 'reports'
     const [filter, setFilter] = useState('all');
     const [showInactive, setShowInactive] = useState(false);
@@ -1694,36 +1731,116 @@ export default function AdminDashboard() {
                                 <h2 style={{ margin: 0 }}>📊 Historial de Pagos (Vista Horizontal)</h2>
                                 <p style={{ color: '#888', margin: '4px 0 0 0' }}>Cada celda representa el mes de pago calendario para el año seleccionado</p>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e1e1e', padding: '4px 8px', borderRadius: '8px', border: '1px solid #333' }}>
-                                <span style={{ fontSize: '0.85rem', color: '#9ca3af', fontWeight: 'bold' }}>AÑO:</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                {/* Buscador de alumno / DNI / taller */}
+                                <div style={{ position: 'relative', minWidth: '240px' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar alumno, DNI o taller..."
+                                        value={paymentSearchQuery}
+                                        onChange={(e) => setPaymentSearchQuery(e.target.value)}
+                                        style={{
+                                            background: '#1f2937',
+                                            border: '1px solid #374151',
+                                            borderRadius: '8px',
+                                            color: 'white',
+                                            padding: '8px 12px 8px 32px',
+                                            fontSize: '0.85rem',
+                                            width: '100%',
+                                            outline: 'none'
+                                        }}
+                                    />
+                                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.6, fontSize: '0.85rem' }}>🔍</span>
+                                </div>
+
+                                {/* Filtro desplegable por taller */}
                                 <select
-                                    value={selectedYear}
-                                    onChange={(e) => {
-                                        const yr = parseInt(e.target.value);
-                                        setSelectedYear(yr);
-                                        loadPaymentsHistory(yr);
-                                    }}
+                                    value={paymentTallerFilter}
+                                    onChange={(e) => setPaymentTallerFilter(e.target.value)}
                                     style={{
-                                        background: '#121212',
-                                        border: '1px solid #444',
-                                        color: 'white',
-                                        padding: '6px 12px',
-                                        borderRadius: '6px',
+                                        background: '#1f2937',
+                                        border: paymentTallerFilter === 'all' ? '1px solid #374151' : '1px solid #ffd500',
+                                        color: paymentTallerFilter === 'all' ? '#e5e7eb' : '#ffd500',
+                                        padding: '8px 12px',
+                                        borderRadius: '8px',
                                         cursor: 'pointer',
                                         fontSize: '0.85rem',
-                                        fontWeight: 'bold',
+                                        fontWeight: paymentTallerFilter === 'all' ? 'normal' : 'bold',
                                         outline: 'none',
-                                        transition: 'all 0.2s ease',
-                                        fontFamily: 'inherit'
+                                        minWidth: '200px'
                                     }}
+                                    title="Filtrar por Taller"
                                 >
-                                    {Array.from({ length: 2040 - 2025 + 1 }, (_, i) => 2025 + i).map(year => (
-                                        <option key={year} value={year} style={{ background: '#1e1e1e', color: 'white' }}>
-                                            {year} {year === new Date().getFullYear() ? '(Actual)' : ''}
-                                        </option>
+                                    <option value="all">🎨 Todos los talleres</option>
+                                    {availablePaymentTalleres.map(t => (
+                                        <option key={t} value={t}>{t}</option>
                                     ))}
                                 </select>
+
+                                {/* Selector de Año */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e1e1e', padding: '4px 8px', borderRadius: '8px', border: '1px solid #333' }}>
+                                    <span style={{ fontSize: '0.85rem', color: '#9ca3af', fontWeight: 'bold' }}>AÑO:</span>
+                                    <select
+                                        value={selectedYear}
+                                        onChange={(e) => {
+                                            const yr = parseInt(e.target.value);
+                                            setSelectedYear(yr);
+                                            loadPaymentsHistory(yr);
+                                        }}
+                                        style={{
+                                            background: '#121212',
+                                            border: '1px solid #444',
+                                            color: 'white',
+                                            padding: '6px 12px',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            fontSize: '0.85rem',
+                                            fontWeight: 'bold',
+                                            outline: 'none',
+                                            transition: 'all 0.2s ease',
+                                            fontFamily: 'inherit'
+                                        }}
+                                    >
+                                        {Array.from({ length: 2040 - 2025 + 1 }, (_, i) => 2025 + i).map(year => (
+                                            <option key={year} value={year} style={{ background: '#1e1e1e', color: 'white' }}>
+                                                {year} {year === new Date().getFullYear() ? '(Actual)' : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
+                        </div>
+
+                        {/* Barra de resumen y limpiar filtros en Pagos */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '10px' }}>
+                            <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
+                                Mostrando <strong style={{ color: '#fff' }}>{filteredPayments.length}</strong> registros de pagos
+                                {paymentTallerFilter !== 'all' && (
+                                    <> del taller <span style={{ color: '#ffd500', fontWeight: 'bold' }}>{paymentTallerFilter}</span></>
+                                )}
+                                {paymentSearchQuery.trim() && (
+                                    <> con búsqueda "<span style={{ color: '#ffd500' }}>{paymentSearchQuery.trim()}</span>"</>
+                                )}
+                            </span>
+                            {(paymentSearchQuery || paymentTallerFilter !== 'all') && (
+                                <button
+                                    onClick={() => {
+                                        setPaymentSearchQuery('');
+                                        setPaymentTallerFilter('all');
+                                    }}
+                                    style={{
+                                        background: 'none',
+                                        border: '1px solid #4b5563',
+                                        color: '#ffd500',
+                                        borderRadius: '4px',
+                                        padding: '3px 10px',
+                                        fontSize: '0.75rem',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Limpiar filtros ✕
+                                </button>
+                            )}
                         </div>
                         <div className={styles.tableWrapper} style={{ overflowX: 'auto' }}>
                             <table className={styles.table} style={{ minWidth: '1200px' }}>
@@ -1743,10 +1860,16 @@ export default function AdminDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {paymentsHistory.length === 0 && (
-                                        <tr><td colSpan="15">Cargando historial...</td></tr>
-                                    )}
-                                    {paymentsHistory.map((alumno, idx) => (
+                                    {filteredPayments.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="15" className="text-center" style={{ padding: '2.5rem', color: '#9ca3af' }}>
+                                                {paymentsHistory.length === 0 
+                                                    ? 'Cargando historial...' 
+                                                    : '🔍 No se encontraron registros de pagos con los filtros seleccionados.'}
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredPayments.map((alumno, idx) => (
                                         <tr key={idx}>
                                             <td style={{ minWidth: '200px' }}>
                                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1827,7 +1950,8 @@ export default function AdminDashboard() {
                                                 {alumno.fecha_vencimiento_ciclo || '-'}
                                             </td>
                                         </tr>
-                                    ))}
+                                    )))
+                                    }
                                 </tbody>
                             </table>
                         </div>
